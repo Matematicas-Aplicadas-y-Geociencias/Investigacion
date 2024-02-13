@@ -18,8 +18,12 @@ void errorHandler(char error_string[])
 double *allocateMemoryVector(int vector_size)
 {
     double *vector; 
-    size_t sizeInBytes = vector_size * sizeof(double);
-    vector = (double *)malloc(sizeInBytes);
+    size_t size_in_bytes;
+
+    size_in_bytes = vector_size * sizeof(double);
+    vector = (double *)malloc(size_in_bytes);
+
+    // Check that the memory allocation was successful.
     if (!vector)
     {
         errorHandler("Allocation failure in allocateMemoryVector");
@@ -31,8 +35,12 @@ double *allocateMemoryVector(int vector_size)
 double *allocateMemoryMatrix(int rows, int columns)
 {
     double *matrix;
-    size_t sizeInBytes = rows * columns * sizeof(double); 
-    matrix = (double *)malloc(sizeInBytes);
+    size_t size_in_bytes;
+
+    size_in_bytes = rows * columns * sizeof(double); 
+    matrix = (double *)malloc(size_in_bytes);
+
+    // Check that the memory allocation was successful.
     if (!matrix)
     {
         errorHandler("Allocation failure in allocateMemoryMatrix");

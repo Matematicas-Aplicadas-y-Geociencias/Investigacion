@@ -1,0 +1,89 @@
+Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,residuo)
+  ! !********************************
+! !*** Formato de escritura dat ***
+!archivo de escritura de la malla u
+OPEN(unit=1,file='out_n'//njc//'m'//mic//'k'//lkc//'_R'//Rac//'u.txt')
+WRITE(1,*) i_o,i_1,itera_total,ao
+DO k=1,lk+1
+  DO j=1,nj+1
+    DO i=1,mi
+      WRITE(1,24) xu(i),y(j),z(k),u(i,j,k)
+    END DO
+  END DO
+END DO
+CLOSE(unit=1)
+!**********************************
+!archivo de escritura de la malla v
+OPEN(unit=2,file='out_n'//njc//'m'//mic//'k'//lkc//'_R'//Rac//'v.txt')
+WRITE(2,*) i_o,i_1,itera_total,ao
+DO k=1,lk+1
+  DO j=1,nj
+    DO i=1,mi+1
+      WRITE(2,24) x(i),yv(j),z(k),v(i,j,k)
+    END DO
+  END DO
+END DO
+CLOSE(unit=2)
+!**********************************
+!archivo de escritura de la malla w
+OPEN(unit=3,file='out_n'//njc//'m'//mic//'k'//lkc//'_R'//Rac//'w.txt')
+WRITE(3,*) i_o,i_1,itera_total,ao
+DO k=1,lk
+  DO j=1,nj+1
+    DO i=1,mi+1
+      WRITE(3,24) x(i),y(j),zw(k),w(i,j,k)
+    END DO
+  END DO
+END DO
+CLOSE(unit=3)
+!**********************************
+!archivo de escritura de la malla p
+OPEN(unit=4,file='out_n'//njc//'m'//mic//'k'//lkc//'_R'//Rac//'p.txt')
+WRITE(4,*) i_o,i_1,itera_total,ao
+DO k=1,lk+1
+  DO j=1,nj+1
+    DO i=1,mi+1
+      WRITE(4,25) x(i),y(j),z(k),temp(i,j,k),pres(i,j,k)
+    END DO
+  END DO
+END DO
+CLOSE(unit=4)
+!************************************
+!*** Formato de escritura CSV ***
+OPEN(unit=1,file='n'//njc//'m'//mic//'k'//lkc//'R'//Rac//'/t'//m//ce//de//un//dec//'.txt')
+WRITE(1,*) 'x',' y',' z',' Temperature',' U',' V',' W',' Pressure',' Entropy',' Residual'
+DO k = 1, lk+1
+  DO j = 1, nj+1
+    DO i = 1, mi+1
+      WRITE(1,27) x(i),y(j),z(k),temp(i,j,k),uf(i,j,k),vf(i,j,k),wf(i,j,k),pres(i,j,k),entropia(i,j,k),b_o(i,j,k)
+    END DO
+  END DO
+END DO
+CLOSE(unit=1)
+!************************************
+!*** Formato de escritura Tecplot ***
+! OPEN(unit=1,file='n'//njc//'m'//mic//'R'//Rac//'/res'//m//ce//de//un//dec//'.plt')
+! WRITE(1,*)'TITLE     = "vel" '
+! WRITE(1,*)'VARIABLES = "x"'
+! WRITE(1,*)'"y"'
+! WRITE(1,*)'"z"'
+! WRITE(1,*)'"w"'
+! !WRITE(1,*)'"XD"'
+! !WRITE(1,*)'"DTEMP"'
+! WRITE(1,*)'ZONE T= "Matrix"'
+! WRITE(1,*)'I=',mi+1,' J=',nj+1,' K=',lk,' F=POINT'
+! DO k =1, lk
+!   DO j = 1, nj+1
+!     DO i = 1, mi+1
+!       WRITE(1,24) x(i),y(j),zw(k),w(i,j,k)
+!     END DO
+!   END DO
+! END DO
+! CLOSE(unit=1)
+END Subroutine postprocess_dat
+!*******************************
+!formatos de escritura y lectura
+24 FORMAT (4D23.15)
+25 FORMAT (5D23.15)
+26 FORMAT (6D23.15)
+27 FORMAT (10e15.7)

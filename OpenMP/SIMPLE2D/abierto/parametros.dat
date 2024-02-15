@@ -1,0 +1,17 @@
+1.d2   !Re
+1d2    !Rec
+7.0d0  !Pr
+5.0d0  !Ri
+5.0d-3 !dt
+2000   !paq_itera
+0.85d0 !relajaci'on_presi'on
+0.80d0 !relajaci'on velocidad
+0.80d0 !relajaci'on temperatura
+1.d-2  !convergencia velocidad
+1.d-2  !convergencia temperatura
+1.d-2  !convergencia presi'on
+1.d-4  !convergencia del residuo
+1.d-4  !convergencia paso
+out_n076m181_Ri00u.dat   !archivo de entrada de u
+out_n076m181_Ri00v.dat   !archivo de entrada de v
+out_n076m181_Ri00p.dat   !archivo de entrada de t y p

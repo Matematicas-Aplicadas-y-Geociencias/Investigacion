@@ -17,7 +17,9 @@ double precision :: flux_aba, flux_arr
 double precision, dimension(mi)    :: sourcex, xx
 double precision, dimension(nj)    :: sourcey, yy
 double precision, dimension(mi)    :: resultx,tempx
+double precision, dimension(mi,nj)    :: resultxo,tempxo
 double precision, dimension(nj)    :: resulty,tempy
+double precision, dimension(nj,mi)    :: resultyo,tempyo
 double precision, dimension(mi,nj) :: temper,temp_ant
 !
 ! Matriz a invertir
@@ -25,6 +27,11 @@ double precision, dimension(mi)    :: AI,AD
 double precision, dimension(mi)    :: AC
 double precision, dimension(nj)    :: BI,BD
 double precision, dimension(nj)    :: BC
+
+double precision, dimension(mi,nj)    :: AIo,ADo
+double precision, dimension(mi,nj)    :: ACo
+double precision, dimension(nj,mi)    :: BIo,BDo
+double precision, dimension(nj,mi)    :: BCo
 !
 ! Se crea la malla 2D
 !
@@ -68,7 +75,7 @@ resulty = 0.0d0
 !
 !! Bucle iterativo
 !
-do kk = 1, 500
+do kk = 1, 100
     !
     !
     !!! Abrimos la región paralela
@@ -80,79 +87,81 @@ do kk = 1, 500
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x
-    !$acc parallel private(AC,AD,resultx,AI,tempx) firstprivate(deltax,deltay,temp_ini,temp_fin,cond_ter)
-    !$acc loop 
+    !$acc parallel
+    !$acc loop
     do jj = 2, nj-1
         !
         ! Se definen las condiciones de frontera
         !
-        AC(1)      = 1.0d0
-        AD(1)      = 0.0d0
+        ACo(1,jj)      = 1.0d0
+        ADo(1,jj)      = 0.0d0
         resultx(1)  = temp_ini
-        AI(mi)     = 0.d0
-        AC(mi)     = 1.0d0
+        AIo(mi,jj)     = 0.d0
+        ACo(mi,jj)     = 1.0d0
         resultx(mi) = temp_fin
         !
         ! Ensamblado de la matriz tridiagonal
         ! y del vector de resultados
         !
         do ii=2, mi-1
-            AI(ii)     =-1.0d0*cond_ter/(deltax*deltax)
-            AC(ii)     = 2.0d0*cond_ter*(1.d0/(deltax*deltax)+1.d0/(deltay*deltay))
-            AD(ii)     =-1.0d0*cond_ter/(deltax*deltax)
-            resultx(ii) = cond_ter/(deltay*deltay)*temp_ant(ii,jj+1)+cond_ter/(deltay*deltay)*temp_ant(ii,jj-1)
+            AIo(ii,jj)     =-1.0d0*cond_ter/(deltax*deltax)
+            ACo(ii,jj)     = 2.0d0*cond_ter*(1.d0/(deltax*deltax)+1.d0/(deltay*deltay))
+            ADo(ii,jj)     =-1.0d0*cond_ter/(deltax*deltax)
+            resultxo(ii,jj) = cond_ter/(deltay*deltay)*temp_ant(ii,jj+1)+cond_ter/(deltay*deltay)*temp_ant(ii,jj-1)
         end do
         !
         ! Llamamos al TDMA
-        call tri(AI,AC,AD,resultx,tempx,mi)
-        do ii =1, mi
-            temper(ii,jj) = tempx(ii)
-        end do
+        call tri(AIo(:,jj),ACo(:,jj),ADo(:,jj),resultxo(:,jj),temper(:,jj),mi)
+!         do ii =1, mi
+!             temper(ii,jj) = tempxo(ii,jj)
+!         end do
     end do
     !$acc end loop
-    !
-    !
     !$acc end parallel
+    !     !
+!     !
+
     !!! PARTE 2
-    !$acc parallel private(BC,BD,resulty,BI,tempy) firstprivate(deltax,deltay,temp_ini,temp_fin,cond_ter)
     !
     !
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
     !
-    !$acc loop 
+    !$acc parallel
+    !$acc loop
     do ii = 2, mi-1
         !
         ! Se definen las condiciones de frontera
         !
-        BC(1)      =-1.0d0/deltay
-        BD(1)      = 1.0d0/deltay
-        resulty(1) = flux_aba
-        BI(nj)     =-1.d0/deltay
-        BC(nj)     = 1.0d0/deltay
-        resulty(nj) = flux_arr !(temp_fin+temp_ini)/2.d0
+        BCo(1,ii)      =-1.0d0/deltay
+        BDo(1,ii)      = 1.0d0/deltay
+        resultyo(1,ii) = flux_aba
+        BIo(nj,ii)     =-1.d0/deltay
+        BCo(nj,ii)     = 1.0d0/deltay
+        resultyo(nj,ii) = flux_arr !(temp_fin+temp_ini)/2.d0
         !
         ! Ensamblado de la matriz tridiagonal
         ! y del vector de resultados
         !
         do jj=2, nj-1
-            BI(jj)     =-1.0d0*cond_ter/(deltay*deltay)
-            BC(jj)     = 2.0d0*cond_ter*(1.d0/(deltay*deltay)+1.d0/(deltax*deltax))
-            BD(jj)     =-1.0d0*cond_ter/(deltay*deltay)
-            resulty(jj) = cond_ter/(deltax*deltax)*temp_ant(ii+1,jj)+cond_ter/(deltax*deltax)*temp_ant(ii-1,jj)
+            BIo(jj,ii)     =-1.0d0*cond_ter/(deltay*deltay)
+            BCo(jj,ii)     = 2.0d0*cond_ter*(1.d0/(deltay*deltay)+1.d0/(deltax*deltax))
+            BDo(jj,ii)     =-1.0d0*cond_ter/(deltay*deltay)
+            resultyo(jj,ii) = cond_ter/(deltax*deltax)*temp_ant(ii+1,jj)+cond_ter/(deltax*deltax)*temp_ant(ii-1,jj)
         end do
         !
         ! Llamamos al TDMA
         !
-        call tri(BI,BC,BD,resulty,tempy,nj)
+        call tri(BIo(:,ii),BCo(:,ii),BDo(:,ii),resultyo(:,ii),tempyo(:,ii),nj)
         do jj =1, nj
-            temper(ii,jj) = tempy(jj)
+            temper(ii,jj) = tempyo(jj,ii)
         end do
     end do
     !$acc end loop
-    !
-    !
     !$acc end parallel
+!     !
+!     !
+
     !!! Cerramos la región paralela
     !
     !print*, "Residuo: ", kk, maxval(temper-temp_ant)

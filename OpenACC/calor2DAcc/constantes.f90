@@ -1,5 +1,5 @@
 module constantes
-  integer, parameter :: mi = 100, nj=100, nn = 1200000
+  integer, parameter :: mi = 100, nj=80, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
   contains
@@ -47,9 +47,9 @@ module constantes
       double precision, intent(in)                      :: flux_arro,flux_abao
       double precision, dimension(mi,nj), intent(in)    :: tempero
       
-      double precision, dimension(mi,nj), intent(out)   :: BIo,BDo
-      double precision, dimension(mi,nj), intent(out)   :: BCo
-      double precision, dimension(mi,nj), intent(out)   :: resultyo
+      double precision, dimension(nj,mi), intent(out)   :: BIo,BDo
+      double precision, dimension(nj,mi), intent(out)   :: BCo
+      double precision, dimension(nj,mi), intent(out)   :: resultyo
       integer :: iio,jjn
       !
       ! Se definen las condiciones de frontera

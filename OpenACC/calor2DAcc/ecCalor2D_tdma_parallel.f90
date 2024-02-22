@@ -16,14 +16,14 @@ double precision :: flux_aba, flux_arr, alpha
 double precision, dimension(mi)    :: sourcex, xx
 double precision, dimension(nj)    :: sourcey, yy
 double precision, dimension(mi,nj) :: resultx
-double precision, dimension(mi,nj) :: resulty,tempy
+double precision, dimension(nj,mi) :: resulty,tempy
 double precision, dimension(mi,nj) :: temper,temp_ant
 !
 ! Matriz a invertir
 double precision, dimension(mi,nj) :: AI,AD
 double precision, dimension(mi,nj) :: AC
-double precision, dimension(mi,nj) :: BI,BD
-double precision, dimension(mi,nj) :: BC
+double precision, dimension(nj,mi) :: BI,BD
+double precision, dimension(nj,mi) :: BC
 !
 ! Se crea la malla 2D
 !
@@ -57,13 +57,17 @@ temp_ant = temper
 resultx = 0.0d0
 resulty = 0.0d0
 !
+! Abrimos la región de datos paralela
+!
+!$acc data copy( temper(1:mi,1:nj) ) &
+!$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
+!$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi)) &
+!$acc & create( AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
+!$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
+!
 ! Bucle de pseudotiempo
-! y
+! 
 do kk = 1, 500
-   !
-   ! Abrimos la región paralela
-   !
-!!$   !$acc parallel
    !
    ! Inicia el ciclo que recorre la coordenada y resolviendo
    ! problemas 1D en la dirección de x
@@ -79,7 +83,6 @@ do kk = 1, 500
       call tri(AI(:,jj),AC(:,jj),AD(:,jj),resultx(:,jj),temper(:,jj),mi)
       
     end do
-!!$    !$acc end loop
     !
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
@@ -90,16 +93,15 @@ do kk = 1, 500
        ! Ensamblamos matrices tridiagonales en direcci\'on y
        !
        call ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii)
-        !
-        ! Llamamos al TDMA
-        !
-        call tri(BI(:,ii),BC(:,ii),BD(:,ii),resulty(:,ii),tempy(:,ii),nj)
-        do jj =1, nj
-            temper(ii,jj) = tempy(jj,ii)
-        end do
-
+       !
+       ! Llamamos al TDMA
+       !
+       call tri(BI(:,ii),BC(:,ii),BD(:,ii),resulty(:,ii),tempy(:,ii),nj)
+       do jj =1, nj
+          temper(ii,jj) = tempy(jj,ii)
+       end do
+       
     end do
-!!$    !$acc end loop
     !
     ! se aplica un esquema de relajaci\'on fija
     !
@@ -111,39 +113,41 @@ do kk = 1, 500
     !
     ! Cerramos la región paralela
     !
-!!$    !$acc end parallel
     !print*, "Residuo: ", kk, maxval(temper-temp_ant)
-!     temp_ant = temper
+    !     temp_ant = temper
     !
+ end do
+ !
+ ! Cerramos la región de datos paralela
+ !
+ !$acc end data
+ !
+ !! Escritura de resultados
+ !
+ do ii = 1, mi
+    do jj = 1, nj
+       write(101,*) xx(ii), yy(jj), temper(ii,jj)
     end do
-
-    !
-    !! Escritura de resultados
-    !
-    do ii = 1, mi
-        do jj = 1, nj
-            write(101,*) xx(ii), yy(jj), temper(ii,jj)
-        end do
-            write(101,*)
-    end do
-    !
-    ! Obtenemos la diferencia entre la solución analítica y la solución numérica, así como el error porcentual
-    !do ii =2, mi-1
-    !    do jj = 2, nj-1
-    !        !
-    !        write(102,*) xx(ii), yy(jj), temper(ii,jj)-(-xx(ii)+308), (temper(ii,jj)-(-xx(ii)+308))/(-xx(ii)+308)
-    !    end do
-    !        write(102,*)
-    !end do
-    !
-    !
-    ! Obtenemos la diferencia entre la solución analítica y la solución numérica, así como el error porcentual
-    ! do ii =2, mi-1
-    !     do jj = 2, nj-1
-    !         !
-    !         write(102,*) xx(ii), yy(jj), temper(ii,jj)-(-xx(ii)+308), (temper(ii,jj)-(-xx(ii)+308))/(temp_fin-temp_ini)
-    !     end do
-    !         write(102,*)
-    ! end do
-    !
+    write(101,*)
+ end do
+ !
+ ! Obtenemos la diferencia entre la solución analítica y la solución numérica, así como el error porcentual
+ !do ii =2, mi-1
+ !    do jj = 2, nj-1
+ !        !
+ !        write(102,*) xx(ii), yy(jj), temper(ii,jj)-(-xx(ii)+308), (temper(ii,jj)-(-xx(ii)+308))/(-xx(ii)+308)
+ !    end do
+ !        write(102,*)
+ !end do
+ !
+ !
+ ! Obtenemos la diferencia entre la solución analítica y la solución numérica, así como el error porcentual
+ ! do ii =2, mi-1
+ !     do jj = 2, nj-1
+ !         !
+ !         write(102,*) xx(ii), yy(jj), temper(ii,jj)-(-xx(ii)+308), (temper(ii,jj)-(-xx(ii)+308))/(temp_fin-temp_ini)
+ !     end do
+ !         write(102,*)
+ ! end do
+ !
 END PROGRAM Calor2D

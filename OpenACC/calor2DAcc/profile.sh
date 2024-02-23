@@ -1,0 +1,1 @@
+nsys profile -b fp -f true -o reportCalor2D --stats=true -t cuda,openacc ./test

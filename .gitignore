@@ -3,6 +3,6 @@
 *.png
 *.nsys-rep
 *.sqlite
-fort.*
+OpenAcc/calor2DAcc/fort.101
 *.mod
 

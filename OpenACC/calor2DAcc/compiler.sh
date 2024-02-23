@@ -1,0 +1,1 @@
+nvfortran -fast -acc=gpu -gpu=cc75,managed -Minfo=all *.f90 -o test

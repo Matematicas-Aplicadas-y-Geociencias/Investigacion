@@ -59,11 +59,11 @@ resulty = 0.0d0
 !
 ! Abrimos la región de datos paralela
 !
-!$acc data copy( temper(1:mi,1:nj) ) &
-!$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
-!$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
-!$acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
-!$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
+! $acc data copy( temper(1:mi,1:nj) ) &
+! $acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
+! $acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
+! $acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
+! $acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
 !
 ! Bucle de pseudotiempo
 ! 
@@ -118,7 +118,7 @@ do kk = 1, 500
  !
  ! Cerramos la región de datos paralela
  !
- !$acc end data
+!  $acc end data
  !
  !! Escritura de resultados
  !

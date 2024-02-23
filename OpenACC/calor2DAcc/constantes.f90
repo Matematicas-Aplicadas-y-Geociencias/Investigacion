@@ -56,10 +56,10 @@ module constantes
       !
       BCo(1,iio)       =-1.0d0/deltayo
       BDo(1,iio)       = 1.0d0/deltayo
-      resultyo(1,iio)  = 0.d0 !flux_abao
+      resultyo(1,iio)  = flux_abao
       BIo(nj,iio)      =-1.d0/deltayo
       BCo(nj,iio)      = 1.0d0/deltayo
-      resultyo(nj,iio) = 0.d0 !flux_arro !(temp_fin+temp_ini)/2.d0
+      resultyo(nj,iio) = flux_arro !(temp_fin+temp_ini)/2.d0
       !
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados

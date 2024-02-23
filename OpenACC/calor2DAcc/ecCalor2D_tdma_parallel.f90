@@ -13,11 +13,11 @@ double precision :: cond_ter, temp_ini, temp_fin
 double precision :: flux_aba, flux_arr, alpha
 !
 ! Arreglos para incógnitas, término fuente y posición
+double precision, dimension(mi,nj) :: temper,temp_ant
 double precision, dimension(mi)    :: sourcex, xx
 double precision, dimension(nj)    :: sourcey, yy
 double precision, dimension(mi,nj) :: resultx
 double precision, dimension(nj,mi) :: resulty,tempy
-double precision, dimension(mi,nj) :: temper,temp_ant
 !
 ! Matriz a invertir
 double precision, dimension(mi,nj) :: AI,AD
@@ -44,8 +44,8 @@ deltay = 1.d0/dfloat(nj-1)
 cond_ter = 1.d0
 temp_ini = 308.d0
 temp_fin = 298.d0
-flux_aba = 0.d0
-flux_arr = 0.d0
+flux_aba = 5.0d0
+flux_arr = 5.0d0
 alpha    = 0.5d0 ! par\'ametro de relajaci\'on
 !
 ! Inicialización de los arreglos a utilizar
@@ -61,8 +61,8 @@ resulty = 0.0d0
 !
 !$acc data copy( temper(1:mi,1:nj) ) &
 !$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
-!$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi)) &
-!$acc & create( AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
+!$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
+!$acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
 !$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
 !
 ! Bucle de pseudotiempo
@@ -80,7 +80,7 @@ do kk = 1, 500
       call ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj)
       !
       ! Llamamos al TDMA
-      call tri(AI(:,jj),AC(:,jj),AD(:,jj),resultx(:,jj),temper(:,jj),mi)
+      call tri(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),resultx(1:mi,jj),temper(1:mi,jj),mi)
       
     end do
     !
@@ -96,7 +96,7 @@ do kk = 1, 500
        !
        ! Llamamos al TDMA
        !
-       call tri(BI(:,ii),BC(:,ii),BD(:,ii),resulty(:,ii),tempy(:,ii),nj)
+       call tri(BI(1:nj,ii),BC(1:nj,ii),BD(1:nj,ii),resulty(1:nj,ii),tempy(1:nj,ii),nj)
        do jj =1, nj
           temper(ii,jj) = tempy(jj,ii)
        end do
@@ -110,8 +110,6 @@ do kk = 1, 500
     ! se actualiza la temperatura de la iteraci\'on anterior
     !
     temp_ant = temper
-    !
-    ! Cerramos la región paralela
     !
     !print*, "Residuo: ", kk, maxval(temper-temp_ant)
     !     temp_ant = temper

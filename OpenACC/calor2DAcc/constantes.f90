@@ -1,5 +1,5 @@
 module constantes
-  integer, parameter :: mi = 100, nj=80, nn = 1200000
+  integer, parameter :: mi = 1000, nj=500, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
   contains
@@ -54,20 +54,20 @@ module constantes
       !
       ! Se definen las condiciones de frontera
       !
-      BCo(1,iio)       =-1.0d0/deltayo
-      BDo(1,iio)       = 1.0d0/deltayo
-      resultyo(1,iio)  = flux_abao
-      BIo(nj,iio)      =-1.d0/deltayo
-      BCo(nj,iio)      = 1.0d0/deltayo
-      resultyo(nj,iio) = flux_arro !(temp_fin+temp_ini)/2.d0
+      BCo(1,iio)       = 1.d0 !-1.0d0/deltayo
+      BDo(1,iio)       = 0.d0 !1.0d0/deltayo
+      resultyo(1,iio)  = 308.d0 !flux_abao
+      BIo(nj,iio)      = 0.d0 !-1.d0/deltayo
+      BCo(nj,iio)      = 1.d0 !1.0d0/deltayo
+      resultyo(nj,iio) = 308.d0 !flux_arro !(temp_fin+temp_ini)/2.d0
       !
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
       !
       do jjn=2, nj-1
-         BIo(jjn,iio)     =-1.0d0*cond_tero/(deltayo*deltayo)
-         BCo(jjn,iio)     = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))
-         BDo(jjn,iio)     =-1.0d0*cond_tero/(deltayo*deltayo)
+         BIo(jjn,iio)      =-1.0d0*cond_tero/(deltayo*deltayo)
+         BCo(jjn,iio)      = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))
+         BDo(jjn,iio)      =-1.0d0*cond_tero/(deltayo*deltayo)
          resultyo(jjn,iio) = cond_tero/(deltaxo*deltaxo)*tempero(iio+1,jjn)+&
               &cond_tero/(deltaxo*deltaxo)*tempero(iio-1,jjn)
       end do

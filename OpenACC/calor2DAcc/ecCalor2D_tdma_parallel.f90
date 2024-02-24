@@ -27,8 +27,8 @@ double precision, dimension(nj,mi) :: BC
 !
 ! Se crea la malla 2D
 !
-a = 1.d0
-b = 5.d-1
+a = 10.d0
+b = 5.d0
 do ii = 1, mi
     xx(ii) = a*dfloat(ii-1)/dfloat(mi-1)
 !     print*, ii, xx(ii)
@@ -47,33 +47,33 @@ temp_fin = 298.d0
 flux_aba = 5.0d0
 flux_arr = 5.0d0
 alpha    = 0.5d0 ! par\'ametro de relajaci\'on
-!
-! Inicialización de los arreglos a utilizar
-!
-AI = 0.d0
-AC = 0.d0
-AD = 0.d0
-BI = 0.d0
-BC = 0.d0
-BD = 0.d0
-temper   = (temp_fin+temp_ini)/2.d0
-temp_ant = temper
-resultx  = 0.0d0
-resulty  = 0.0d0
-tempx    = 0.0d0
-tempy    = 0.0d0
-!
-! Abrimos la región de datos paralela
-!
-!$acc data copy( temper(1:mi,1:nj) ) &
-!$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
-!$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
-!$acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),&
-!$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempx(1:mi,1:nj),tempy(1:nj,1:mi) )
-!
-! Bucle de pseudotiempo
-! 
-do kk = 1, 5000
+ !
+ ! Inicialización de los arreglos a utilizar
+ !
+ AI = 0.d0
+ AC = 0.d0
+ AD = 0.d0
+ BI = 0.d0
+ BC = 0.d0
+ BD = 0.d0
+ temper   = (temp_fin+temp_ini)/2.d0
+ temp_ant = temper
+ resultx  = 0.0d0
+ resulty  = 0.0d0
+ tempx    = 0.0d0
+ tempy    = 0.0d0
+ !
+ ! Abrimos la región de datos paralela
+ !
+ !$acc data copy( temper(1:mi,1:nj) ) &
+ !$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
+ !$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
+ !$acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),tempx(1:mi,1:nj),&
+ !$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
+ !
+ ! Bucle de pseudotiempo
+ ! 
+ do kk = 1, 1000
    !
    ! Inicia el ciclo que recorre la coordenada y resolviendo
    ! problemas 1D en la dirección de x

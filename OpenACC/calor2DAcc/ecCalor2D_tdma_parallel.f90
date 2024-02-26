@@ -73,12 +73,13 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Bucle de pseudotiempo
  ! 
- do kk = 1, 1000
+ do kk = 1, 3000
    !
    ! Inicia el ciclo que recorre la coordenada y resolviendo
    ! problemas 1D en la dirección de x
    
-   !$acc parallel loop
+    !$acc parallel loop gang
+    !$ , num_gangs(8) num_workers(64) vector_length(1)
    do jj = 2, nj-1
       !
       ! Ensamblamos matrices en direcci\'on x
@@ -95,7 +96,8 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
     !
-    !$acc parallel loop
+    !$acc parallel loop gang
+    !$  num_gangs(8) num_workers(64) vector_length(1)
     do ii = 2, mi-1
        !
        ! Ensamblamos matrices tridiagonales en direcci\'on y

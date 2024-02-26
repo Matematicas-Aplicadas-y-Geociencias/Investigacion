@@ -1,5 +1,5 @@
 module constantes
-  integer, parameter :: mi = 1000, nj=500, nn = 1200000
+  integer, parameter :: mi = 1024, nj=1024, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
   contains
@@ -30,6 +30,7 @@ module constantes
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
       !
+      !$acc loop 
       do iin=2, mi-1
          AIo(iin,jjo)      =-1.0d0*cond_tero/(deltaxo*deltaxo)
          ACo(iin,jjo)      = 2.0d0*cond_tero*(1.d0/(deltaxo*deltaxo)+1.d0/(deltayo*deltayo))
@@ -41,7 +42,7 @@ module constantes
     end subroutine ensambla_tdmax
 
     subroutine ensambla_tdmay(BIo,BCo,BDo,resultyo,deltaxo,deltayo,tempero,cond_tero,flux_abao,flux_arro,iio)
-      !$acc routine
+      !$acc routine 
       implicit none
       double precision, intent(in)                      :: deltaxo,deltayo,cond_tero
       double precision, intent(in)                      :: flux_arro,flux_abao
@@ -64,6 +65,7 @@ module constantes
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
       !
+      !$acc loop 
       do jjn=2, nj-1
          BIo(jjn,iio)      =-1.0d0*cond_tero/(deltayo*deltayo)
          BCo(jjn,iio)      = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))

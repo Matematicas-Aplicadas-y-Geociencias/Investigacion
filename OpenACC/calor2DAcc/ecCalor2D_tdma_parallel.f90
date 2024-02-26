@@ -74,31 +74,31 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  ! Bucle de pseudotiempo
  ! 
  do kk = 1, 3000
-   !
-   ! Inicia el ciclo que recorre la coordenada y resolviendo
-   ! problemas 1D en la dirección de x
-   
+    !
+    ! Inicia el ciclo que recorre la coordenada y resolviendo
+    ! problemas 1D en la dirección de x
+    
     !$acc parallel loop gang
     !$ , num_gangs(8) num_workers(64) vector_length(1)
-   do jj = 2, nj-1
-      !
-      ! Ensamblamos matrices en direcci\'on x
-      !
-      call ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj)
-      !
-      ! Llamamos al TDMA
-      call tri(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),resultx(1:mi,jj),tempx(1:mi,jj),mi)
-      do ii =1, mi
-         temper(ii,jj) = tempx(ii,jj)
-      end do
-    end do
+    TDMAX: do jj = 2, nj-1
+       !
+       ! Ensamblamos matrices en direcci\'on x
+       !
+       call ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj)
+       !
+       ! Llamamos al TDMA
+       call tri(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),resultx(1:mi,jj),tempx(1:mi,jj),mi)
+       do ii =1, mi
+          temper(ii,jj) = tempx(ii,jj)
+       end do
+    end do TDMAX
     !
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
     !
-    !$acc parallel loop gang
+    !$acc parallel loop gang 
     !$  num_gangs(8) num_workers(64) vector_length(1)
-    do ii = 2, mi-1
+    TDMAY: do ii = 2, mi-1
        !
        ! Ensamblamos matrices tridiagonales en direcci\'on y
        !
@@ -111,7 +111,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
           temper(ii,jj) = tempy(jj,ii)
        end do
        
-    end do
+    end do TDMAY
     !
     ! se aplica un esquema de relajaci\'on fija
     !
@@ -120,11 +120,11 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     ! se actualiza la temperatura de la iteraci\'on anterior
     !
     !$acc parallel loop
-    do ii = 1, mi
+    ACTUALIZACION: do ii = 1, mi
        do jj = 1, nj
           temp_ant(ii,jj) = temper(ii,jj)
        end do
-    end do
+    end do ACTUALIZACION
     !
     !print*, "Residuo: ", kk, maxval(temper-temp_ant)
     !     temp_ant = temper

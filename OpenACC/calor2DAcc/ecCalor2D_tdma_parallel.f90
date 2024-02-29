@@ -67,51 +67,59 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  !$acc data copy( temper(1:mi,1:nj) ) &
  !$acc & copyin( deltax,deltay,temp_ant(1:mi,1:nj),cond_ter,temp_ini,&
- !$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi),&
- !$acc & AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),tempx(1:mi,1:nj),&
+ !$acc & temp_fin,flux_aba,flux_arr,alpha,resultx(1:mi,1:nj),resulty(1:nj,1:mi) )&
+ !$acc & create( AI(1:mi,1:nj),AC(1:mi,1:nj),AD(1:mi,1:nj),tempx(1:mi,1:nj),&
  !$acc & BI(1:nj,1:mi),BC(1:nj,1:mi),BD(1:nj,1:mi),tempy(1:nj,1:mi) )
  !
  ! Bucle de pseudotiempo
  ! 
- do kk = 1, 3000
+ do kk = 1, 30
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x
     
-    !$acc parallel loop gang
-    !$ , num_gangs(8) num_workers(64) vector_length(1)
+    !$acc parallel loop
+    ! gang vector_length(128)
     TDMAX: do jj = 2, nj-1
        !
        ! Ensamblamos matrices en direcci\'on x
        !
        call ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj)
-       !
-       ! Llamamos al TDMA
-       call tri(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),resultx(1:mi,jj),tempx(1:mi,jj),mi)
-       do ii =1, mi
-          temper(ii,jj) = tempx(ii,jj)
-       end do
     end do TDMAX
+    !
+    ! Llamamos al resolvedor
+    !
+    !$acc parallel loop
+    ! gang vector_length(128) 
+    SOLX: do jj = 2, nj-1
+       call tri(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),resultx(1:mi,jj),mi)
+       do ii =1, mi
+          temper(ii,jj) = resultx(ii,jj)
+       end do
+    end do SOLX
     !
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
     !
-    !$acc parallel loop gang 
-    !$  num_gangs(8) num_workers(64) vector_length(1)
+    !$acc parallel loop
+    ! gang vector_length(128)
     TDMAY: do ii = 2, mi-1
        !
        ! Ensamblamos matrices tridiagonales en direcci\'on y
        !
        call ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii)
-       !
-       ! Llamamos al TDMA
-       !
-       call tri(BI(1:nj,ii),BC(1:nj,ii),BD(1:nj,ii),resulty(1:nj,ii),tempy(1:nj,ii),nj)
-       do jj =1, nj
-          temper(ii,jj) = tempy(jj,ii)
-       end do
-       
     end do TDMAY
+    !$acc parallel loop 
+    ! gang vector_length(128)
+    SOLY: do ii=2, mi-1
+       !
+       ! Llamamos al resolvedor
+       !
+       call tri(BI(1:nj,ii),BC(1:nj,ii),BD(1:nj,ii),resulty(1:nj,ii),nj)
+       do jj =1, nj
+          temper(ii,jj) = resulty(jj,ii)
+       end do
+    end do SOLY
     !
     ! se aplica un esquema de relajaci\'on fija
     !

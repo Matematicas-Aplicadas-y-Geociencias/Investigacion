@@ -1,11 +1,11 @@
 module constantes
-  integer, parameter :: mi = 1024, nj=1024, nn = 1200000
+  integer, parameter :: mi = 2048, nj=1024, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
-  contains
+contains
     
     subroutine ensambla_tdmax(AIo,ACo,ADo,resultxo,deltaxo,deltayo,temp_anto,cond_tero,temp_inio,temp_fino,jjo)
-      !$acc routine
+      !$acc routine vector
       implicit none
       double precision, intent(in)                    :: deltaxo,deltayo,cond_tero
       double precision, intent(in)                    :: temp_inio,temp_fino
@@ -30,7 +30,7 @@ module constantes
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
       !
-      !$acc loop 
+      !$acc loop vector
       do iin=2, mi-1
          AIo(iin,jjo)      =-1.0d0*cond_tero/(deltaxo*deltaxo)
          ACo(iin,jjo)      = 2.0d0*cond_tero*(1.d0/(deltaxo*deltaxo)+1.d0/(deltayo*deltayo))
@@ -42,7 +42,7 @@ module constantes
     end subroutine ensambla_tdmax
 
     subroutine ensambla_tdmay(BIo,BCo,BDo,resultyo,deltaxo,deltayo,tempero,cond_tero,flux_abao,flux_arro,iio)
-      !$acc routine 
+      !$acc routine vector
       implicit none
       double precision, intent(in)                      :: deltaxo,deltayo,cond_tero
       double precision, intent(in)                      :: flux_arro,flux_abao
@@ -65,7 +65,7 @@ module constantes
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
       !
-      !$acc loop 
+      !$acc loop vector
       do jjn=2, nj-1
          BIo(jjn,iio)      =-1.0d0*cond_tero/(deltayo*deltayo)
          BCo(jjn,iio)      = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))
@@ -75,26 +75,26 @@ module constantes
       end do
     end subroutine ensambla_tdmay
     
-    subroutine tri(a,b,c,r,u,n)
+    subroutine tri(a,b,c,r,n)
       !$acc routine
       implicit none
       integer, intent(in) :: n
-      double precision, intent(in) :: a(n),c(n)
+      double precision, intent(in)    :: a(n),c(n)
       double precision, intent(inout) :: b(n),r(n)
-      double precision, intent(inout) :: u(n)
+      ! double precision, intent(inout) :: u(n)
       integer :: i
       
-      u=0.d0
       ! eliminacion elementos bajo la matriz
       gausselim: do i=2,n
          r(i)=r(i)-(a(i)/b(i-1))*r(i-1)
          b(i)=b(i)-(a(i)/b(i-1))*c(i-1)
       end do gausselim
-      ! solucion para u
-      u(n)=r(n)/b(n)
+      ! solucion para r
+      r(n)=r(n)/b(n)
       sustatras: do i=n-1,1,-1
-         u(i)=(r(i)-c(i)*u(i+1))/b(i)
+         r(i)=(r(i)-c(i)*r(i+1))/b(i)
       end do sustatras
+
     end subroutine tri
     
 end module

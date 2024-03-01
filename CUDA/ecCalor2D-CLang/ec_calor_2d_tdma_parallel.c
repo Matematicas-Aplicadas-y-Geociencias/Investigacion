@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "constantes.h"
 #include "herramientas.h"
+#include "constantes.h"
 
 int main(int argc, char const *argv[])
 {
@@ -98,64 +98,82 @@ int main(int argc, char const *argv[])
     inicializar_matriz(tempx, mi, nj, 0.0);
     inicializar_matriz(tempy, nj, mi, 0.0);
     /*
-    * Bucle de pseudotiempo
+    * Abrimos la region de datos paralela
     */
-    for (kk = 0; kk < 30; kk++)
+    #pragma acc data copy(temper[:mi][:nj]) \
+    copyin(deltax,deltay,temp_ant[:mi][:nj],cond_ter,temp_ini,\
+    temp_fin,flux_aba,flux_arr,alpha,resultx[:mi][:nj],resulty[:nj][:mi]) \
+    create(AI[:mi][:nj],AC[:mi][:nj],AD[:mi][:nj],tempx[:mi][:nj],\
+    BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi],tempy[:nj][:mi])
     {
         /*
-        * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
+        * Bucle de pseudotiempo
         */
-       for (jj = 1; jj < nj-1; jj++)
-       {
-            /*
-            * Ensamblando matrices en direccion x
-            */
-            ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj);
-       }
-       /*
-       * Llamamos al resolvedor
-       */
-        for (jj = 1; jj < nj-1; jj++)
+        for (kk = 0; kk < 3000; kk++)
         {
-            tri(AI, AC, AD, resultx, mi, jj);
+            /*
+            * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
+            */
+            #pragma acc parallel loop
+            for (jj = 1; jj < nj-1; jj++)
+            {
+                /*
+                * Ensamblando matrices en direccion x
+                */
+                ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj);
+            }
+            /*
+            * Llamamos al resolvedor
+            */
+            #pragma acc parallel loop
+            for (jj = 1; jj < nj-1; jj++)
+            {
+                tri(AI, AC, AD, resultx, mi, jj);
+                for (ii = 0; ii < mi; ii++)
+                {
+                    temper[ii][jj] = resultx[ii][jj];
+                }
+                
+            }
+            /*
+            * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
+            */
+            #pragma acc parallel loop
+            for (ii = 1; ii < mi-1; ii++)
+            {
+                /*
+                * Ensamblamos matrices tridiagonales en direccion y
+                */
+            ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii);
+            }
+            /*
+            * Llamamos al resolvedor
+            */
+            #pragma acc parallel loop
+            for (ii = 1; ii < mi-1; ii++)
+            {
+                tri(BI, BC, BD, resulty, nj, ii);
+                for (jj = 0; jj < nj; jj++)
+                {
+                    temper[ii][jj] = resulty[jj][ii];
+                }
+            }
+            /*
+            * Se actualiza la temperatura de la iteracion anterior
+            */
+            #pragma acc parallel loop
             for (ii = 0; ii < mi; ii++)
             {
-                temper[ii][jj] = resultx[ii][jj];
+                for (jj = 0; jj < nj; jj++)
+                {
+                    temp_ant[ii][jj] = temper[ii][jj];
+                }
             }
             
         }
-        /*
-        * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
-        */
-        for (ii = 1; ii < mi-1; ii++)
-        {
-            /*
-            * Ensamblamos matrices tridiagonales en direccion y
-            */
-           ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii);
-        }
-        /*
-        * Llamamos al resolvedor
-        */
-        for (ii = 1; ii < mi-1; ii++)
-        {
-            tri(BI, BC, BD, resulty, nj, ii);
-            for (jj = 0; jj < nj; jj++)
-            {
-                temper[ii][jj] = resulty[jj][ii];
-            }
-        }
-        /*
-        * Se actualiza la temperatura de la iteracion anterior
-        */
-        for (ii = 0; ii < mi; ii++)
-        {
-            for (jj = 0; jj < nj; jj++)
-            {
-                temp_ant[ii][jj] = temper[ii][jj];
-            }
-        }
-        
+    /*
+    * Cerramos la region de datos paralela
+    */
     }
     /*
     * Escritura de resultados

@@ -16,15 +16,38 @@ int main(int argc, char const *argv[])
     double flux_aba, flux_arr, alpha;
 
     // Arreglos para incognitas, termino fuente y posicion
-    double temper[mi][nj], temp_ant[mi][nj];
-    double sourcex[mi], xx[mi];
-    double sourcey[nj], yy[nj];
-    double resultx[mi][nj], tempx[mi][nj];
-    double resulty[nj][mi], tempy[nj][mi];
+    double **temper, **temp_ant;
+    double *sourcex, *xx;
+    double *sourcey, *yy;
+    double **resultx, **tempx;
+    double **resulty, **tempy;
+
+    temper = allocate_memory_matrix(mi, nj);
+    temp_ant = allocate_memory_matrix(mi, nj);
+
+    sourcex = allocate_memory_vector(mi);
+    xx = allocate_memory_vector(mi);
+
+    sourcey = allocate_memory_vector(nj);
+    yy = allocate_memory_vector(nj);
+
+    resultx = allocate_memory_matrix(mi, nj);
+    tempx = allocate_memory_matrix(mi, nj);
+
+    resulty = allocate_memory_matrix(nj, mi);
+    tempy = allocate_memory_matrix(nj, mi);
 
     //Matriz a invertir
-    double AI[mi][nj], AD[mi][nj], AC[mi][nj];
-    double BI[nj][mi], BD[nj][mi], BC[nj][mi];
+    double **AI, **AD, **AC;
+    double **BI, **BD, **BC;
+
+    AI = allocate_memory_matrix(mi, nj);
+    AD = allocate_memory_matrix(mi, nj);
+    AC = allocate_memory_matrix(mi, nj);
+
+    BI = allocate_memory_matrix(nj, mi);
+    BD = allocate_memory_matrix(nj, mi);
+    BC = allocate_memory_matrix(nj, mi);
     /*
     * Se crea la malla 2D
     */
@@ -94,8 +117,7 @@ int main(int argc, char const *argv[])
        */
         for (jj = 1; jj < nj-1; jj++)
         {
-            // TODO: Crear funcion para tomar columnas de una matriz como vectores
-            // * Llamar a la funcion tri
+            tri(AI, AC, AD, resultx, mi, jj);
             for (ii = 0; ii < mi; ii++)
             {
                 temper[ii][jj] = resultx[ii][jj];
@@ -117,8 +139,7 @@ int main(int argc, char const *argv[])
         */
         for (ii = 1; ii < mi-1; ii++)
         {
-            // TODO: Crear funcion para tomar columnas de una matriz como vectores
-            // * Llamar a la funcion tri
+            tri(BI, BC, BD, resulty, nj, ii);
             for (jj = 0; jj < nj; jj++)
             {
                 temper[ii][jj] = resulty[jj][ii];
@@ -140,20 +161,46 @@ int main(int argc, char const *argv[])
     * Escritura de resultados
     */
    // Abrir el archivo para escribir
-    FILE *file = fopen("fort.101", "w");
+    FILE *file = fopen("clang.101", "w");
 
     if (file != NULL) {
         // Utilizar un bucle para imprimir y guardar los datos
         for (ii = 0; ii < mi; ii++) {
             for (jj = 0; jj < nj; jj++)
             {
-                fprintf(file, "%f %f %f\n", xx[ii], yy[ii], temper[ii][jj]);
+                fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
             }
+            fprintf(file, "\n");
         }
         // Cerrar el archivo después de escribir
         fclose(file);
     } else {
         printf("Error al abrir el archivo.\n");
     }
+
+    // Liberar memoria de los punteros
+    free_matrix(BC,nj,mi);
+    free_matrix(BD,nj,mi);
+    free_matrix(BI,nj,mi);
+
+    free_matrix(AC,mi,nj);
+    free_matrix(AD,mi,nj);
+    free_matrix(AI,mi,nj);
+
+    free_matrix(tempy, nj, mi);
+    free_matrix(resulty, nj, mi);
+
+    free_matrix(tempx, mi, nj);
+    free_matrix(resultx, mi, nj);
+
+    free(yy);
+    free(sourcey);
+
+    free(xx);
+    free(sourcex);
+
+    free_matrix(temp_ant, mi, nj);
+    free_matrix(temper, mi, nj);
+
     return 0;
 }

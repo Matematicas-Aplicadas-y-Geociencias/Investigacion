@@ -2,6 +2,7 @@
 #define CONSTANTES_H
 
 #include <string.h>
+#include "herramientas.h"
 
 const int mi = 1024, nj = 1024, nn = 1024;
 const double pi = 3.1415926535;
@@ -13,7 +14,7 @@ void ensambla_tdmax(
     double **resultx,
     const double deltax,
     const double deltay,
-    const double **temp_ant,
+    double **temp_ant,
     const double cond_ter,
     const double temp_ini,
     const double temp_fin,
@@ -49,7 +50,7 @@ void ensambla_tdmay(
     double **resulty,
     const double deltax,
     const double deltay,
-    const double **temper,
+    double **temper,
     const double cond_ter,
     const double flux_aba,
     const double flux_arr,
@@ -80,26 +81,27 @@ void ensambla_tdmay(
 }
 
 void tri(
-    const double *a,
-    double *b,
-    const double *c,
-    double *r,
-    const int n
+    double **a,
+    double **b,
+    double **c,
+    double **r,
+    const int filas,
+    const int columna
 )
 {
     int i;
 
     // Eliminacion elementos bajo la matriz - Eliminacion Gaussiana
-    for (i = 1; i < n; i++)
+    for (i = 1; i < filas; i++)
     {
-        r[i] = r[i] - (a[i] / b[i-1]) * r[i-1];
-        b[i] = b[i] - (a[i] / b[i-1]) * c[i-1];
+        r[i][columna] = r[i][columna] - (a[i][columna] / b[i-1][columna]) * r[i-1][columna];
+        b[i][columna] = b[i][columna] - (a[i][columna] / b[i-1][columna]) * c[i-1][columna];
     }
     // Solucion para r - Substitucion hacia atras
-    r[n-1] = r[n-1] / b[n-1];
-    for (i = n-2; i >= 0; i--)
+    r[filas-1][columna] = r[filas-1][columna] / b[filas-1][columna];
+    for (i = filas-2; i >= 0; i--)
     {
-        r[i] = (r[i] - c[i] * r[i+1]) / b[i];
+        r[i][columna] = (r[i][columna] - c[i][columna] * r[i+1][columna]) / b[i][columna];
     }
 }
 

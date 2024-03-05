@@ -6,11 +6,11 @@
 !	Copyright 2006 __MyCompanyName__. All rights reserved.
 !
 subroutine tri(a,b,c,r,n)
-use constantes
+
 implicit none
 integer, intent(in) :: n
-REAL(kind=DBL), intent(in) :: a(n-1),c(n-1)
-REAL(kind=DBL), intent(inout) :: b(n),r(n)
+double precision, intent(in) :: a(n-1),c(n-1)
+double precision, intent(inout) :: b(n),r(n)
 integer :: i
 ! eliminacion elementos bajo la matriz
 gausselim: do i=2,n

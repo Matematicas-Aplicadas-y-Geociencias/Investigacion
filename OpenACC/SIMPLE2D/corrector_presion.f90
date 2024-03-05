@@ -1,5 +1,5 @@
 SUBROUTINE corrector_presion(corr_preso,d_xuo,d_yvo,u_o,v_o,b_o,au_o,av_o,dcorr_preso)
-USE constantes
+USE malla
 ! USE mkl95_LAPACK
 IMPLICIT NONE
 INTEGER :: i,j,info

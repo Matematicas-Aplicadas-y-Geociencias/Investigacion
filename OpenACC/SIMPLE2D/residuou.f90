@@ -1,5 +1,5 @@
 SUBROUTINE residuou(res_fluido_uo,xuo,yo,fey,d_xuo,d2_xuo,d_yvo,u_o,u_anto,v_o,temp_o,pres_o,Resu_o,gamma_uo,Ri_o,dt_o)
-USE constantes
+USE malla
 IMPLICIT NONE
 INTEGER :: i,j,k
 !**********************************

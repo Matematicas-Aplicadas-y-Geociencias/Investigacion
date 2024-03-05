@@ -7,8 +7,9 @@
 !
 !
 MODULE ensamblaje
-  use constantes
-
+  use malla
+  implicit none
+  
 contains
   !*******************************************************************
   !
@@ -18,23 +19,49 @@ contains
   ! para la velocidad u barriendo la direcci\'on x
   !
   !*******************************************************************
-  subroutine ensambla_velux(yo,fey,d_xuo,d2_xuo,d_yvo,u_o,u_anto,v_o,&
+  subroutine ensambla_velux(deltaxuo,deltayuo,deltaxpo,&
+       &fexpo,fexuo,gamma_momento,&
+       &yo,fey,d_xuo,d2_xuo,d_yvo,u_o,u_anto,v_o,&
        &temp_o,pres_o,gamma_uo,Ri_o,dt_o,du_o,au_o,rel_vo,&
        AI,ACi,AD,Rxi)
     implicit none
+    !
+    ! Tama\~no del volumen de control
+    !
+    real(kind=DBL), dimension(mi-1), intent(in) :: deltaxuo
+    real(kind=DBL), dimension(nj-1), intent(in) :: deltayuo
+    !
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on horizontal
+    !
+    real(kind=DBL), dimension(mi),   intent(in) :: deltaxpo
+    !
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on vertical
+    !
+    real(kind=DBL), dimension(nj-1), intent(in) :: deltayvo
+    !
+    ! Coeficientes para interpolaci\'on
+    !
+    real(kind=DBL), DIMENSION(mi), intent(in)   ::  fexpo
+    real(kind=DBL), DIMENSION(mi-1), intent(in) ::  fexuo
+    !
+    ! Coeficiente de difusi\'on
+    !
+    real(kind=DBL), dimension(mi+1,nj+1), intent(in) ::  gamma_momento
+
+    
     integer :: i,j,k,info
     !**********************************
     ! Variables del flujo e inc'ognitas
     real(kind=DBL), dimension(mi,nj+1),   intent(in)    :: u_o
     real(kind=DBL), dimension(mi,nj+1),   intent(out)   :: au_o
-    real(kind=DBL), dimension(mi,nj+1),   intent(in)    :: u_anto,gamma_uo,Ri_o
+    real(kind=DBL), dimension(mi,nj+1),   intent(in)    :: u_anto,Ri_o
     real(kind=DBL), dimension(mi+1,nj),   intent(in)    :: v_o
     real(kind=DBL), dimension(mi+1,nj+1), intent(in)    :: temp_o,pres_o
     real(kind=DBL), dimension(mi,nj+1)                  :: fu
     !**********************************
     !Variables de la tridiagonal
-    real(kind=DBL), dimension(mi),   intent(out) :: ACi,Rxi
-    real(kind=DBL), dimension(mi-1), intent(out) :: AI,AD
+    real(kind=DBL), dimension(mi,nj+1),   intent(out) :: ACi,Rxi
+    real(kind=DBL), dimension(mi-1,nj+1), intent(out) :: AI,AD
     !*********************
     !Variables de interpolaci'on
     real(kind=DBL) :: ui,ud,vn,vs,di,dd,ds,dn,gamma_i,gamma_d,gamma_s,gamma_n
@@ -43,6 +70,7 @@ contains
     !Variables de la malla,volumen de control,incremento de tiempo y num Richardson
     real(kind=DBL), dimension(nj+1), intent(in) :: yo,fey
     real(kind=DBL), dimension(mi-1), intent(in) :: d_xuo,d2_xuo
+
     real(kind=DBL), dimension(nj-1), intent(in) :: d_yvo
     real(kind=DBL), intent(in) :: dt_o,rel_vo
     !********************
@@ -55,7 +83,7 @@ contains
     !$OMP& delta_x,delta_y,temp_int,alpha,beta,info)&
     !$OMP& SHARED(u_o,fu,u_anto,pres_o,gamma_uo,au_o,v_o,d_xuo,d2_xuo,yo,fey,d_yvo,temp_o,&
     !$OMP& rel_vo,Ri_o,dt_o)
-    do j = 2, nj
+    bucle_direccion_y: do j = 2, nj
        !***********************
        !Condiciones de frontera
        ACi(1) = 1._DBL
@@ -104,7 +132,7 @@ contains
        AI(mi-1) =-1._DBL !
        Rxi(mi)  = cero
        au_o(mi,j) = 1.e40_DBL !ACi(mi)
-    end do
+    end do bucle_direccion_y
     
   end subroutine ensambla_velux
 

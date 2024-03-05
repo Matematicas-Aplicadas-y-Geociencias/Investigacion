@@ -3,7 +3,7 @@
 7.0d0  !Pr
 5.0d0  !Ri
 5.0d-3 !dt
-2000   !paq_itera
+100    !paq_itera
 0.85d0 !relajaci'on_presi'on
 0.80d0 !relajaci'on velocidad
 0.80d0 !relajaci'on temperatura

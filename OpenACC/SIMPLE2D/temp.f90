@@ -1,5 +1,5 @@
 SUBROUTINE temperatura(xo,yo,fexu,feyv,d_xuo,d_yvo,u_o,v_o,temp_o,temp_anto,gamma_to,dt_o,dtemp_o,i_oo,i_1o,rel_to)
-USE constantes
+USE malla
 ! USE mkl95_LAPACK
 IMPLICIT NONE
 INTEGER :: i,j,k,info

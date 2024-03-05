@@ -1,5 +1,5 @@
 SUBROUTINE nusselt(xo,yo,d_xuo,d_yvo,temp_o,nusselt0_o,nusselt1_o,i_oo,i_1o)
-USE constantes
+USE malla
 IMPLICIT NONE
 INTEGER :: i,j,k
 INTEGER, INTENT(in) :: i_oo,i_1o

@@ -1,5 +1,5 @@
 SUBROUTINE vel_v(xo,fex,d_yvo,d2_yvo,d_xuo,u_o,v_o,v_anto,pres_o,gamma_vo,dt_o,dv_o,av_o,rel_vo)
-USE constantes
+USE malla
 ! USE mkl95_LAPACK
 IMPLICIT NONE
 INTEGER :: i,j,k,info

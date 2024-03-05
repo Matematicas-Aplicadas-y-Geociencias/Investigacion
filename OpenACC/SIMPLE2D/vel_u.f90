@@ -1,5 +1,5 @@
 SUBROUTINE vel_u(yo,fey,d_xuo,d2_xuo,d_yvo,u_o,u_anto,v_o,temp_o,pres_o,gamma_uo,Ri_o,dt_o,du_o,au_o,rel_vo)
-USE constantes
+USE malla
 ! USE mkl95_LAPACK
 IMPLICIT NONE
 INTEGER :: i,j,k,info
@@ -24,7 +24,9 @@ REAL(kind=DBL) :: delta_x,delta_y,temp_int
 !*********************
 !Variables de la malla,volumen de control,incremento de tiempo y num Richardson
 REAL(kind=DBL), DIMENSION(nj+1), INTENT(in) :: yo,fey
-REAL(kind=DBL), DIMENSION(mi-1), INTENT(in) :: d_xuo,d2_xuo
+REAL(kind=DBL), DIMENSION(mi), INTENT(in)   :: d_xuo
+! REAL(kind=DBL), DIMENSION(mi-1), INTENT(in) :: d_xuo,d2_xuo 
+REAL(kind=DBL), DIMENSION(mi-1), INTENT(in) :: d2_xuo
 REAL(kind=DBL), DIMENSION(nj-1), INTENT(in) :: d_yvo
 REAL(kind=DBL), INTENT(in) :: dt_o,rel_vo
 !********************
@@ -52,10 +54,14 @@ DO j = 2, nj
     !Interpolaciones necesarias
     ui = (u_o(i-1,j)+u_o(i,j))/2._DBL
     ud = (u_o(i,j)+u_o(i+1,j))/2._DBL
-    vs = v_o(i,j-1)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
-    vn = v_o(i,j)  +d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
-    di = d_xuo(i-1)
-    dd = d_xuo(i)
+    ! vs = v_o(i,j-1)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
+    ! vn = v_o(i,j)  +d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
+    vs = v_o(i,j-1)+d_xuo(i)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
+    vn = v_o(i,j)  +d_xuo(i)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
+    ! di = d_xuo(i-1)
+    ! dd = d_xuo(i)
+    di = d_xuo(i)
+    dd = d_xuo(i+1)
     ds = yo(j)-yo(j-1)
     dn = yo(j+1)-yo(j)
     gamma_i = 2._DBL * gamma_uo(i-1,j) * gamma_uo(i,j) / (gamma_uo(i-1,j) + gamma_uo(i,j))
@@ -113,10 +119,14 @@ DO i = 2, mi-1
     !Interpolaciones necesarias
     ui = (u_o(i-1,j)+u_o(i,j))/2._DBL
     ud = (u_o(i,j)+u_o(i+1,j))/2._DBL
-    vs = v_o(i,j-1)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
-    vn = v_o(i,j)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
-    di = d_xuo(i-1)
-    dd = d_xuo(i)
+    ! vs = v_o(i,j-1)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
+    ! vn = v_o(i,j)+d_xuo(i-1)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
+    vs = v_o(i,j-1)+d_xuo(i)/d2_xuo(i)*(v_o(i+1,j-1)-v_o(i,j-1))
+    vn = v_o(i,j)+d_xuo(i)/d2_xuo(i)*(v_o(i+1,j)-v_o(i,j))
+    ! di = d_xuo(i-1)
+    ! dd = d_xuo(i)
+    di = d_xuo(i)
+    dd = d_xuo(i+1)
     ds = yo(j)-yo(j-1)
     dn = yo(j+1)-yo(j)
     gamma_i = 2._DBL * gamma_uo(i-1,j) * gamma_uo(i,j) / (gamma_uo(i-1,j) + gamma_uo(i,j))

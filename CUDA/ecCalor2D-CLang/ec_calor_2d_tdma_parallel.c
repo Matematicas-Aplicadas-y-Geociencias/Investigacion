@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
         /*
         * Bucle de pseudotiempo
         */
-        for (kk = 0; kk < 3000; kk++)
+        for (kk = 0; kk < 30; kk++)
         {
             /*
             * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
@@ -133,7 +133,6 @@ int main(int argc, char const *argv[])
                 {
                     temper[ii][jj] = resultx[ii][jj];
                 }
-                
             }
             /*
             * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y

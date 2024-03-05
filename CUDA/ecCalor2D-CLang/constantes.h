@@ -3,7 +3,7 @@
 
 #include "herramientas.h"
 
-const int mi = 1024, nj = 1024, nn = 1024;
+const int mi = 10, nj = 10, nn = 1024;
 const double pi = 3.1415926535;
 
 #pragma acc routine

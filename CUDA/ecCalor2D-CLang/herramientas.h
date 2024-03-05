@@ -85,4 +85,19 @@ void inicializar_matriz(double **matriz, const int filas, const int columnas, co
     }
 }
 
+// Print to console a Matrix
+void printMatrix(double **matrix, int rows, int columns)
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < columns; j++) 
+        {
+            printf("%f ", matrix[i][j]);
+
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
 #endif

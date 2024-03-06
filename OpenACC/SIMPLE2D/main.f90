@@ -1,11 +1,13 @@
 PROGRAM SIMPLE2D
   use malla
-
+  use ensamblaje
+  use solucionador
   ! USE mkl95_LAPACK
   IMPLICIT NONE
   INCLUDE 'omp_lib.h'
   INTEGER :: i,j,k,l,itera_total,itera,itera_inicial,i_1,paq_itera
   INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
+  integer :: ii,jj, iter
   ! ------------------------------------------------------------
   !
   ! Variables para los archivos de la entrada de datos
@@ -13,7 +15,7 @@ PROGRAM SIMPLE2D
   CHARACTER(len=22) :: entrada_u,entrada_v,entrada_tp
   !*******************************************
   ! Variables del flujo,entropia,nusselt e inc'ognitas,residuos,relajaci'on y convergencia
-  REAL(kind=DBL), DIMENSION(mi,nj+1)   ::  u,u_ant,du,au,Resu,gamma_u,Ri
+  REAL(kind=DBL), DIMENSION(mi,nj+1)   ::  u,u_ant,du,au,Resu,gamma_u,Ri,au_aux,fu
   REAL(kind=DBL), DIMENSION(mi+1,nj)   ::  v,v_ant,dv,av,Resv,gamma_v
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  temp,temp_ant,dtemp,Restemp,pres,corr_pres,dcorr_pres
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  entropia_calor,entropia_viscosa,entropia,uf,vf,b_o,gamma_t
@@ -28,10 +30,10 @@ PROGRAM SIMPLE2D
   REAL(kind=DBL), DIMENSION(nj+1) ::  yp
   real(kind=DBL), dimension(mi)   ::  deltaxp
   real(kind=DBL), dimension(nj)   ::  deltayp
-  real(kind=DBL), dimension(mi-1) ::  deltaxu
+  real(kind=DBL), dimension(mi)   ::  deltaxu
   real(kind=DBL), dimension(nj)   ::  deltayu
   real(kind=DBL), dimension(mi)   ::  deltaxv   
-  real(kind=DBL), dimension(nj-1) ::  deltayv
+  real(kind=DBL), dimension(nj)   ::  deltayv
   REAL(kind=DBL), DIMENSION(mi)   ::  fexp
   REAL(kind=DBL), DIMENSION(nj)   ::  feyp
   REAL(kind=DBL), DIMENSION(mi-1) ::  fexu
@@ -51,6 +53,14 @@ PROGRAM SIMPLE2D
   !
   REAL(kind=DBL)   :: ao
   integer          :: placa_min, placa_max
+  !
+  ! Coeficientes para las matrices 
+  !
+  real(kind=DBL), dimension(mi+1,nj+1) :: AI, AC, AD, Rx
+  real(kind=DBL), dimension(nj+1,mi+1) :: BS, BC, BN, Ry
+  !
+  !
+  !
   REAL(kind=DBL)   :: tiempo,tiempo_inicial,dt,Ra,Pr,Ri_1
   REAL(kind=DBL)   :: a_ent,lambda_ent
   CHARACTER(len=1) :: dec,un,de,ce,m
@@ -68,13 +78,13 @@ PROGRAM SIMPLE2D
   !*******************************************
   !Se muestra cu'antos procesadores hay en uso
   !$OMP PARALLEL private(id)
-  id = omp_get_thread_num()
-  WRITE(*,*) 'Este es el thread no. ', id
-  !$OMP BARRIER
-  IF(id == 0)THEN
-     nthreads = omp_get_num_threads()
-     WRITE(*,*) 'Se usan ', nthreads, ' threads'
-  END IF
+!!$  id = omp_get_thread_num()
+!!$  WRITE(*,*) 'Este es el thread no. ', id
+!!$  !$OMP BARRIER
+!!$  IF(id == 0)THEN
+!!$     nthreads = omp_get_num_threads()
+!!$     WRITE(*,*) 'Se usan ', nthreads, ' threads'
+!!$  END IF
   !$OMP END PARALLEL
   !*************************************
   ! Par'ametros para Convecci'on mixta
@@ -109,6 +119,7 @@ PROGRAM SIMPLE2D
   ELSE
      WRITE(mic,160) int(mi)
   ENDIF
+  gamma_momen = 1._DBL/(Ra)
   !gamma_s = 10._DBL*(1._DBL/(Re*Pr))
   gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
   gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
@@ -138,8 +149,6 @@ PROGRAM SIMPLE2D
      d_yv(j)  = yv(j+1)-yv(j)
      d2_yv(j) = yv(j+1)-yv(j-1)
   END DO
-  print*, deltaxp
-  print*, d_xu
   !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
@@ -170,29 +179,52 @@ PROGRAM SIMPLE2D
 102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I3,', nj=',I3)
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
   !*********************************************************
-  DO l=1,itermax/paq_itera   !inicio del repetidor principal
-     DO k=1,paq_itera           !inicio del paquete iteraciones
+  DO l=1,itermax/paq_itera         !inicio del repetidor principal
+     DO k=1,paq_itera              !inicio del paquete iteraciones
         ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
            ecuacion_momento: DO
-              ! call ensambla_velux(yp,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,&
-              !      &temp,pres,gamma_u,Ri,dt,du,au,rel_v,&
-              !      AI,ACi,AD,Rxi)
-              CALL vel_u(yp,feyv,deltaxp,d2_xu,d_yv,u,u_ant,v,temp,pres,gamma_u,Ri,dt,du,au,rel_vel)
+              fu = u
+              call ensambla_velu(deltaxu,deltayu,deltaxp,&
+                   &deltayv,fexp,feyp,fexu,gamma_momen,&
+                   &u,u_ant,v,&
+                   &temp,pres,Ri,dt,rel_vel,&
+                   &AI,AC,AD,Rx,BS,BC,BN,Ry,au)
+              solucion_momento_ux: do jj = 2, nj-1
+                 call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
+                 do ii = 1, mi
+                    u(ii,jj) = Rx(ii,jj)
+                 end do
+              end do solucion_momento_ux
+              solucion_momento_uy: do ii = 2, mi-1
+                 call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+                 do jj = 1, nj+1
+                    u(ii,jj) = Ry(jj,ii)
+                 end do
+              end do solucion_momento_uy              
+              WHERE(u /= cero)
+                 du = (u-fu)/u
+              ELSEWHERE
+                 du = u-fu
+              END WHERE
+!!$              CALL vel_u(yp,feyv,deltaxp,d2_xu,d_yv,u,u_ant,v,temp,pres,gamma_u,Ri,dt,du,au,rel_vel)
+              ! print*, "DEBUG: Salgo solver ", au(5,5),au_aux(5,5)
               CALL vel_v(xp,fexu,d_yv,d2_yv,d_xu,u,v,v_ant,pres,gamma_v,dt,dv,av,rel_vel)
               !****************************************
               !Criterio de convergencia de la velocidad
               IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u)EXIT
-              !       WRITE(*,*) 'velocidad ',MAXVAL(DABS(du)),MAXVAL(DABS(dv))
+              ! WRITE(*,*) 'velocidad ',k,MAXVAL(DABS(du)),MAXVAL(DABS(dv))
            END DO ecuacion_momento
            !****************************************
            !se calcula la correcci'on de la presi'on
            corr_pres = cero
+           iter = 0
            DO
               CALL corrector_presion(corr_pres,d_xu,d_yv,u,v,b_o,au,av,dcorr_pres)
               !****************************************************
               !critero de convergencia del corrector de la presi'on
-              IF(MAXVAL(DABS(dcorr_pres))<conv_p)EXIT
-              !       WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))!, MAXVAL(DABS(corr_pres))
+              IF(MAXVAL(DABS(dcorr_pres))<conv_p .or. iter > 500)EXIT
+              ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))!, MAXVAL(DABS(corr_pres))
+              iter = iter+1
            END DO
            corr_pres = rel_pres * corr_pres
            !*********************

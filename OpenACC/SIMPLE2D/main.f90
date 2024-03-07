@@ -16,7 +16,7 @@ PROGRAM SIMPLE2D
   !*******************************************
   ! Variables del flujo,entropia,nusselt e inc'ognitas,residuos,relajaci'on y convergencia
   REAL(kind=DBL), DIMENSION(mi,nj+1)   ::  u,u_ant,du,au,Resu,gamma_u,Ri,au_aux,fu
-  REAL(kind=DBL), DIMENSION(mi+1,nj)   ::  v,v_ant,dv,av,Resv,gamma_v
+  REAL(kind=DBL), DIMENSION(mi+1,nj)   ::  v,v_ant,dv,av,Resv,gamma_v,fv
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  temp,temp_ant,dtemp,Restemp,pres,corr_pres,dcorr_pres
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  entropia_calor,entropia_viscosa,entropia,uf,vf,b_o,gamma_t
   REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
@@ -46,7 +46,7 @@ PROGRAM SIMPLE2D
   ! Coeficientes de difusi\'on para las ecuaciones de energia
   ! y balance de momento
   !
-  real(kind=DBL), dimension(mi+1,nj+1)  ::  gamma_momen
+  real(kind=DBL), dimension(mi+1,nj+1)  ::  gamma_momen, Riy
   real(kind=DBL), dimension(mi+1,nj+1)  ::  gamma_energ
   !
   ! Tamanio del dominio y ubicaci\'on de las fuentes de calor
@@ -125,6 +125,7 @@ PROGRAM SIMPLE2D
   gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
   gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
   Ri      = Ri_1
+  Riy     = 0._DBL
   !
   ! Lectura de las mallas escalonadas e inicializaci\'on de arreglos
   !
@@ -189,7 +190,7 @@ PROGRAM SIMPLE2D
                    &u,u_ant,v,&
                    &temp,pres,Ri,dt,rel_vel,&
                    &AI,AC,AD,Rx,BS,BC,BN,Ry,au)
-              solucion_momento_ux: do jj = 2, nj-1
+              solucion_momento_ux: do jj = 2, nj
                  call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
                  do ii = 1, mi
                     u(ii,jj) = Rx(ii,jj)
@@ -208,7 +209,31 @@ PROGRAM SIMPLE2D
               END WHERE
 !!$              CALL vel_u(yp,feyv,deltaxp,d2_xu,d_yv,u,u_ant,v,temp,pres,gamma_u,Ri,dt,du,au,rel_vel)
               ! print*, "DEBUG: Salgo solver ", au(5,5),au_aux(5,5)
-              CALL vel_v(xp,fexu,d_yv,d2_yv,d_xu,u,v,v_ant,pres,gamma_v,dt,dv,av,rel_vel)
+              ! ---------------------------------------------------------------------------
+              fv = v
+              call ensambla_velv(deltaxv,deltayv,deltaxu,&
+                   &deltayp,fexp,feyp,feyv,gamma_momen,&
+                   &v,v_ant,u,&
+                   &temp,pres,Riy,dt,rel_vel,&
+                   &AI,AC,AD,Rx,BS,BC,BN,Ry,av)
+              solucion_momento_vx: do jj = 2, nj-1
+                 call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
+                 do ii = 1, mi
+                    v(ii,jj) = Rx(ii,jj) 
+                 end do
+              end do solucion_momento_vx
+              solucion_momento_vy: do ii = 2, mi
+                 call tridiagonal(BS(1:nj,ii),BC(1:nj,ii),BN(1:nj,ii),Ry(1:nj,ii),nj)
+                 do jj = 1, nj
+                    v(ii,jj) = Ry(jj,ii)
+                 end do
+              end do solucion_momento_vy
+              WHERE(v /= cero)
+                 dv = (v-fv)/v
+              ELSEWHERE
+                 dv = v-fv
+              END WHERE
+!!$              CALL vel_v(xp,fexu,d_yv,d2_yv,d_xu,u,v,v_ant,pres,gamma_v,dt,dv,av,rel_vel) 
               !****************************************
               !Criterio de convergencia de la velocidad
               IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u)EXIT

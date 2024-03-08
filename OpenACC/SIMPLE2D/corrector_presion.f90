@@ -37,48 +37,48 @@ rel        = 0.85_DBL
 !$OMP  PARALLEL DO DEFAULT(NONE)&
 !$OMP& PRIVATE(AI,ACi,AD,Rxi,ui,ud,vs,vn,a_i,a_d,a_s,a_n,delta_x,delta_y,alpha,beta,info)&
 !$OMP& SHARED(u_o,v_o,b_o,au_o,av_o,corr_preso,d_xuo,d_yvo,rel,fcorr_preso)
-DO j = 2, nj
-  !***********************
-  !Condiciones de frontera
-  ACi(1) = 1._DBL
-  AD(1)  = cero
-  Rxi(1) = cero
-  !************
-  ACi(mi+1) = 1._DBL
-  AI(mi)    = cero
-  Rxi(mi+1) = cero
-  !*************************
-  !Llenado de la matriz en x
-  DO i = 2, mi
-    !**************************
-    !Interpolaciones necesarias
-    ud  = u_o(i,j)
-    ui  = u_o(i-1,j)
-    vs  = v_o(i,j-1)
-    vn  = v_o(i,j)
-    a_d = au_o(i,j)
-    a_i = au_o(i-1,j)
-    a_s = av_o(i,j-1)
-    a_n = av_o(i,j)
-    delta_x = d_xuo(i-1)
-    delta_y = d_yvo(j-1)
-    !******************************
-    AI(i-1) =-(delta_y*delta_y/a_i)
-    AD(i)   =-(delta_y*delta_y/a_d)
-    alpha   = delta_x*delta_x/a_s
-    beta    = delta_x*delta_x/a_n
-    ACi(i)  = (-AI(i-1)-AD(i)+alpha+beta) / rel
-    b_o(i,j)= (ui-ud)*delta_y+(vs-vn)*delta_x
-    Rxi(i)  = alpha*corr_preso(i,j-1)+beta*corr_preso(i,j+1)+b_o(i,j)+(1._DBL-rel)*ACi(i)*corr_preso(i,j)
-    !**************************
-  END DO
-  !**************************
-!   CALL gtsv(AI,ACi,AD,Rxi,info)
-  CALL tri(AI,ACi,AD,Rxi,mi+1)
-  DO i = 1, mi+1
-    corr_preso(i,j) = Rxi(i)
-  END DO
-END DO
+! DO j = 2, nj
+!   !***********************
+!   !Condiciones de frontera
+!   ACi(1) = 1._DBL
+!   AD(1)  = cero
+!   Rxi(1) = cero
+!   !************
+!   ACi(mi+1) = 1._DBL
+!   AI(mi)    = cero
+!   Rxi(mi+1) = cero
+!   !*************************
+!   !Llenado de la matriz en x
+!   DO i = 2, mi
+!     !**************************
+!     !Interpolaciones necesarias
+!     ud  = u_o(i,j)
+!     ui  = u_o(i-1,j)
+!     vs  = v_o(i,j-1)
+!     vn  = v_o(i,j)
+!     a_d = au_o(i,j)
+!     a_i = au_o(i-1,j)
+!     a_s = av_o(i,j-1)
+!     a_n = av_o(i,j)
+!     delta_x = d_xuo(i-1)
+!     delta_y = d_yvo(j-1)
+!     !******************************
+!     AI(i-1) =-(delta_y*delta_y/a_i)
+!     AD(i)   =-(delta_y*delta_y/a_d)
+!     alpha   = delta_x*delta_x/a_s
+!     beta    = delta_x*delta_x/a_n
+!     ACi(i)  = (-AI(i-1)-AD(i)+alpha+beta) / rel
+!     b_o(i,j)= (ui-ud)*delta_y+(vs-vn)*delta_x
+!     Rxi(i)  = alpha*corr_preso(i,j-1)+beta*corr_preso(i,j+1)+b_o(i,j)+(1._DBL-rel)*ACi(i)*corr_preso(i,j)
+!     !**************************
+!   END DO
+!   !**************************
+! !   CALL gtsv(AI,ACi,AD,Rxi,info)
+!   CALL tri(AI,ACi,AD,Rxi,mi+1)
+!   DO i = 1, mi+1
+!     corr_preso(i,j) = Rxi(i)
+!   END DO
+! END DO
 !$OMP END PARALLEL DO
 !*******************
 !TDMA en direccion y

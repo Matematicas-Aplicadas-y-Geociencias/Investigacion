@@ -18,6 +18,7 @@ PROGRAM SIMPLE2D
   REAL(kind=DBL), DIMENSION(mi,nj+1)   ::  u,u_ant,du,au,Resu,gamma_u,Ri,au_aux,fu
   REAL(kind=DBL), DIMENSION(mi+1,nj)   ::  v,v_ant,dv,av,Resv,gamma_v,fv
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  temp,temp_ant,dtemp,Restemp,pres,corr_pres,dcorr_pres
+  REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  fcorr_pres
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  entropia_calor,entropia_viscosa,entropia,uf,vf,b_o,gamma_t
   REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
   REAL(kind=DBL) :: conv_u,conv_p,conv_t,conv_resi,conv_paso,rel_pres,rel_vel,rel_tem
@@ -183,7 +184,7 @@ PROGRAM SIMPLE2D
   DO l=1,itermax/paq_itera         !inicio del repetidor principal
      DO k=1,paq_itera              !inicio del paquete iteraciones
         ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
-           ecuacion_momento: DO
+           ecuacion_momento: do
               fu = u
               call ensambla_velu(deltaxu,deltayu,deltaxp,&
                    &deltayv,fexp,feyp,fexu,gamma_momen,&
@@ -218,7 +219,7 @@ PROGRAM SIMPLE2D
                    &AI,AC,AD,Rx,BS,BC,BN,Ry,av)
               solucion_momento_vx: do jj = 2, nj-1
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
-                 do ii = 1, mi
+                 do ii = 1, mi+1
                     v(ii,jj) = Rx(ii,jj) 
                  end do
               end do solucion_momento_vx
@@ -238,19 +239,43 @@ PROGRAM SIMPLE2D
               !Criterio de convergencia de la velocidad
               IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u)EXIT
               ! WRITE(*,*) 'velocidad ',k,MAXVAL(DABS(du)),MAXVAL(DABS(dv))
-           END DO ecuacion_momento
+           end do ecuacion_momento
            !****************************************
            !se calcula la correcci'on de la presi'on
            corr_pres = cero
            iter = 0
-           DO
+           correccion_presion: do
+              fcorr_pres = corr_pres
+              call ensambla_corr_pres(deltaxp,deltayp,&
+                   &deltaxu,deltayv,&
+                   &u,v,b_o,&
+                   &corr_pres,0.85_DBL,&
+                   &AI,AC,AD,Rx,BS,BC,BN,Ry,au,av)
+              ! solucion_presion_x: do jj = 2, nj
+              !    call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
+              !    do ii = 1, mi+1
+              !       corr_pres(ii,jj) = Rx(ii,jj) 
+              !    end do                 
+              ! end do solucion_presion_x
+              ! solucion_presion_y: do ii = 2, mi
+              !    call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+              !    do jj = 1, nj+1
+              !       corr_pres(ii,jj) = Ry(jj,ii) 
+              !    end do                 
+              ! end do solucion_presion_y
+              ! WHERE(corr_pres /= cero)
+              !    dcorr_pres = (corr_pres-fcorr_pres)!/corr_preso
+              ! ELSEWHERE
+              !    dcorr_pres = corr_pres-fcorr_pres
+              ! END WHERE
               CALL corrector_presion(corr_pres,d_xu,d_yv,u,v,b_o,au,av,dcorr_pres)
               !****************************************************
               !critero de convergencia del corrector de la presi'on
-              IF(MAXVAL(DABS(dcorr_pres))<conv_p .or. iter > 500)EXIT
-              ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))!, MAXVAL(DABS(corr_pres))
+              IF(MAXVAL(DABS(dcorr_pres))<conv_p .or. iter > 600)EXIT
+              WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))
+              !, MAXVAL(DABS(corr_pres))
               iter = iter+1
-           END DO
+           end do correccion_presion
            corr_pres = rel_pres * corr_pres
            !*********************
            !se corrige la presion

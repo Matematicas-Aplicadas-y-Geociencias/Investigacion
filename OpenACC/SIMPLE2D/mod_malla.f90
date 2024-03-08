@@ -10,7 +10,7 @@ MODULE malla
   implicit none
   INTEGER, PARAMETER :: mi=181, nj=76, itermax=1600000, nsolid = 7
   INTEGER, PARAMETER :: SGL=SELECTED_REAL_KIND(P=6,R=37)
-  INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
+  INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=307)
   character(len=9), parameter :: form24="(3D23.15)",form25="(4D23.15)"
   character(len=9), parameter :: form26="(6D23.15)",form27="(10e15.7)"
   REAL(kind=DBL),   PARAMETER :: cero=0._DBL, visc_solido = 1.e40_DBL

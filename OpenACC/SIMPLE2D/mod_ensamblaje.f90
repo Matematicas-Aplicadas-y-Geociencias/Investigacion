@@ -8,9 +8,173 @@
 !
 MODULE ensamblaje
   use malla
+  use solucionador
   implicit none
   
 contains
+  !*******************************************************************
+  !
+  ! ensambla_corr_pres
+  !
+  ! Subrutina que calcula los coeficientes de la matriz tridiagonal
+  ! para la correcci\'on de la presi\'on
+  !
+  !*******************************************************************
+  subroutine ensambla_corr_pres(deltaxpo,deltaypo,&
+       &deltaxuo,deltayvo,&
+       &u_o,v_o,b_o,&
+       &corr_pres_o,rel_vo,&
+       &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,au_o,av_o)
+    implicit none
+    !
+    ! Tama\~no del volumen de control
+    !
+    real(kind=DBL), dimension(mi), intent(in) :: deltaxpo
+    real(kind=DBL), dimension(nj), intent(in) :: deltaypo
+    !
+    ! Distancia entre nodos contiguos de la malla de p en direcci\'on horizontal
+    !
+    real(kind=DBL), dimension(mi), intent(in) :: deltaxuo
+    !
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on vertical
+    !
+    real(kind=DBL), dimension(nj), intent(in) :: deltayvo
+!!$    !
+!!$    ! Coeficientes para interpolaci\'on
+!!$    !
+!!$    real(kind=DBL), DIMENSION(mi), intent(in)   ::  fexpo
+!!$    real(kind=DBL), DIMENSION(nj), intent(in)   ::  feypo
+!!$    real(kind=DBL), DIMENSION(mi-1), intent(in) ::  fexuo
+!!$    !
+!!$    ! Coeficiente de difusi\'on
+!!$    !
+!!$    real(kind=DBL), dimension(mi+1,nj+1), intent(in) ::  gamma_momento
+    !
+    ! Velocidad, presi\'on, t\'ermino fuente b
+    !
+    real(kind=DBL), dimension(mi,nj+1),   intent(in)  :: u_o
+    real(kind=DBL), dimension(mi+1,nj),   intent(in)  :: v_o
+    real(kind=DBL), dimension(mi+1,nj+1), intent(inout)  :: corr_pres_o
+    real(kind=DBL), dimension(mi+1,nj+1), intent(out) :: b_o
+    !
+    ! coeficiente de relajaci\'on
+    !
+    real(kind=DBL), intent(in) :: rel_vo
+    !
+    ! Coeficientes de las matrices
+    !
+    ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
+    ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
+    ! de momento en, energ\'ia y la correcci\'on de la presi\'on **
+    !
+    real(kind=DBL), dimension(mi+1,nj+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
+    real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
+    real(kind=DBL), dimension(mi,nj+1),   intent(in)  :: au_o
+    real(kind=DBL), dimension(mi+1,nj),   intent(in)  :: av_o
+    !
+    ! Variables auxiliares
+    !
+    integer :: ii, jj
+    !
+    ! Auxiliares de interpolaci\'on
+    !
+    real(kind=DBL) :: ui, ud, vs, vn
+    real(kind=DBL) :: ai, ad, as, an
+    real(kind=DBL) :: di, dd, ds, dn
+!!$    real(kind=DBL) :: gammai, gammad
+!!$    real(kind=DBL) :: gammas, gamman
+!!$    real(kind=DBL) :: temp_int
+    bucle_direccion_y: do jj = 2, nj
+       !***********************
+       !Condiciones de frontera
+       AI_o(1,jj) = 0._DBL
+       AC_o(1,jj) = 1._DBL
+       AD_o(1,jj) = 0._DBL
+       Rx_o(1,jj) = 0._DBL
+       !-6.d0*dfloat(j-1)/dfloat(nj)*(dfloat(j-1)/dfloat(nj)-1.d0)! 1._DBL !
+       !
+       AC_o(mi+1,jj) = 1.0_DBL
+       AI_o(mi+1,jj) = 0.0_DBL
+       AD_o(mi+1,jj) = 0.0_DBL
+       Rx_o(mi+1,jj) = 0.0_DBL
+       !
+       ! Llenado de la matriz
+       !
+       bucle_direccion_x: do ii = 2, mi
+          !
+          ! Interpolaciones necesarias
+          !
+          ! u
+          !
+          ud = u_o(ii,jj)
+          ui = u_o(ii-1,jj)
+          !
+          ! v
+          !
+          vn = v_o(ii,jj)
+          vs = v_o(ii,jj-1)
+          !
+          ! coeficientes de la ecuaci\'on de momento
+          !
+          ai = au_o(ii-1,jj)
+          ad = au_o(ii,jj)
+          as = av_o(ii,jj-1)
+          an = av_o(ii,jj)
+          !
+          ! Tama\~no de los vol\'umenes de control para la velocidad u
+          !
+          ! delta_x = deltaxpo(ii)
+          ! delta_y = deltaypo(jj)
+          !
+          ! *************************
+          !
+          ! Coeficientes de la matriz
+          !
+          AI_o(ii,jj) =-deltaypo(jj)*deltaypo(jj)/ai
+          AD_o(ii,jj) =-deltaypo(jj)*deltaypo(jj)/ad
+          BS_o(jj,ii) =-deltaxpo(ii)*deltaxpo(ii)/as
+          BN_o(jj,ii) =-deltaxpo(ii)*deltaxpo(ii)/an
+          AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj)-&
+               &BS_o(jj,ii) - BN_o(jj,ii) ) / rel_vo
+          ! BC_o(jj,ii) = AC_o(ii,jj)
+          !
+          b_o(ii,jj)  = (ui-ud)*deltaypo(jj)+(vs-vn)*deltaxpo(ii)
+          !
+          Rx_o(ii,jj) =-BS_o(jj,ii)*corr_pres_o(ii,jj-1)-&
+               &BN_o(jj,ii)*corr_pres_o(ii,jj+1)+&
+               b_o(ii,jj) + (1._DBL-rel_vo)*AC_o(ii,jj)*corr_pres_o(ii,jj)
+          ! Ry_o(jj,ii) =-AI_o(ii,jj)*corr_pres_o(ii-1,jj)-&
+               ! &AD_o(ii,jj)*corr_pres_o(ii+1,jj)+&
+          ! b_o(ii,jj) + (1._DBL-rel_vo)*BC_o(jj,ii)*corr_pres_o(ii,jj)
+          
+       end do bucle_direccion_x
+       ! call tridiagonal(AI_o(1:mi+1,jj),AC_o(1:mi+1,jj),AD_o(1:mi+1,jj),Rx_o(1:mi+1,jj),mi+1)
+       ! do ii = 1, mi+1
+       !    corr_pres_o(ii,jj) = Rx_o(ii,jj) 
+       ! end do 
+    end do bucle_direccion_y
+    solucion_presion_x: do jj = 2, nj
+       call tridiagonal(AI_o(1:mi+1,jj),AC_o(1:mi+1,jj),AD_o(1:mi+1,jj),Rx_o(1:mi+1,jj),mi+1)
+       do ii = 1, mi+1
+          corr_pres_o(ii,jj) = Rx_o(ii,jj) 
+       end do
+    end do solucion_presion_x
+    !
+    ! Condiciones de frontera para la direcci\'on y
+    !
+    bucle_direccionx: do ii = 2, mi
+       !***********************
+       !Condiciones de frontera
+       BC_o(1,ii)     = 1._DBL
+       BN_o(1,ii)     = 0.0_DBL
+       Ry_o(1,ii)     = 0.0_DBL
+       !
+       BC_o(nj+1,ii)  = 1._DBL
+       BS_o(nj+1,ii)  = 0.0_DBL
+       Ry_o(nj+1,ii)  = 0.0_DBL
+    end do bucle_direccionx
+  end subroutine ensambla_corr_pres
+    
   !*******************************************************************
   !
   ! ensambla_velu
@@ -67,7 +231,7 @@ contains
     !
     ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
-    ! de momento en y, energ\'ia y la correcci\'on de la presi\'on **
+    ! de momento, energ\'ia y la correcci\'on de la presi\'on **
     !
     real(kind=DBL), dimension(mi+1,nj+1), intent(out)   :: AI_o, AC_o, AD_o, Rx_o
     real(kind=DBL), dimension(nj+1,mi+1), intent(out)   :: BS_o, BC_o, BN_o, Ry_o
@@ -223,6 +387,8 @@ contains
        au_o(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
     end do bucle_direccionx
   end subroutine ensambla_velu
+
+  
   !*******************************************************************
   !*******************************************************************
   !
@@ -281,7 +447,7 @@ contains
     !
     ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
-    ! de momento en y, energ\'ia y la correcci\'on de la presi\'on **
+    ! de momento, energ\'ia y la correcci\'on de la presi\'on **
     !
     real(kind=DBL), dimension(mi+1,nj+1), intent(out)   :: AI_o, AC_o, AD_o, Rx_o
     real(kind=DBL), dimension(nj+1,mi+1), intent(out)   :: BS_o, BC_o, BN_o, Ry_o

@@ -8,7 +8,7 @@
 !
 MODULE malla
   implicit none
-  INTEGER, PARAMETER :: mi=181, nj=76, itermax=1600000, nsolid = 7
+  INTEGER, PARAMETER :: mi=121, nj=51, itermax=1600000, nsolid = 7
   INTEGER, PARAMETER :: SGL=SELECTED_REAL_KIND(P=6,R=37)
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=307)
   character(len=9), parameter :: form24="(3D23.15)",form25="(4D23.15)"
@@ -58,8 +58,8 @@ contains
     real(kind=DBL), dimension(nj),   intent(out) :: deltayvo
     REAL(kind=DBL), DIMENSION(mi),   intent(out) :: fexpo
     REAL(kind=DBL), DIMENSION(nj),   intent(out) :: feypo
-    REAL(kind=DBL), DIMENSION(mi-1), intent(out) :: fexuo
-    REAL(kind=DBL), DIMENSION(nj-1), intent(out) :: feyvo
+    REAL(kind=DBL), DIMENSION(mi),   intent(out) :: fexuo
+    REAL(kind=DBL), DIMENSION(nj),   intent(out) :: feyvo
     !
     ! Dimensiones del dominio, ubicaci\'on de las placas calientes, iteracion inicial
     !
@@ -169,7 +169,7 @@ contains
     ! de la velocidad u(mi,nj+1). Solo se necesita un arreglo
     ! en direcci\'on ii
     !
-    do ii = 1, mi-1
+    do ii = 1, mi
        fexuo(ii) = ( xpo(ii+1)-xuo(ii) ) / ( xpo(ii+1)-xpo(ii)  )
     end do
     !
@@ -177,7 +177,7 @@ contains
     ! de la velocidad v(mi+1,nj). Solo se necesita un arreglo
     ! en direcci\'on jj
     !
-    do jj = 1, nj-1
+    do jj = 1, nj
        feyvo(jj) = ( ypo(jj+1)-yvo(jj) ) / ( ypo(jj+1)-ypo(jj)  )
     end do
     

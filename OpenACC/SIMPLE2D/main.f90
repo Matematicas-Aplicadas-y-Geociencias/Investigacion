@@ -6,6 +6,8 @@ PROGRAM SIMPLE2D
   IMPLICIT NONE
   INCLUDE 'omp_lib.h'
   INTEGER :: i,j,k,l,itera_total,itera,itera_inicial,i_1,paq_itera
+  integer :: iter_ecuaci, iter_ecuaci_max
+  integer :: iter_simple, iter_simple_max
   INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
   integer :: ii,jj, iter
   ! ------------------------------------------------------------
@@ -18,10 +20,10 @@ PROGRAM SIMPLE2D
   REAL(kind=DBL), DIMENSION(mi,nj+1)   ::  u,u_ant,du,au,Resu,gamma_u,Ri,au_aux,fu
   REAL(kind=DBL), DIMENSION(mi+1,nj)   ::  v,v_ant,dv,av,Resv,gamma_v,fv
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  temp,temp_ant,dtemp,Restemp,pres,corr_pres,dcorr_pres
-  REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  fcorr_pres
+  REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  fcorr_pres,ftemp
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  entropia_calor,entropia_viscosa,entropia,uf,vf,b_o,gamma_t
   REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
-  REAL(kind=DBL) :: conv_u,conv_p,conv_t,conv_resi,conv_paso,rel_pres,rel_vel,rel_tem
+  REAL(kind=DBL) :: conv_u,conv_p,conv_t,conv_resi,conv_paso,rel_pres,rel_vel,rel_ener
   !
   ! Variables de la malla, volumen de control y factores de interpolaci\'on
   !
@@ -37,8 +39,8 @@ PROGRAM SIMPLE2D
   real(kind=DBL), dimension(nj)   ::  deltayv
   REAL(kind=DBL), DIMENSION(mi)   ::  fexp
   REAL(kind=DBL), DIMENSION(nj)   ::  feyp
-  REAL(kind=DBL), DIMENSION(mi-1) ::  fexu
-  REAL(kind=DBL), DIMENSION(nj-1) ::  feyv
+  REAL(kind=DBL), DIMENSION(mi)   ::  fexu
+  REAL(kind=DBL), DIMENSION(nj)   ::  feyv
   !!!!!!!!!!!!!!!!!!1
   REAL(kind=DBL), DIMENSION(mi-1) :: d_xu,d2_xu
   REAL(kind=DBL), DIMENSION(nj-1) :: d_yv,d2_yv
@@ -98,12 +100,14 @@ PROGRAM SIMPLE2D
   READ (10,*) paq_itera   ! paquete de iteraciones
   READ (10,*) rel_pres    ! relajaci'on de la presi'on
   READ (10,*) rel_vel     ! relajaci'on de la velocidad
-  READ (10,*) rel_tem     ! relajaci'on de la temperatura
+  READ (10,*) rel_ener    ! relajaci'on de la temperatura
   READ (10,*) conv_u      ! convergencia de la velocidad
   READ (10,*) conv_t      ! convergencia de la temperatura
   READ (10,*) conv_p      ! convergencia de la presi'on
   READ (10,*) conv_resi   ! convergencia del residuo
   READ (10,*) conv_paso   ! convergencia del paso de tiempo
+  read (10,*) iter_ecuaci_max ! iter m\'aximas para las ecuaciones
+  read (10,*) iter_simple_max ! iter m\'aximas algoritmo SIMPLE
   READ (10,*) entrada_u   ! archivo de entrada para u
   READ (10,*) entrada_v   ! archivo de entrada para v
   READ (10,*) entrada_tp  ! archivo de entrada para t y p
@@ -120,8 +124,10 @@ PROGRAM SIMPLE2D
   ELSE
      WRITE(mic,160) int(mi)
   ENDIF
-  gamma_momen = 1._DBL/(Ra)
+  gamma_momen = 1.0_DBL/(Ra)
   !gamma_s = 10._DBL*(1._DBL/(Re*Pr))
+  gamma_energ = 1.0_DBL/(Ra*Pr)
+  
   gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
   gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
   gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
@@ -138,6 +144,7 @@ PROGRAM SIMPLE2D
        &deltaxv,deltayv,&
        &fexp,feyp,fexu,feyv,&
        &ao,placa_min,placa_max,itera_inicial)
+  !------------------------------
   !
   ! incrementos (codigo temporal)
   !
@@ -167,6 +174,8 @@ PROGRAM SIMPLE2D
   av    = 1._DBL
   b_o   = cero
   itera = 0
+  iter_ecuaci = 0
+  iter_simple = 0
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -181,9 +190,9 @@ PROGRAM SIMPLE2D
 102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I3,', nj=',I3)
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
   !*********************************************************
-  DO l=1,itermax/paq_itera         !inicio del repetidor principal
-     DO k=1,paq_itera              !inicio del paquete iteraciones
-        ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
+  do l=1,itermax/paq_itera         !inicio del repetidor principal
+     do k=1,paq_itera              !inicio del paquete iteraciones
+        ALGORITMO_SIMPLE: do       !inicio del algoritmo SIMPLE
            ecuacion_momento: do
               fu = u
               call ensambla_velu(deltaxu,deltayu,deltaxp,&
@@ -203,14 +212,12 @@ PROGRAM SIMPLE2D
                     u(ii,jj) = Ry(jj,ii)
                  end do
               end do solucion_momento_uy              
-              WHERE(u /= cero)
+              where(u /= cero)
                  du = (u-fu)/u
-              ELSEWHERE
+              elsewhere
                  du = u-fu
-              END WHERE
-!!$              CALL vel_u(yp,feyv,deltaxp,d2_xu,d_yv,u,u_ant,v,temp,pres,gamma_u,Ri,dt,du,au,rel_vel)
-              ! print*, "DEBUG: Salgo solver ", au(5,5),au_aux(5,5)
-              ! ---------------------------------------------------------------------------
+              end where
+              ! ------------------------------------------
               fv = v
               call ensambla_velv(deltaxv,deltayv,deltaxu,&
                    &deltayp,fexp,feyp,feyv,gamma_momen,&
@@ -229,21 +236,31 @@ PROGRAM SIMPLE2D
                     v(ii,jj) = Ry(jj,ii)
                  end do
               end do solucion_momento_vy
-              WHERE(v /= cero)
+              where(v /= cero)
                  dv = (v-fv)/v
-              ELSEWHERE
+              elsewhere
                  dv = v-fv
-              END WHERE
-!!$              CALL vel_v(xp,fexu,d_yv,d2_yv,d_xu,u,v,v_ant,pres,gamma_v,dt,dv,av,rel_vel) 
-              !****************************************
+              end where
+              !
               !Criterio de convergencia de la velocidad
-              IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u)EXIT
-              ! WRITE(*,*) 'velocidad ',k,MAXVAL(DABS(du)),MAXVAL(DABS(dv))
+              !
+              if (maxval(dabs(du))<conv_u .and. maxval(dabs(dv))<conv_u) then
+                 iter_ecuaci = 0
+                 exit
+              else if (iter_ecuaci > iter_ecuaci_max) then
+                 iter_ecuaci = 0
+                 write(*,*) "Advertencia momento: convergencia no alcanzada ", &
+                      maxval(dabs(du)), maxval(dabs(dv))
+                 exit
+              else
+                 iter_ecuaci = iter_ecuaci+1
+                 ! write(*,*) 'velocidad ',k,MAXVAL(DABS(du)),MAXVAL(DABS(dv))  
+              end if
+              !             
            end do ecuacion_momento
            !****************************************
            !se calcula la correcci'on de la presi'on
            corr_pres = cero
-           iter = 0
            correccion_presion: do
               fcorr_pres = corr_pres
               call ensambla_corr_pres(deltaxp,deltayp,&
@@ -251,76 +268,129 @@ PROGRAM SIMPLE2D
                    &u,v,b_o,&
                    &corr_pres,0.85_DBL,&
                    &AI,AC,AD,Rx,BS,BC,BN,Ry,au,av)
-              ! solucion_presion_x: do jj = 2, nj
-              !    call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
-              !    do ii = 1, mi+1
-              !       corr_pres(ii,jj) = Rx(ii,jj) 
-              !    end do                 
-              ! end do solucion_presion_x
-              ! solucion_presion_y: do ii = 2, mi
-              !    call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
-              !    do jj = 1, nj+1
-              !       corr_pres(ii,jj) = Ry(jj,ii) 
-              !    end do                 
-              ! end do solucion_presion_y
-              ! WHERE(corr_pres /= cero)
-              !    dcorr_pres = (corr_pres-fcorr_pres)!/corr_preso
-              ! ELSEWHERE
-              !    dcorr_pres = corr_pres-fcorr_pres
-              ! END WHERE
-              CALL corrector_presion(corr_pres,d_xu,d_yv,u,v,b_o,au,av,dcorr_pres)
-              !****************************************************
-              !critero de convergencia del corrector de la presi'on
-              IF(MAXVAL(DABS(dcorr_pres))<conv_p .or. iter > 600)EXIT
-              WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))
-              !, MAXVAL(DABS(corr_pres))
-              iter = iter+1
+              solucion_presion_x: do jj = 2, nj
+                 call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
+                 do ii = 1, mi+1
+                    corr_pres(ii,jj) = Rx(ii,jj) 
+                 end do                 
+              end do solucion_presion_x
+              solucion_presion_y: do ii = 2, mi
+                 call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+                 do jj = 1, nj+1
+                    corr_pres(ii,jj) = Ry(jj,ii) 
+                 end do                 
+              end do solucion_presion_y
+              where(corr_pres /= cero)
+                 dcorr_pres = (corr_pres-fcorr_pres)!/corr_preso
+              elsewhere
+                 dcorr_pres = corr_pres-fcorr_pres
+              end where
+              !-----------------------------------------------------
+              ! critero de convergencia del corrector de la presi'on
+              if(maxval(DABS(dcorr_pres))<conv_p )then
+                 iter_ecuaci = 0
+                 exit
+              else if (iter_ecuaci > iter_ecuaci_max) then
+                 iter_ecuaci = 0
+                 write(*,*) "Advertencia presion: convergencia no alcanzada ", &
+                      maxval(dabs(dcorr_pres))
+                 exit
+              else
+                 iter_ecuaci = iter_ecuaci+1
+                 ! write(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))
+              end if
            end do correccion_presion
-           corr_pres = rel_pres * corr_pres
+           ! corr_pres = rel_pres * corr_pres
            !*********************
            !se corrige la presion
            !$OMP PARALLEL DO
-           DO i = 2, mi
-              DO j = 2, nj
+           do i = 2, mi
+              do j = 2, nj
                  pres(i,j) = pres(i,j) + corr_pres(i,j)
-              END DO
-           END DO
+              end do
+           end do
            !$OMP END PARALLEL DO
            !*****************************
            !se actualizan las velocidades
            !$OMP PARALLEL DO
-           DO i = 2, mi-1
-              DO j = 2, nj-1
+           do i = 2, mi-1
+              do j = 2, nj-1
                  u(i,j) = u(i,j)+d_yv(j-1)*(corr_pres(i,j)-corr_pres(i+1,j))/au(i,j)
                  v(i,j) = v(i,j)+d_xu(i-1)*(corr_pres(i,j)-corr_pres(i,j+1))/av(i,j)
-              END DO
-           END DO
+              end do
+           end do
            !$OMP END PARALLEL DO
-           DO i = 2, mi-1
+           do i = 2, mi-1
               u(i,nj) = u(i,nj)+d_yv(nj-1)*(corr_pres(i,nj)-corr_pres(i+1,nj))/au(i,nj)
-           END DO
-           DO j = 2, nj-1
+           end do
+           do j = 2, nj-1
               v(mi,j) = v(mi,j)+d_xu(mi-1)*(corr_pres(mi,j)-corr_pres(mi,j+1))/av(mi,j)
-           END DO
+           end do
            !     corr_pres = corr_pres/rel_pres
            !*************************
            !se calcula la temperatura
-           DO
-              CALL temperatura(xp,yp,fexu,feyv,d_xu,d_yv,u,v,temp,temp_ant,gamma_t,dt,dtemp,placa_min,placa_max,rel_tem)
-              !************************************
-              !Criterio de convergencia temperatura
-              IF(MAXVAL(DABS(dtemp))<conv_t)EXIT
-              !       WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
-           END DO
+           solucion_energia: do
+              ftemp = temp
+              call ensambla_energia(deltaxp,deltayp,&
+                   &deltaxu,deltayv,fexu,feyv,gamma_t,&
+                   &u,v,&
+                   &temp,temp_ant,dt,&
+                   &rel_ener,placa_min,placa_max,&
+                   &AI,AC,AD,Rx,BS,BC,BN,Ry)
+              solucion_energia_x: do jj = 2, nj
+                 call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
+                 do ii = 1, mi+1
+                    temp(ii,jj) = Rx(ii,jj)
+                 end do
+              end do solucion_energia_x
+              solucion_energia_y: do ii = 2, mi
+                 call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+                 do jj = 1, nj+1
+                    temp(ii,jj) = Ry(jj,ii)
+                 end do
+              end do solucion_energia_y
+              where(temp /= 0.0_DBL)
+                 dtemp = (temp-ftemp)/temp
+              elsewhere
+                 dtemp = temp-ftemp
+              end where
+              ! ------------------------------------------              
+              ! Criterio de convergencia temperatura
+              if( maxval(dabs(dtemp))<conv_t )then
+                 iter_ecuaci = 0
+                 exit
+              else if( iter_ecuaci>iter_ecuaci_max )then
+                 iter_ecuaci = 0
+                 write(*,*) "Advertencia energia: convergencia no alcanzada ", &
+                      maxval(dabs(dtemp))
+                 exit
+              else
+                 iter_ecuaci = iter_ecuaci + 1
+                 ! write(*,*) 'temp', maxval(dabs(dtemp))
+              end if
+
+           end do solucion_energia
            !*******************************************
            !Criterio de convergencia del paso de tiempo
            CALL residuou(res_fluido_u,xu,yp,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
-           IF(res_fluido_u .EQV. .TRUE. .AND. MAXVAL(DABS(Resu))<conv_resi .AND. MAXVAL(DABS(b_o))<conv_paso)EXIT
-           !     IF( MAXVAL(DABS(Resu))<conv_resi .AND. MAXVAL(DABS(b_o))<conv_paso)EXIT
-           ! WRITE(*,*) 'tiempo ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
-        END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
+           if (maxval(dabs(Resu)) < conv_resi &
+                & .and. maxval(dabs(b_o))<conv_paso)then
+              iter_simple = 0
+              exit
+           else if ( iter_simple > iter_simple_max ) then
+              iter_simple = 0
+              write(*,*) "Advertencia SIMPLE: convergencia no alcanzada, ", &
+                   MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o))   
+              exit
+           else
+              iter_simple = iter_simple + 1
+              ! write(*,*) 'tiempo ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),&
+                   ! &MAXVAL(DABS(pres))
+           end if
+        end do ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
         itera = itera + 1
-        IF(mod(itera,100)==0) WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
+        IF(mod(itera,100)==0) WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu))&
+             &,MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
 
         IF(mod(itera,100)==0)THEN
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,entropia_int,temp_int,a_ent,lambda_ent)

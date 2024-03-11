@@ -20,7 +20,7 @@ contains
   !
   !*******************************************************************
   subroutine ensambla_energia(deltaxpo,deltaypo,&
-       &deltaxuo,deltayvo,fexuo,feyvo,gamma_ener_o,&
+       &deltaxuo,deltayvo,fexpo,feypo,gamma_ener_o,&
        &u_o,v_o,&
        &temp_o,temp_anto,dt_o,&
        &rel_ener,placa_mino,placa_maxo,&
@@ -42,8 +42,8 @@ contains
     !
     ! Coeficientes de interpolaci\'on
     !
-    real(kind=DBL), DIMENSION(mi), intent(in) ::  fexuo    
-    real(kind=DBL), DIMENSION(nj), intent(in) ::  feyvo
+    real(kind=DBL), DIMENSION(mi), intent(in) :: fexpo    
+    real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
     !
     ! Coeficiente de difusi\'on
     !
@@ -119,13 +119,13 @@ contains
           ! Coeficientes de difusi\'on
           !
           gammad = ( gamma_ener_o(ii+1,jj) * gamma_ener_o(ii,jj) ) / &
-               &( gamma_ener_o(ii+1,jj) * (1._DBL-fexuo(ii))+gamma_ener_o(ii,jj)*fexuo(ii) )
+               &( gamma_ener_o(ii+1,jj) * (1._DBL-fexpo(ii))+gamma_ener_o(ii,jj)*fexpo(ii) )
           gammai = ( gamma_ener_o(ii,jj) * gamma_ener_o(ii-1,jj) ) / &
-               &( gamma_ener_o(ii,jj) * (1._DBL-fexuo(ii-1))+gamma_ener_o(ii-1,jj)*fexuo(ii-1) )
+               &( gamma_ener_o(ii,jj) * (1._DBL-fexpo(ii-1))+gamma_ener_o(ii-1,jj)*fexpo(ii-1) )
           gamman = ( gamma_ener_o(ii,jj+1) * gamma_ener_o(ii,jj) ) / &
-               &( gamma_ener_o(ii,jj+1) * (1._DBL-feyvo(jj))+gamma_ener_o(ii,jj)*feyvo(jj) )
+               &( gamma_ener_o(ii,jj+1) * (1._DBL-feypo(jj))+gamma_ener_o(ii,jj)*feypo(jj) )
           gammas = ( gamma_ener_o(ii,jj) * gamma_ener_o(ii,jj-1) ) / &
-               &( gamma_ener_o(ii,jj) * (1._DBL-feyvo(jj-1))+gamma_ener_o(ii,jj-1)*feyvo(jj-1) )
+               &( gamma_ener_o(ii,jj) * (1._DBL-feypo(jj-1))+gamma_ener_o(ii,jj-1)*feypo(jj-1) )
           !
           ! Tama\~no de los vol\'umenes de control para la energia
           !
@@ -369,9 +369,9 @@ contains
     !
     ! Coeficientes para interpolaci\'on
     !
-    real(kind=DBL), DIMENSION(mi), intent(in) :: fexpo
-    real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
-    real(kind=DBL), DIMENSION(mi), intent(in) :: fexuo
+    real(kind=DBL), DIMENSION(mi),   intent(in) :: fexpo
+    real(kind=DBL), DIMENSION(nj),   intent(in) :: feypo
+    real(kind=DBL), DIMENSION(mi-1), intent(in) :: fexuo
     !
     ! Coeficiente de difusi\'on
     !
@@ -451,10 +451,10 @@ contains
           ! ** se utilizan las constantes gammai y gammad como auxiliares para
           ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
           ! corresponde **
-          gammad = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
+          gammad = ( gamma_momento(ii+1,jj+1) * gamma_momento(ii+1,jj) ) / &
+               &( gamma_momento(ii+1,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii+1,jj)*feypo(jj) )
+          gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
                &( gamma_momento(ii,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii,jj)*feypo(jj) )
-          gammai = ( gamma_momento(ii-1,jj+1) * gamma_momento(ii-1,jj) ) / &
-               &( gamma_momento(ii-1,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii-1,jj)*feypo(jj) )
           !
           gamman = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
           !
@@ -463,10 +463,10 @@ contains
           ! ** se utilizan las constantes gammai y gammad como auxiliares para
           ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
           ! corresponde **
-          gammad = ( gamma_momento(ii,jj) * gamma_momento(ii,jj-1) ) / &
-               &( gamma_momento(ii,jj) * (1._DBL-feypo(jj-1))+gamma_momento(ii,jj-1)*feypo(jj-1) )
-          gammai = ( gamma_momento(ii-1,jj+1) * gamma_momento(ii-1,jj) ) / &
-               &(gamma_momento(ii-1,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii-1,jj-1)*feypo(jj-1))
+          gammad = ( gamma_momento(ii+1,jj) * gamma_momento(ii+1,jj-1) ) / &
+               &(gamma_momento(ii+1,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii+1,jj-1)*feypo(jj-1))
+          gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
+               &(gamma_momento(ii,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii,jj-1)*feypo(jj-1))
           !
           gammas = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))         
           !
@@ -585,9 +585,9 @@ contains
     !
     ! Coeficientes para interpolaci\'on
     !
-    real(kind=DBL), DIMENSION(mi), intent(in) :: fexpo
-    real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
-    real(kind=DBL), DIMENSION(nj), intent(in) :: feyvo
+    real(kind=DBL), DIMENSION(mi),   intent(in) :: fexpo
+    real(kind=DBL), DIMENSION(nj),   intent(in) :: feypo
+    real(kind=DBL), DIMENSION(nj-1), intent(in) :: feyvo
     !
     ! Coeficiente de difusi\'on
     !
@@ -672,7 +672,7 @@ contains
           gamman = ( gamma_momento(ii+1,jj+1) * gamma_momento(ii,jj+1) ) / &
                &( gamma_momento(ii+1,jj+1) * (1._DBL-fexpo(ii))+gamma_momento(ii,jj+1)*fexpo(ii) )
           gammad = ( gammas * gamman ) / &
-               &( gammas*(1._DBL-feyvo(jj)) + gamman*feyvo(jj) )
+               &( gammas*(1._DBL-feypo(jj)) + gamman*feypo(jj) )
           !
           ! gamma_i
           !
@@ -684,7 +684,7 @@ contains
           gamman = ( gamma_momento(ii,jj+1) * gamma_momento(ii-1,jj+1) ) / &
                &(gamma_momento(ii,jj+1)*(1._DBL-fexpo(ii-1))+gamma_momento(ii-1,jj+1)*fexpo(ii-1) )
           gammai = ( gammas * gamman ) / &
-               &( gammas*(1._DBL-feyvo(jj)) + gamman*feyvo(jj) )
+               &( gammas*(1._DBL-feypo(jj)) + gamman*feypo(jj) )
           !
           ! gamma_n 
           !

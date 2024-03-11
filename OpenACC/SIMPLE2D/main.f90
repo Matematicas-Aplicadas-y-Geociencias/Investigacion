@@ -161,7 +161,7 @@ PROGRAM SIMPLE2D
   !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
-  ! u_ant = cero
+  ! u_ant = 1.0_DBL
   ! v_ant = cero
   ! temp_ant = cero
   u     = u_ant
@@ -354,6 +354,8 @@ PROGRAM SIMPLE2D
               elsewhere
                  dtemp = temp-ftemp
               end where
+              ! call temperatura(xp,yp,fexp,feyp,d_xu,d_yv,u,v,temp,temp_ant,gamma_t,&
+              !      &dt,dtemp,placa_min,placa_max,rel_ener)
               ! ------------------------------------------              
               ! Criterio de convergencia temperatura
               if( maxval(dabs(dtemp))<conv_t )then

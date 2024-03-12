@@ -189,7 +189,17 @@ PROGRAM SIMPLE2D
 101 FORMAT(1X,'Re=',F12.3,', Pr=',F8.3', Ri=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
 102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I3,', nj=',I3)
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
-  !*********************************************************
+  !---------------------------------------------------------------
+  !
+  ! Apertura de la regi\'on de datos paralela
+  !
+  !$acc data copy(   u,v,temp,pres,u_ant,v_ant,temp_ant,gamma_momen,gamma_energ )&
+  !$acc &    copyin( deltaxp,deltayp,deltaxu,deltayu,deltaxv,deltayv,&
+  !$acc &            fexp,feyp,fexu,feyu,fexv,feyv,&
+  !$acc &            Ri,Riy,dt,&
+  !$acc &            rel_vel,rel_pres,rel_ener,&
+  !$acc &            placa_min,placa_max,&
+  !$acc &            
   do l=1,itermax/paq_itera         !inicio del repetidor principal
      do k=1,paq_itera              !inicio del paquete iteraciones
         ALGORITMO_SIMPLE: do       !inicio del algoritmo SIMPLE
@@ -332,7 +342,7 @@ PROGRAM SIMPLE2D
            solucion_energia: do
               ftemp = temp
               call ensambla_energia(deltaxp,deltayp,&
-                   &deltaxu,deltayv,fexu,feyv,gamma_t,&
+                   &deltaxu,deltayv,fexu,feyv,gamma_ener,&
                    &u,v,&
                    &temp,temp_ant,dt,&
                    &rel_ener,placa_min,placa_max,&

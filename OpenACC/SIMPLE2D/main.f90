@@ -3,6 +3,7 @@ PROGRAM SIMPLE2D
   use ensamblaje
   use solucionador
   use residuos
+  use postproceso
   ! USE mkl95_LAPACK
   IMPLICIT NONE
   INCLUDE 'omp_lib.h'
@@ -590,7 +591,12 @@ PROGRAM SIMPLE2D
         if( mod(itera,100)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
-           call nusselt(xp,yp,d_xu,d_yv,temp,nusselt0,nusselt1,placa_min,placa_max)
+           ! call nusselt(xp,yp,d_xu,d_yv,temp,nusselt0,nusselt1,placa_min,placa_max)
+           call nusselt_promedio_y(&
+                &xp,yp,deltaxp,deltayp,&
+                &temp,nusselt0,nusselt1,&
+                &placa_min,placa_max&
+                &)
            temp_med = (temp((placa_min+placa_max)/2,nj/2+1)+&
                 &temp((placa_min+placa_max)/2+1,nj/2+1))/2._DBL
            OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')

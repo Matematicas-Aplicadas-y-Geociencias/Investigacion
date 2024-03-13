@@ -226,13 +226,18 @@ PROGRAM SIMPLE2D
            !$acc &        fu(1:mi,1:nj+1),du(1:mi,1:nj+1),fv(1:mi+1,1:nj),dv(1:mi+1,1:nj),&
            !$acc &        fcorr_pres(1:mi+1,1:nj+1),dcorr_pres(1:mi+1,1:nj+1),&
            !$acc &        ftemp(1:mi+1,1:nj+1),dtemp(1:mi+1,1:nj+1) )
+           !
+           !--------------------------------
+           !
            ecuacion_momento: do
               !
               !$acc parallel loop gang
               inicializacion_fu: do jj=2, nj
+                 !
                  !$acc loop vector
-                 do ii = 2, mi-1
+                 do ii = 2, mi
                     fu(ii,jj) = u(ii,jj)
+                    fv(ii,jj) = v(ii,jj)
                  end do
               end do inicializacion_fu
               !
@@ -277,26 +282,23 @@ PROGRAM SIMPLE2D
                     u(ii,jj) = Ry(jj,ii)
                  end do
               end do solucion_momento_uy
-              !
-              !$acc parallel loop
-              calculo_diferencias_du: do jj=2, nj
-                 !
-                 !$acc loop
-                 do ii = 2, mi-1
-                    du(ii,jj) = u(ii,jj) -fu(ii,jj)
-                 end do
-              end do calculo_diferencias_du
-              ! ------------------------------------------
-              !
-              ! $acc parallel
-              !
-              !$acc parallel loop gang
-              inicializacion_fv: do jj=2, nj-1
-                 !$acc loop vector
-                 do ii = 2, mi
-                    fv(ii,jj) = v(ii,jj)
-                 end do
-              end do inicializacion_fv
+!!$              !
+!!$              !$acc parallel loop
+!!$              calculo_diferencias_du: do jj=2, nj
+!!$                 !
+!!$                 !$acc loop
+!!$                 do ii = 2, mi-1
+!!$                    du(ii,jj) = u(ii,jj) -fu(ii,jj)
+!!$                 end do
+!!$              end do calculo_diferencias_du
+!!$              !
+!!$              !$acc parallel loop gang
+!!$              inicializacion_fv: do jj=2, nj-1
+!!$                 !$acc loop vector
+!!$                 do ii = 2, mi
+!!$                    fv(ii,jj) = v(ii,jj)
+!!$                 end do
+!!$              end do inicializacion_fv
               !
               !$acc parallel loop
               barrido_direccion_yv: do jj=2, nj-1
@@ -324,6 +326,8 @@ PROGRAM SIMPLE2D
                  av(ii,nj)  = 1.e40_DBL !ACj(nj+1)       
               end do bucle_direccionxv
               !
+              ! Soluci\'on de las ecs. de momento
+              !
               !$acc parallel loop gang
               solucion_momento_vx: do jj = 2, nj-1
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
@@ -341,10 +345,11 @@ PROGRAM SIMPLE2D
               end do solucion_momento_vy
               !
               !$acc parallel loop
-              calculo_diferencias_dv: do jj=2, nj-1
+              calculo_diferencias_dv: do jj=2, nj
                  !
                  !$acc loop
                  do ii = 2, mi
+                    du(ii,jj) = u(ii,jj)-fu(ii,jj)
                     dv(ii,jj) = v(ii,jj)-fv(ii,jj)
                  end do
               end do calculo_diferencias_dv
@@ -365,11 +370,13 @@ PROGRAM SIMPLE2D
               end if
               !            
            end do ecuacion_momento
+           !-----------------------------------------
            !
            ! Se calcula la correcci'on de la presi'on
            !
            !$acc parallel loop gang
            inicializa_corrector_presion: do jj = 1, nj+1
+              !
               !$acc loop vector
               do ii = 1, mi+1
                  corr_pres(ii,jj) = 0.0_DBL
@@ -400,22 +407,25 @@ PROGRAM SIMPLE2D
                    &)
               !$acc end parallel
               ! end do barrido_direccion_yp
-              
               !
               ! Condiciones de frontera para la direcci\'on y
               !
-              !$acc loop vector
-              bucle_direccionxp: do ii = 2, mi
-                 !***********************
-                 !Condiciones de frontera
-                 BC(1,ii)     = 1._DBL
-                 BN(1,ii)     = 0.0_DBL
-                 Ry(1,ii)     = 0.0_DBL
-                 !
-                 BC(nj+1,ii)  = 1._DBL
-                 BS(nj+1,ii)  = 0.0_DBL
-                 Ry(nj+1,ii)  = 0.0_DBL
-              end do bucle_direccionxp
+              ! $acc loop vector
+              ! bucle_direccionxp: do ii = 2, mi
+              !    !***********************
+              !    !Condiciones de frontera
+              !    BC(1,ii)     = 1._DBL
+              !    BN(1,ii)     = 0.0_DBL
+              !    Ry(1,ii)     = 0.0_DBL
+              !    !
+              !    BC(nj+1,ii)  = 1._DBL
+              !    BS(nj+1,ii)  = 0.0_DBL
+              !    Ry(nj+1,ii)  = 0.0_DBL
+              ! end do bucle_direccionxp
+              !
+              !-------------------------------------------------------
+              !
+              ! Soluci\'on de la correcci\'on de la presi\'on
               !
               !$acc parallel loop gang
               solucion_presion_x: do jj = 2, nj
@@ -433,11 +443,13 @@ PROGRAM SIMPLE2D
                  end do                 
               end do solucion_presion_y
               !
+              ! C\'alculo de diferencias y criterio de convergencia
+              !
               !$acc parallel loop gang
-              calculo_dif_corr_pres: do jj=2, nj-1
+              calculo_dif_corr_pres: do jj=1, nj+1
                  !
                  !$acc loop vector
-                 do ii=2, mi-1
+                 do ii=1, mi+1
                     dcorr_pres(ii,jj) = (corr_pres(ii,jj)-fcorr_pres(ii,jj))
                  end do
               end do calculo_dif_corr_pres

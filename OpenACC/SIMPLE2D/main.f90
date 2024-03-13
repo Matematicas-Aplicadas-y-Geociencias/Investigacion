@@ -2,6 +2,7 @@ PROGRAM SIMPLE2D
   use malla
   use ensamblaje
   use solucionador
+  use residuos
   ! USE mkl95_LAPACK
   IMPLICIT NONE
   INCLUDE 'omp_lib.h'
@@ -22,7 +23,7 @@ PROGRAM SIMPLE2D
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  temp,temp_ant,dtemp,Restemp,pres,corr_pres,dcorr_pres
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  fcorr_pres,ftemp
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) ::  entropia_calor,entropia_viscosa,entropia,uf,vf,b_o,gamma_t
-  REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
+  REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s,residuo
   REAL(kind=DBL) :: conv_u,conv_p,conv_t,conv_resi,conv_paso,rel_pres,rel_vel,rel_ener
   !
   ! Variables de la malla, volumen de control y factores de interpolaci\'on
@@ -150,12 +151,12 @@ PROGRAM SIMPLE2D
   !
   d_xu(1) = xu(2)-xu(1)
   DO i = 2, mi-1
-     d_xu(i)  = xu(i+1)-xu(i)
+     d_xu(i)  = xu(i+1)-xu(i)        ! deltaxp(ii+1)
      d2_xu(i) = xu(i+1)-xu(i-1)
   END DO
   d_yv(1) = yv(2)-yv(1)
   DO j = 2, nj-1
-     d_yv(j)  = yv(j+1)-yv(j)
+     d_yv(j)  = yv(j+1)-yv(j)        !deltayp(jj+1)
      d2_yv(j) = yv(j+1)-yv(j-1)
   END DO
   !*****************
@@ -169,6 +170,7 @@ PROGRAM SIMPLE2D
   uf    = 0.0_DBL
   vf    = 0.0_DBL
   temp  = temp_ant
+  Resu      = 0.0_DBL
   corr_pres = 0.0_DBL * dfloat(mi+1-i)/dfloat(mi)
   au    = 1._DBL
   av    = 1._DBL
@@ -201,32 +203,37 @@ PROGRAM SIMPLE2D
         !
         ! Inicio del algoritmo SIMPLE
         !
+        !------------------------------------------
+        !
+        ! Apertura de la regi\'on de datos paralela
+        !
+        !$acc data copy(&
+        !$acc &         u(1:mi,1:nj+1),v(1:mi+1,1:nj),                            &
+        !$acc &         pres(1:mi+1,1:nj+1),temp(1:mi+1,1:nj+1),                  &
+        !$acc &         corr_pres(1:mi+1,1:nj+1),Resu(1:mi,1:nj+1),               &
+        !$acc &         au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1),       &
+        !$acc &         gamma_momen(1:mi+1,1:nj+1),gamma_energ(1:mi+1,1:nj+1)     &           
+        !$acc &         )                                                         &
+        !$acc & copyin(&
+        !$acc &    u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),temp_ant(1:mi+1,1:nj+1), &
+        !$acc &        deltaxp(1:mi),deltayp(1:nj),deltaxu(1:mi),deltayu(1:nj),   &
+        !$acc &        deltaxv(1:mi),deltayv(1:nj),                               &
+        !$acc &        fexp(1:mi),feyp(1:nj),fexu(1:mi),feyv(1:nj),               &
+        !$acc &        Ri(1:mi,1:nj+1),Riy(1:mi+1,1:nj+1),dt,                     &
+        !$acc &        rel_vel,conv_u,conv_p,iter_ecuaci_max,                     &
+        !$acc &        rel_ener,conv_t,placa_min,placa_max                        &
+        !$acc &        )&
+        !$acc & create(AI(1:mi+1,1:nj+1),AC(1:mi+1,1:nj+1),                       &
+        !$acc &        AD(1:mi+1,1:nj+1),Rx(1:mi+1,1:nj+1),                       &
+        !$acc &        BS(1:nj+1,1:mi+1),BC(1:nj+1,1:mi+1),                       &
+        !$acc &        BN(1:nj+1,1:mi+1),Ry(1:nj+1,1:mi+1),                       &
+        !$acc &        fu(1:mi,1:nj+1),du(1:mi,1:nj+1),                           &
+        !$acc &        fv(1:mi+1,1:nj),dv(1:mi+1,1:nj),                           &
+        !$acc &        fcorr_pres(1:mi+1,1:nj+1),dcorr_pres(1:mi+1,1:nj+1),       &
+        !$acc &        ftemp(1:mi+1,1:nj+1),dtemp(1:mi+1,1:nj+1)                  &
+        !$acc &)
+        !
         ALGORITMO_SIMPLE: do
-           !------------------------------------------
-           !
-           ! Apertura de la regi\'on de datos paralela
-           !
-           !$acc data copy(&
-           !$acc &         u(1:mi,1:nj+1),v(1:mi+1,1:nj),&
-           !$acc &         corr_pres(1:mi+1,1:nj+1),&
-           !$acc &         au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1)&
-           !$acc &         )&
-           !$acc & copyin(&
-           !$acc &        temp(1:mi+1,1:nj+1),pres(1:mi+1,1:nj+1),&
-           !$acc &        u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),&
-           !$acc &        gamma_momen(1:mi+1,1:nj+1),&           
-           !$acc &        deltaxp(1:mi),deltayp(1:nj),deltaxu(1:mi),deltayu(1:nj),&
-           !$acc &        deltaxv(1:mi),deltayv(1:nj),&
-           !$acc &        fexp(1:mi),feyp(1:nj),fexu(1:mi),feyv(1:nj),&
-           !$acc &        Ri(1:mi,1:nj+1),Riy(1:mi+1,1:nj+1),dt,&
-           !$acc &        rel_vel,conv_u,conv_p,iter_ecuaci_max&
-           !$acc &        )&
-           !$acc & create(AI(1:mi+1,1:nj+1),AC(1:mi+1,1:nj+1),AD(1:mi+1,1:nj+1),Rx(1:mi+1,1:nj+1),&
-           !$acc &        BS(1:nj+1,1:mi+1),BC(1:nj+1,1:mi+1),BN(1:nj+1,1:mi+1),Ry(1:nj+1,1:mi+1),&
-           !$acc &        fu(1:mi,1:nj+1),du(1:mi,1:nj+1),fv(1:mi+1,1:nj),dv(1:mi+1,1:nj),&
-           !$acc &        fcorr_pres(1:mi+1,1:nj+1),dcorr_pres(1:mi+1,1:nj+1),&
-           !$acc &        ftemp(1:mi+1,1:nj+1),dtemp(1:mi+1,1:nj+1) )
-           !
            !--------------------------------
            !
            ecuacion_momento: do
@@ -282,23 +289,6 @@ PROGRAM SIMPLE2D
                     u(ii,jj) = Ry(jj,ii)
                  end do
               end do solucion_momento_uy
-!!$              !
-!!$              !$acc parallel loop
-!!$              calculo_diferencias_du: do jj=2, nj
-!!$                 !
-!!$                 !$acc loop
-!!$                 do ii = 2, mi-1
-!!$                    du(ii,jj) = u(ii,jj) -fu(ii,jj)
-!!$                 end do
-!!$              end do calculo_diferencias_du
-!!$              !
-!!$              !$acc parallel loop gang
-!!$              inicializacion_fv: do jj=2, nj-1
-!!$                 !$acc loop vector
-!!$                 do ii = 2, mi
-!!$                    fv(ii,jj) = v(ii,jj)
-!!$                 end do
-!!$              end do inicializacion_fv
               !
               !$acc parallel loop
               barrido_direccion_yv: do jj=2, nj-1
@@ -361,7 +351,7 @@ PROGRAM SIMPLE2D
                  exit
               else if (iter_ecuaci > iter_ecuaci_max) then
                  iter_ecuaci = 0
-                 write(*,*) "Adver. MOMEN: convergencia no alcanzada ", &
+                 write(*,*) "ADVER. MOMEN: convergencia no alcanzada ", &
                       maxval(dabs(du)), maxval(dabs(dv))
                  exit
               else
@@ -406,22 +396,6 @@ PROGRAM SIMPLE2D
                    &AI,AC,AD,Rx,BS,BC,BN,Ry,au,av&
                    &)
               !$acc end parallel
-              ! end do barrido_direccion_yp
-              !
-              ! Condiciones de frontera para la direcci\'on y
-              !
-              ! $acc loop vector
-              ! bucle_direccionxp: do ii = 2, mi
-              !    !***********************
-              !    !Condiciones de frontera
-              !    BC(1,ii)     = 1._DBL
-              !    BN(1,ii)     = 0.0_DBL
-              !    Ry(1,ii)     = 0.0_DBL
-              !    !
-              !    BC(nj+1,ii)  = 1._DBL
-              !    BS(nj+1,ii)  = 0.0_DBL
-              !    Ry(nj+1,ii)  = 0.0_DBL
-              ! end do bucle_direccionxp
               !
               !-------------------------------------------------------
               !
@@ -454,13 +428,15 @@ PROGRAM SIMPLE2D
                  end do
               end do calculo_dif_corr_pres
               !-----------------------------------------------------
-              ! critero de convergencia del corrector de la presi'on
+              !
+              ! Critero de convergencia del corrector de la presi'on
+              !
               if(maxval(DABS(dcorr_pres))<conv_p )then
                  iter_ecuaci = 0
                  exit
               else if (iter_ecuaci > iter_ecuaci_max) then
                  iter_ecuaci = 0
-                 write(*,*) "Adver. PRES: convergencia no alcanzada ", &
+                 write(*,*) "ADVER. PRES: convergencia no alcanzada ", &
                       maxval(dabs(dcorr_pres))
                  exit
               else
@@ -468,68 +444,91 @@ PROGRAM SIMPLE2D
                  ! write(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))
               end if
            end do correccion_presion
+           !--------------------------------------------
            !
-           ! Se cierra la regi\'on paralela de datos
+           ! Se corrige la presion
            !
-           !$acc end data
-           !
-           !*********************
-           !se corrige la presion
-           !$OMP PARALLEL DO
-           do i = 2, mi
-              do j = 2, nj
-                 pres(i,j) = pres(i,j) + corr_pres(i,j)
+           !$acc parallel loop gang
+           do jj = 2, nj
+              !$acc loop vector
+              do ii = 2, mi
+                 pres(ii,jj) = pres(ii,jj) + corr_pres(ii,jj)
               end do
            end do
-           !$OMP END PARALLEL DO
-           !*****************************
-           !se actualizan las velocidades
-           !$OMP PARALLEL DO
-           do i = 2, mi-1
-              do j = 2, nj-1
-                 u(i,j) = u(i,j)+d_yv(j-1)*(corr_pres(i,j)-corr_pres(i+1,j))/au(i,j)
-                 v(i,j) = v(i,j)+d_xu(i-1)*(corr_pres(i,j)-corr_pres(i,j+1))/av(i,j)
+           !
+           !---------------------------------
+           !
+           ! Se corrigen las velocidades
+           !
+           !$acc parallel loop gang
+           do jj = 2, nj-1
+              !
+              !$acc loop vector
+              do ii = 2, mi-1
+                 u(ii,jj) = u(ii,jj)+deltayu(jj)*(corr_pres(ii,jj)-corr_pres(ii+1,jj))/au(ii,jj)
+                 v(ii,jj) = v(ii,jj)+deltaxv(ii)*(corr_pres(ii,jj)-corr_pres(ii,jj+1))/av(ii,jj)
               end do
+              v(mi,jj) = v(mi,jj)+deltaxv(mi)*(corr_pres(mi,jj)-corr_pres(mi,jj+1))/av(mi,jj)
            end do
-           !$OMP END PARALLEL DO
-           do i = 2, mi-1
-              u(i,nj) = u(i,nj)+d_yv(nj-1)*(corr_pres(i,nj)-corr_pres(i+1,nj))/au(i,nj)
+           !
+           !$acc loop
+           do ii = 2, mi-1
+              u(ii,nj) = u(ii,nj)+deltayu(nj)*(corr_pres(ii,nj)-corr_pres(ii+1,nj))/au(ii,nj)
            end do
-           do j = 2, nj-1
-              v(mi,j) = v(mi,j)+d_xu(mi-1)*(corr_pres(mi,j)-corr_pres(mi,j+1))/av(mi,j)
-           end do
-           !     corr_pres = corr_pres/rel_pres
-           !*************************
-           !se calcula la temperatura
+           !
+           !--------------------------------------
+           !
+           ! Se resuelve la ecuaci\'on de balance de energ\'ia
+           !
            solucion_energia: do
-              ftemp = temp
+              !
+              !$acc parallel loop gang
+              inicializacion_ftemp: do jj=2, nj
+                 !
+                 !$acc loop vector
+                 do ii = 2, mi
+                    ftemp(ii,jj) = temp(ii,jj)
+                 end do
+              end do inicializacion_ftemp
+              !
+              !$acc parallel
               call ensambla_energia(deltaxp,deltayp,&
                    &deltaxu,deltayv,fexu,feyv,gamma_energ,&
                    &u,v,&
                    &temp,temp_ant,dt,&
                    &rel_ener,placa_min,placa_max,&
                    &AI,AC,AD,Rx,BS,BC,BN,Ry)
+              !$acc end parallel
+              !
+              !$acc parallel loop gang
               solucion_energia_x: do jj = 2, nj
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
                  do ii = 1, mi+1
                     temp(ii,jj) = Rx(ii,jj)
                  end do
               end do solucion_energia_x
+              !
+              !$acc parallel loop gang
               solucion_energia_y: do ii = 2, mi
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
                  do jj = 1, nj+1
                     temp(ii,jj) = Ry(jj,ii)
                  end do
               end do solucion_energia_y
-              where(temp /= 0.0_DBL)
-                 dtemp = (temp-ftemp)/temp
-              elsewhere
-                 dtemp = temp-ftemp
-              end where
-              ! call temperatura(xp,yp,fexp,feyp,d_xu,d_yv,u,v,temp,temp_ant,gamma_t,&
-              !      &dt,dtemp,placa_min,placa_max,rel_ener)
-              ! ------------------------------------------              
+              !
+              !$acc parallel loop
+              calculo_diferencias_dtemp: do jj=2, nj
+                 !
+                 !$acc loop
+                 do ii = 2, mi
+                    dtemp(ii,jj) = temp(ii,jj)-ftemp(ii,jj)
+                 end do
+              end do calculo_diferencias_dtemp
+              !
+              ! ------------------------------------------
+              !
               ! Criterio de convergencia temperatura
+              !
               if( maxval(dabs(dtemp))<conv_t )then
                  iter_ecuaci = 0
                  exit
@@ -542,13 +541,25 @@ PROGRAM SIMPLE2D
                  iter_ecuaci = iter_ecuaci + 1
                  ! write(*,*) 'temp', maxval(dabs(dtemp))
               end if
-
+              !
            end do solucion_energia
-           !*******************************************
-           !Criterio de convergencia del paso de tiempo
-           CALL residuou(res_fluido_u,xu,yp,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
-           if (maxval(dabs(Resu)) < conv_resi &
-                & .and. maxval(dabs(b_o))<conv_paso)then
+           !
+           !--------------------------------------------
+           !
+           ! Criterio de convergencia del paso de tiempo
+           !
+           ! call residuou(res_fluido_u,xu,yp,feyp,d_xu,d2_xu,d_yv,u,&
+           !      u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
+           !$acc parallel
+           call residuo_u(deltaxu,deltayu,deltaxp,&
+                &deltayv,fexp,feyp,fexu,gamma_momen,&
+                &u,u_ant,v,&
+                &temp,pres,Ri,dt,rel_vel,&
+                &Resu&
+                &)
+           !$acc end parallel
+           !
+           if ( maxval(dabs(Resu)) < conv_resi .and. maxval(dabs(b_o))<conv_paso)then
               iter_simple = 0
               exit
            else if ( iter_simple > iter_simple_max ) then
@@ -561,18 +572,25 @@ PROGRAM SIMPLE2D
               ! write(*,*) 'tiempo ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),&
                    ! &MAXVAL(DABS(pres))
            end if
+           !
         end do ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
+        !--------------------------------------------
+        !
+        ! Se cierra la regi\'on paralela de datos
+        !
+        !$acc end data
+        !
         !
         ! Escritura de mensajes y postprocesos
         !
         itera = itera + 1
-        IF(mod(itera,100)==0) WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu))&
-             &,MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
+        if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,maxval(dabs(b_o)),&
+             &maxval(dabs(Resu))
 
-        IF(mod(itera,100)==0)THEN
+        if( mod(itera,100)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
-           CALL nusselt(xp,yp,d_xu,d_yv,temp,nusselt0,nusselt1,placa_min,placa_max)
+           call nusselt(xp,yp,d_xu,d_yv,temp,nusselt0,nusselt1,placa_min,placa_max)
            temp_med = (temp((placa_min+placa_max)/2,nj/2+1)+&
                 &temp((placa_min+placa_max)/2+1,nj/2+1))/2._DBL
            OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')

@@ -26,6 +26,7 @@ contains
        &rel_ener,placa_mino,placa_maxo,&
        &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o)
     implicit none
+    !$acc routine gang
     !
     ! Tama\~no del volumen de control
     !

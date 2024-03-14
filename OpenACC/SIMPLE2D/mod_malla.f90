@@ -8,7 +8,7 @@
 !
 MODULE malla
   implicit none
-  INTEGER, PARAMETER :: mi=181, nj=76, itermax=500000, nsolid = 7
+  INTEGER, PARAMETER :: mi=901, nj=501, itermax=500000, nsolid = 7
   INTEGER, PARAMETER :: SGL=SELECTED_REAL_KIND(P=6,R=37)
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=307)
   character(len=9), parameter :: form24="(3D23.15)",form25="(4D23.15)"

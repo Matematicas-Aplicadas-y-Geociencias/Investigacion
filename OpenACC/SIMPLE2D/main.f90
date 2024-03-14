@@ -282,31 +282,17 @@ PROGRAM SIMPLE2D
                  end do
               end do solucion_momento_uy
               !
-              !$acc parallel loop
-              barrido_direccion_yv: do jj=2, nj-1
-                 call ensambla_velv(deltaxv,deltayv,deltaxu,&
-                      &deltayp,fexp,feyp,feyv,gamma_momen,&
-                      &v,v_ant,u,&
-                      &temp,pres,Riy,dt,rel_vel,&
-                      &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
-                      &jj)
-              end do barrido_direccion_yv
-              !
-              ! Condiciones de frontera para la direcci\'on y
-              !
-              !$acc parallel loop
-              bucle_direccionxv: do ii = 2, mi
-                 !***********************
-                 !Condiciones de frontera
-                 BC(1,ii)   = 1._DBL
-                 BN(1,ii)   = 0.0_DBL
-                 Ry(1,ii)   = 0.0_DBL
-                 av(ii,1)   = 1.e40_DBL !ACj(1)
-                 BC(nj,ii)  = 1._DBL
-                 BS(nj,ii)  = 0.0_DBL
-                 Ry(nj,ii)  = 0.0_DBL
-                 av(ii,nj)  = 1.e40_DBL !ACj(nj+1)       
-              end do bucle_direccionxv
+              ! !$acc parallel loop
+              ! barrido_direccion_yv: do jj=2, nj-1
+              !$acc parallel
+              call ensambla_velv(deltaxv,deltayv,deltaxu,&
+                   &deltayp,fexp,feyp,feyv,gamma_momen,&
+                   &v,v_ant,u,&
+                   &temp,pres,Riy,dt,rel_vel,&
+                   &AI,AC,AD,Rx,BS,BC,BN,Ry,av&
+                   &)
+              !$acc end parallel
+              ! end do barrido_direccion_yv
               !
               ! Soluci\'on de las ecs. de momento
               !

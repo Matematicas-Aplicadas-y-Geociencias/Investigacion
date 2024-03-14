@@ -24,7 +24,7 @@ contains
        &i_oo,i_1o&
        &)
     implicit none
-    ! $acc routine
+    !$acc routine
     !
     !-------------------------------------
     !
@@ -56,8 +56,9 @@ contains
     ! C\'alculo para jj = 1 usando interpolaci\'on cuadr\'atica
     !
     derivada = 0.0_DBL
+    jj = 1
     do ii = i_oo, i_1o
-       jj = 1
+       ! jj = 1
        dy1 = temp_o(ii,jj+1)-temp_o(ii,jj)
        dy2 = temp_o(ii,jj+2)-temp_o(ii,jj+1)
        dx1 = ypo(jj+1)-ypo(jj)
@@ -70,7 +71,7 @@ contains
     !
     ! Integra con interpolaci\'on cuadr\'atica
     !
-    nusselt0_o = 0._DBL
+    nusselt0_o = 0.0_DBL
     do ii = i_oo, i_1o, 2
        x_o   = xpo(ii)
        x_1   = xpo(ii+1)
@@ -96,8 +97,9 @@ contains
     ! C\'alculo para jj = nj usando interpolaci\'on cuadr\'atica
     !
     derivada = 0.0_DBL
+    jj = nj-1
     do ii = i_oo, i_1o
-       jj = nj-1
+       ! jj = nj-1
        dy1 = temp_o(ii,jj+1)-temp_o(ii,jj)
        dy2 = temp_o(ii,jj+2)-temp_o(ii,jj+1)
        dx1 = ypo(jj+1)-ypo(jj)
@@ -105,12 +107,12 @@ contains
        a = (dy2/dx2-dy1/dx1)/(dx1+dx2)
        b = dy2/dx2-a*(ypo(jj+1)+ypo(jj+2))
        c = temp_o(ii,jj)-a*ypo(jj)*ypo(jj)-b*ypo(jj)
-       derivada(ii) = 2._DBL*a*ypo(jj)+b
+       derivada(ii) = 2._DBL*a*ypo(jj+2)+b
     end do
     !
     ! Integra con interpolaci\'on cuadr\'atica
     !
-    nusselt0_o = 0._DBL
+    nusselt1_o = 0.0_DBL
     do ii = i_oo, i_1o, 2
        x_o   = xpo(ii)
        x_1   = xpo(ii+1)

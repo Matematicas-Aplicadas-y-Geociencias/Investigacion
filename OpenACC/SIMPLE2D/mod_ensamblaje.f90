@@ -355,10 +355,10 @@ contains
        &deltayvo,fexpo,feypo,fexuo,gamma_momento,&
        &u_o,u_anto,v_o,&
        &temp_o,pres_o,Ri_o,dt_o,rel_vo,&
-       &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,au_o,&
-       &jj)
+       &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,au_o&
+       &)
     implicit none
-    !$acc routine vector
+    !$acc routine gang
     !
     ! Tama\~no del volumen de control
     !
@@ -396,10 +396,10 @@ contains
     ! Incremento de tiempo y coeficiente de relajaci\'on
     !
     real(kind=DBL), intent(in) :: dt_o, rel_vo
-    !
-    ! \'Indice para recorrer la direcci\'on y
-    !
-    integer, intent(in)        :: jj
+    ! !
+    ! ! \'Indice para recorrer la direcci\'on y
+    ! !
+    ! integer, intent(in)        :: jj
     !
     ! Coeficientes de las matrices
     !
@@ -413,7 +413,7 @@ contains
     !
     ! Variables auxiliares
     !
-    integer :: ii, kk, info
+    integer :: ii, jj, kk, info
     !
     ! Auxiliares de interpolaci\'on
     !
@@ -422,138 +422,141 @@ contains
     real(kind=DBL) :: gammai, gammad
     real(kind=DBL) :: gammas, gamman
     real(kind=DBL) :: temp_int
-!!$    bucle_direccion_y: do jj = 2, nj
-    !***********************
-    !Condiciones de frontera
-    AC_o(1,jj) = 1._DBL
-    AD_o(1,jj) = 0._DBL
-    Rx_o(1,jj) = 1._DBL !-6.d0*dfloat(j-1)/dfloat(nj)*(dfloat(j-1)/dfloat(nj)-1.d0)! 1._DBL !
-    au_o(1,jj) = 1.e40_DBL !ACi(1)
     !
-    ! Llenado de la matriz
-    !
-    !$acc loop vector
-    bucle_direccion_x: do ii = 2, mi-1
+    !$acc loop gang
+    bucle_direccion_y: do jj = 2, nj
+       !***********************
+       !Condiciones de frontera
+       AC_o(1,jj) = 1._DBL
+       AD_o(1,jj) = 0._DBL
+       Rx_o(1,jj) = 1._DBL !-6.d0*dfloat(j-1)/dfloat(nj)*(dfloat(j-1)/dfloat(nj)-1.d0)! 1._DBL !
+       au_o(1,jj) = 1.e40_DBL !ACi(1)
        !
-       ! Interpolaciones necesarias
+       ! Llenado de la matriz
        !
-       ! u
-       !
-       ud = fexuo(ii)  *u_o(ii+1,jj)+(1.0_DBL-fexuo(ii))  *u_o(ii,jj)
-       ui = fexuo(ii-1)*u_o(ii,jj)  +(1.0_DBL-fexuo(ii-1))*u_o(ii-1,jj)
-       ! ui = (u_o(ii-1,jj)+u_o(ii,jj))/2._DBL
-       ! ud = (u_o(ii,jj)+u_o(ii+1,jj))/2._DBL
-       !
-       ! v
-       !
-       vn = fexpo(ii)*v_o(ii+1,jj)  +(1.0_DBL-fexpo(ii))  *v_o(ii,jj)
-       vs = fexpo(ii)*v_o(ii+1,jj-1)+(1.0_DBL-fexpo(ii))  *v_o(ii,jj-1)
-       !
-       ! gamma_n 
-       !
-       ! ** se utilizan las constantes gammai y gammad como auxiliares para
-       ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
-       ! corresponde **
-       gammad = ( gamma_momento(ii+1,jj+1) * gamma_momento(ii+1,jj) ) / &
-            &( gamma_momento(ii+1,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii+1,jj)*feypo(jj) )
-       gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
-            &( gamma_momento(ii,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii,jj)*feypo(jj) )
-       !
-       gamman = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
-       !
-       ! gamma_s 
-       !
-       ! ** se utilizan las constantes gammai y gammad como auxiliares para
-       ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
-       ! corresponde **
-       gammad = ( gamma_momento(ii+1,jj) * gamma_momento(ii+1,jj-1) ) / &
-            &(gamma_momento(ii+1,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii+1,jj-1)*feypo(jj-1))
-       gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
-            &(gamma_momento(ii,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii,jj-1)*feypo(jj-1))
-       !
-       gammas = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))         
-       !
-       ! gamma_i
-       !
-       gammai = gamma_momento(ii,jj)
-       !
-       ! gamma_d
-       !
-       gammai = gamma_momento(ii+1,jj)
-       !
-       ! distancias entre nodos contiguos
-       !
-       di = deltaxpo(ii)
-       dd = deltaxpo(ii+1)
-       ds = deltayvo(jj-1)
-       dn = deltayvo(jj)
-       !
-       ! Tama\~no de los vol\'umenes de control para la velocidad u
-       !
-       ! delta_x = deltaxuo(ii)
-       ! delta_y = deltayuo(jj)
-       !
-       ! Interpolaci\'on para la temperatura
-       !
-       temp_int = fexpo(ii)*temp_o(ii+1,jj) + (1.0_DBL-fexpo(ii))*temp_o(ii,jj)
-       !
-       ! temp_int = (1._DBL-di/(2._DBL*delta_x))*temp_o(i,j)+di/(2._DBL*delta_x)*temp_o(i+1,j)
-       ! !     (temp_o(i,j)+temp_o(i+1,j))/2._DBL
-       !
-       ! *************************
-       !
-       ! Coeficientes de la matriz
-       !
-       AI_o(ii,jj) =-(gammai*deltayuo(jj)/di*&
-            &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
-            &DMAX1(0.0_DBL,ui*deltayuo(jj)))
-       AD_o(ii,jj) =-(gammad*deltayuo(jj)/dd*&
-            &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
-            &DMAX1(0.0_DBL,-ud*deltayuo(jj)))
-       BS_o(jj,ii) =-(gammas*deltaxuo(ii)/ds*&
-            &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
-            &DMAX1(0.0_DBL, vs*deltaxuo(ii)))
-       BN_o(jj,ii) =-(gamman*deltaxuo(ii)/dn*&
-            &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
-            &DMAX1(0.0_DBL,-vn*deltaxuo(ii)))
-       AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)+&
-            &deltaxuo(ii)*deltayuo(jj)/dt_o) / rel_vo
-       Rx_o(ii,jj) =-BS_o(jj,ii)*u_o(ii,jj-1) - BN_o(jj,ii)*u_o(ii,jj+1)-&
-            &deltaxuo(ii)*deltayuo(jj)*Ri_o(ii,jj)*temp_int+&
-            &deltaxuo(ii)*deltayuo(jj)*u_anto(ii,jj)/dt_o+&
-            &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltayuo(jj)+&
-            &AC_o(ii,jj)*(1._DBL-rel_vo)*u_o(ii,jj)
-       au_o(ii,jj) = AC_o(ii,jj) * rel_vo
-       BC_o(jj,ii) = AC_o(ii,jj)
-       Ry_o(jj,ii) =-AI_o(ii,jj)*u_o(ii-1,jj)-AD_o(ii,jj)*u_o(ii+1,jj)-&
-            &deltaxuo(ii)*deltayuo(jj)*Ri_o(ii,jj)*temp_int+&
-            &deltaxuo(ii)*deltayuo(jj)*u_anto(ii,jj)/dt_o+&
-            &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltayuo(jj)+&
-            &BC_o(jj,ii)*(1._DBL-rel_vo)*u_o(ii,jj)
-    end do bucle_direccion_x
-    !***********************
-    !Condiciones de frontera
-    AC_o(mi,jj) = 1._DBL
-    AI_o(mi,jj) =-1._DBL !
-    Rx_o(mi,jj) = 0.0_DBL
-    au_o(mi,jj) = 1.e40_DBL !ACi(mi)
-!!$    end do bucle_direccion_y
+       !$acc loop vector
+       bucle_direccion_x: do ii = 2, mi-1
+          !
+          ! Interpolaciones necesarias
+          !
+          ! u
+          !
+          ud = fexuo(ii)  *u_o(ii+1,jj)+(1.0_DBL-fexuo(ii))  *u_o(ii,jj)
+          ui = fexuo(ii-1)*u_o(ii,jj)  +(1.0_DBL-fexuo(ii-1))*u_o(ii-1,jj)
+          ! ui = (u_o(ii-1,jj)+u_o(ii,jj))/2._DBL
+          ! ud = (u_o(ii,jj)+u_o(ii+1,jj))/2._DBL
+          !
+          ! v
+          !
+          vn = fexpo(ii)*v_o(ii+1,jj)  +(1.0_DBL-fexpo(ii))  *v_o(ii,jj)
+          vs = fexpo(ii)*v_o(ii+1,jj-1)+(1.0_DBL-fexpo(ii))  *v_o(ii,jj-1)
+          !
+          ! gamma_n 
+          !
+          ! ** se utilizan las constantes gammai y gammad como auxiliares para
+          ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
+          ! corresponde **
+          gammad = ( gamma_momento(ii+1,jj+1) * gamma_momento(ii+1,jj) ) / &
+               &( gamma_momento(ii+1,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii+1,jj)*feypo(jj) )
+          gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
+               &( gamma_momento(ii,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii,jj)*feypo(jj) )
+          !
+          gamman = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
+          !
+          ! gamma_s 
+          !
+          ! ** se utilizan las constantes gammai y gammad como auxiliares para
+          ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
+          ! corresponde **
+          gammad = ( gamma_momento(ii+1,jj) * gamma_momento(ii+1,jj-1) ) / &
+               &(gamma_momento(ii+1,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii+1,jj-1)*feypo(jj-1))
+          gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
+               &(gamma_momento(ii,jj)*(1._DBL-feypo(jj-1))+gamma_momento(ii,jj-1)*feypo(jj-1))
+          !
+          gammas = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))         
+          !
+          ! gamma_i
+          !
+          gammai = gamma_momento(ii,jj)
+          !
+          ! gamma_d
+          !
+          gammai = gamma_momento(ii+1,jj)
+          !
+          ! distancias entre nodos contiguos
+          !
+          di = deltaxpo(ii)
+          dd = deltaxpo(ii+1)
+          ds = deltayvo(jj-1)
+          dn = deltayvo(jj)
+          !
+          ! Tama\~no de los vol\'umenes de control para la velocidad u
+          !
+          ! delta_x = deltaxuo(ii)
+          ! delta_y = deltayuo(jj)
+          !
+          ! Interpolaci\'on para la temperatura
+          !
+          temp_int = fexpo(ii)*temp_o(ii+1,jj) + (1.0_DBL-fexpo(ii))*temp_o(ii,jj)
+          !
+          ! temp_int = (1._DBL-di/(2._DBL*delta_x))*temp_o(i,j)+di/(2._DBL*delta_x)*temp_o(i+1,j)
+          ! !     (temp_o(i,j)+temp_o(i+1,j))/2._DBL
+          !
+          ! *************************
+          !
+          ! Coeficientes de la matriz
+          !
+          AI_o(ii,jj) =-(gammai*deltayuo(jj)/di*&
+               &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
+               &DMAX1(0.0_DBL,ui*deltayuo(jj)))
+          AD_o(ii,jj) =-(gammad*deltayuo(jj)/dd*&
+               &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
+               &DMAX1(0.0_DBL,-ud*deltayuo(jj)))
+          BS_o(jj,ii) =-(gammas*deltaxuo(ii)/ds*&
+               &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
+               &DMAX1(0.0_DBL, vs*deltaxuo(ii)))
+          BN_o(jj,ii) =-(gamman*deltaxuo(ii)/dn*&
+               &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
+               &DMAX1(0.0_DBL,-vn*deltaxuo(ii)))
+          AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)+&
+               &deltaxuo(ii)*deltayuo(jj)/dt_o) / rel_vo
+          Rx_o(ii,jj) =-BS_o(jj,ii)*u_o(ii,jj-1) - BN_o(jj,ii)*u_o(ii,jj+1)-&
+               &deltaxuo(ii)*deltayuo(jj)*Ri_o(ii,jj)*temp_int+&
+               &deltaxuo(ii)*deltayuo(jj)*u_anto(ii,jj)/dt_o+&
+               &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltayuo(jj)+&
+               &AC_o(ii,jj)*(1._DBL-rel_vo)*u_o(ii,jj)
+          au_o(ii,jj) = AC_o(ii,jj) * rel_vo
+          BC_o(jj,ii) = AC_o(ii,jj)
+          Ry_o(jj,ii) =-AI_o(ii,jj)*u_o(ii-1,jj)-AD_o(ii,jj)*u_o(ii+1,jj)-&
+               &deltaxuo(ii)*deltayuo(jj)*Ri_o(ii,jj)*temp_int+&
+               &deltaxuo(ii)*deltayuo(jj)*u_anto(ii,jj)/dt_o+&
+               &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltayuo(jj)+&
+               &BC_o(jj,ii)*(1._DBL-rel_vo)*u_o(ii,jj)
+       end do bucle_direccion_x
+       !***********************
+       !Condiciones de frontera
+       AC_o(mi,jj) = 1._DBL
+       AI_o(mi,jj) =-1._DBL !
+       Rx_o(mi,jj) = 0.0_DBL
+       au_o(mi,jj) = 1.e40_DBL !ACi(mi)
+    end do bucle_direccion_y
     !
     ! Condiciones de frontera para la direcci\'on y
     !
-    ! bucle_direccionx: do ii = 2, mi-1
-    !    !***********************
-    !    !Condiciones de frontera
-    !    BC_o(1,ii)     = 1._DBL
-    !    BN_o(1,ii)     = 0.0_DBL
-    !    Ry_o(1,ii)     = 0.0_DBL
-    !    au_o(ii,1)     = 1.e40_DBL !ACj(1)
-    !    BC_o(nj+1,ii)  = 1._DBL
-    !    BS_o(nj+1,ii)  = 0.0_DBL
-    !    Ry_o(nj+1,ii)  = 0.0_DBL
-    !    au_o(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
-    ! end do bucle_direccionx
-  end subroutine ensambla_velu
+    !$acc loop vector
+    bucle_direccionx: do ii = 2, mi-1
+       !***********************
+       !Condiciones de frontera
+       BC_o(1,ii)     = 1._DBL
+       BN_o(1,ii)     = 0.0_DBL
+       Ry_o(1,ii)     = 0.0_DBL
+       au_o(ii,1)     = 1.e40_DBL !ACj(1)
+       BC_o(nj+1,ii)  = 1._DBL
+       BS_o(nj+1,ii)  = 0.0_DBL
+       Ry_o(nj+1,ii)  = 0.0_DBL
+       au_o(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
+    end do bucle_direccionx
+ end subroutine ensambla_velu
 
   
   !*******************************************************************

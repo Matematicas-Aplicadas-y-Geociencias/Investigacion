@@ -5,4 +5,8 @@
 *.sqlite
 OpenAcc/calor2DAcc/fort.101
 *.mod
+# Ignora estos archivos de generados por Clang
+clang.101
+test
+pruebaformatocsr
 

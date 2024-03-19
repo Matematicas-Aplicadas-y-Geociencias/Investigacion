@@ -243,20 +243,29 @@ PROGRAM SIMPLE2D
            ! residuo del algoritmo
            residuo = 0.0_DBL
            !
+           !-------------------------------------------
+           !-------------------------------------------
+           !
+           ! Soluci\'on de la ecuaci\'on de momento
+           !
+           !-------------------------------------------
+           !-------------------------------------------           
            ecuacion_momento: do
               !
               ! error de la ecuacion de momento
               error = 0.0_DBL
               !
-              !$acc parallel loop gang
+              !$acc parallel loop gang collapse(2)
               inicializacion_fu: do jj=2, nj
-                 !
-                 !$acc loop vector
                  do ii = 2, mi
                     fu(ii,jj) = u(ii,jj)
                     fv(ii,jj) = v(ii,jj)
                  end do
               end do inicializacion_fu
+              !
+              !------------------------------------------
+              !
+              ! Se ensambla la ecuaci\'on de momento en u
               !
               !$acc parallel
               call ensambla_velu(deltaxu,deltayu,deltaxp,&
@@ -267,14 +276,16 @@ PROGRAM SIMPLE2D
                    &)
               !$acc end parallel
               !
+              !-------------------------------------
+              !
               ! Soluci\'on del sistema de ecuaciones
               !
               !$acc parallel loop gang async(stream1)
-              !
-              ! $acc loop gang
-              solucion_momento_ux: do jj = 2, nj
+               solucion_momento_ux: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
+                 u(1, jj) = Rx(1,jj)
+                 u(mi,jj) = Rx(mi,jj)
                  
               end do solucion_momento_ux
               !
@@ -282,39 +293,27 @@ PROGRAM SIMPLE2D
               solucion_momento_uy: do ii = 2, mi-1
                  
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+                 u(ii,1)    = Ry(1,ii)
+                 u(ii,nj+1) = Ry(nj+1,ii)
 
               end do solucion_momento_uy
               !
-              ! $acc end parallel
-              !
               !$acc wait
+              !
+              !----------------------------------
               !
               ! Actualizaci\'on de la velocidad u
               !
-              !$acc parallel
-              !
-              !$acc loop vector
-              do jj= 2, nj
-                 u(1, jj) = Rx(1,jj)
-                 u(mi,jj) = Rx(mi,jj)
-              end do
-              !
-              !$acc loop vector
-              do ii = 2, mi-1
-                 u(ii,1)    = Ry(1,ii)
-                 u(ii,nj+1) = Ry(nj+1,ii)
-              end do
-              !
-              !$acc loop gang
+              !$acc parallel loop gang collapse(2)
               do jj = 2, nj
-                 !
-                 !$acc loop vector
                  do ii = 2, mi-1
                     u(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc end parallel 
+              !---------------------------
+              !
+              ! Se ensambla la velocidad v
               !
               !$acc parallel
               call ensambla_velv(deltaxv,deltayv,deltaxu,&
@@ -325,12 +324,16 @@ PROGRAM SIMPLE2D
                    &)
               !$acc end parallel
               !
-              ! Soluci\'on de las ecs. de momento
+              !------------------------------------
+              !
+              ! Soluci\'on de las ecs. de momento v
               !
               !$acc parallel loop gang async(stream1)
               solucion_momento_vx: do jj = 2, nj-1
 
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
+                 v(1,jj)    = Rx(1,jj)
+                 v(mi+1,jj) = Rx(mi+1,jj)
 
               end do solucion_momento_vx
               !
@@ -338,50 +341,34 @@ PROGRAM SIMPLE2D
               solucion_momento_vy: do ii = 2, mi
 
                  call tridiagonal(BS(1:nj,ii),BC(1:nj,ii),BN(1:nj,ii),Ry(1:nj,ii),nj)
+                 v(ii,1)    = Ry(1,ii)
+                 v(ii,nj)   = Ry(nj,ii)
 
               end do solucion_momento_vy
+              !
               !$acc wait
+              !----------------------------------
               !
-              ! actualizaci\'on de la velocidad v
+              ! Actualizaci\'on de la velocidad v
               !
-              !$acc parallel
-              !
-              !$acc loop vector
-              do jj= 2, nj-1
-                 v(1,jj)    = Rx(1,jj)
-                 v(mi+1,jj) = Rx(mi+1,jj)
-              end do
-              !
-              !$acc loop vector
-              do ii = 2, mi
-                 v(ii,1)    = Ry(1,ii)
-                 v(ii,nj) = Ry(nj,ii)
-              end do
-              !
-              !$acc loop gang
+              !$acc parallel loop gang collapse(2)
               do jj = 2, nj-1
-                 !
-                 !$acc loop vector
                  do ii = 1, mi
                     v(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc end parallel             
-              !
-              !$acc parallel loop reduction(max:error) async(stream1)
+              !$acc parallel loop gang reduction(max:error)
               calculo_diferencias_dv: do jj=2, nj
                  !
-                 !$acc loop
-                 do ii = 2, mi
+                 !$acc loop vector
+                  do ii = 2, mi
                     error = max(error, dabs(u(ii,jj)-fu(ii,jj)))
                     error = max(error, dabs(v(ii,jj)-fv(ii,jj)))
-                    ! du(ii,jj) = u(ii,jj)-fu(ii,jj)
-                    ! dv(ii,jj) = v(ii,jj)-fv(ii,jj)
-                 end do
+                  end do
               end do calculo_diferencias_dv
               !
-              !Criterio de convergencia de la velocidad
+              ! Criterio de convergencia de la velocidad
               !
               if ( error < conv_u ) then
                  iter_ecuaci = 0
@@ -401,10 +388,11 @@ PROGRAM SIMPLE2D
            !
            ! Se calcula la correcci'on de la presi'on
            !
-           !$acc parallel loop gang
+           !-----------------------------------------
+           !-----------------------------------------
+           !
+           !$acc parallel loop gang collapse(2)
            inicializa_corrector_presion: do jj = 1, nj+1
-              !
-              !$acc loop vector
               do ii = 1, mi+1
                  corr_pres(ii,jj) = 0.0_DBL
                  fcorr_pres(ii,jj)= 0.0_DBL
@@ -416,17 +404,12 @@ PROGRAM SIMPLE2D
               error = 0.0_DBL
               maxbo = 0.0_DBL
               !
-              !$acc parallel loop gang
+              !$acc parallel loop gang collapse(2)
               inicializa_fcorr_press: do jj=2, nj
-                 !
-                 !$acc loop vector
                  do ii = 2, mi
                     fcorr_pres(ii,jj) = corr_pres(ii,jj)
                  end do
               end do inicializa_fcorr_press
-              !
-              ! $acc parallel loop gang
-              ! barrido_direccion_yp: do jj=1, nj
               !
               !$acc parallel
               call ensambla_corr_pres(deltaxp,deltayp,&
@@ -437,7 +420,7 @@ PROGRAM SIMPLE2D
                    &)
               !$acc end parallel
               !
-              !-------------------------------------------------------
+              !----------------------------------------------
               !
               ! Soluci\'on de la correcci\'on de la presi\'on
               !
@@ -445,53 +428,35 @@ PROGRAM SIMPLE2D
               solucion_presion_x: do jj = 2, nj
 
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
-  
+                 corr_pres(1,jj)    = Rx(1,jj)
+                 corr_pres(mi+1,jj) = Rx(mi+1,jj)
+                 
               end do solucion_presion_x
               !
               !$acc parallel loop gang async(stream2)
               solucion_presion_y: do ii = 2, mi
 
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+                 corr_pres(ii,1)    = Ry(1,ii)
+                 corr_pres(ii,nj+1) = Ry(nj+1,ii)
   
               end do solucion_presion_y
               !$acc wait
               !
               ! Actualizaci\'on del corrector de la presi\'on
               !
-              !$acc parallel
-              !
-              !$acc loop vector
-              do jj= 2, nj
-                 corr_pres(1,jj)    = Rx(1,jj)
-                 corr_pres(mi+1,jj) = Rx(mi+1,jj)
-              end do
-              !
-              !$acc loop vector
-              do ii = 2, mi
-                 corr_pres(ii,1)    = Ry(1,ii)
-                 corr_pres(ii,nj+1) = Ry(nj+1,ii)
-              end do
-              !
-              !$acc loop gang
+              !$acc parallel loop gang collapse(2)
               do jj = 2, nj
-                 !
-                 !$acc loop vector
                  do ii = 1, mi
                     corr_pres(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc end parallel             
-              !              
-              !
               ! C\'alculo de diferencias y criterio de convergencia
               !
               !$acc parallel loop gang reduction(max:error,maxbo)
               calculo_dif_corr_pres: do jj=1, nj+1
-                 !
-                 !$acc loop vector
                  do ii=1, mi+1
-                    !dcorr_pres(ii,jj) = (corr_pres(ii,jj)-fcorr_pres(ii,jj))
                     error = max(error,dabs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
                     maxbo = max(maxbo,dabs(b_o(ii,jj)))
                  end do
@@ -517,11 +482,8 @@ PROGRAM SIMPLE2D
            !
            ! Se corrige la presion
            !
-           !$acc parallel
-           !
-           !$acc loop gang
+           !$acc parallel loop gang collapse(2)
            do jj = 2, nj
-              !$acc loop vector
               do ii = 2, mi
                  pres(ii,jj) = pres(ii,jj) + corr_pres(ii,jj)
               end do
@@ -531,40 +493,45 @@ PROGRAM SIMPLE2D
            !
            ! Se corrigen las velocidades
            !
-           !$acc loop gang
+           !$acc parallel loop gang collapse(2)
            do jj = 2, nj-1
-              !
-              !$acc loop vector
               do ii = 2, mi-1
                  u(ii,jj) = u(ii,jj)+deltayu(jj)*(corr_pres(ii,jj)-corr_pres(ii+1,jj))/au(ii,jj)
                  v(ii,jj) = v(ii,jj)+deltaxv(ii)*(corr_pres(ii,jj)-corr_pres(ii,jj+1))/av(ii,jj)
               end do
-              v(mi,jj) = v(mi,jj)+deltaxv(mi)*(corr_pres(mi,jj)-corr_pres(mi,jj+1))/av(mi,jj)
            end do
            !
-           !$acc loop vector
+           !$acc parallel loop vector
            do ii = 2, mi-1
               u(ii,nj) = u(ii,nj)+deltayu(nj)*(corr_pres(ii,nj)-corr_pres(ii+1,nj))/au(ii,nj)
            end do
            !
-           !$acc end parallel
+           !$acc parallel loop vector
+           do jj = 2, nj-1
+              v(mi,jj) = v(mi,jj)+deltaxv(mi)*(corr_pres(mi,jj)-corr_pres(mi,jj+1))/av(mi,jj)
+           end do
            !
-           !--------------------------------------
+           !--------------------------------------------------
+           !--------------------------------------------------
            !
            ! Se resuelve la ecuaci\'on de balance de energ\'ia
            !
+           !--------------------------------------------------
+           !--------------------------------------------------
            solucion_energia: do
               !
               error = 0.0_DBL
               !
-              !$acc parallel loop gang
+              !$acc parallel loop gang collapse(2)
               inicializacion_ftemp: do jj=2, nj
-                 !
-                 !$acc loop vector
                  do ii = 2, mi
                     ftemp(ii,jj) = temp(ii,jj)
                  end do
               end do inicializacion_ftemp
+              !
+              !------------------------------------------
+              !
+              ! Se ensambla la ecuaci\'on de la energ\'ia
               !
               !$acc parallel
               call ensambla_energia(deltaxp,deltayp,&
@@ -575,61 +542,44 @@ PROGRAM SIMPLE2D
                    &AI,AC,AD,Rx,BS,BC,BN,Ry)
               !$acc end parallel
               !
+              !---------------------------------------------
+              !
+              ! Soluci\'on de la ecuaci\'on de la energ\'ia
               !
               !$acc parallel loop gang async(stream1)
               solucion_energia_x: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
-
+                 temp(1,jj)    = Rx(1,jj)
+                 temp(mi+1,jj) = Rx(mi+1,jj)
               end do solucion_energia_x
               !
               !$acc parallel loop gang async(stream2)
               solucion_energia_y: do ii = 2, mi
 
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
-
+                 temp(ii,1)    = Ry(1,ii)
+                 temp(ii,nj+1) = Ry(nj+1,ii)
               end do solucion_energia_y
               !$acc wait
               !
-              !$acc parallel
-              !
-              !$acc loop vector
-              do jj= 2, nj
-                 temp(1,jj)    = Rx(1,jj)
-                 temp(mi+1,jj) = Rx(mi+1,jj)
-              end do
-              !
-              !$acc loop vector
-              do ii = 2, mi
-                 temp(ii,1)    = Ry(1,ii)
-                 temp(ii,nj+1) = Ry(nj+1,ii)
-              end do
-              !
-              !$acc loop gang
+              !$acc parallel loop gang collapse(2)
               do jj = 2, nj
-                 !
-                 !$acc loop vector
                  do ii = 1, mi
                     temp(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc end parallel             
-              !
-              !
-              !$acc parallel loop reduction(max:error)
+              !$acc parallel loop reduction(max:error) ! collapse(2)
               calculo_diferencias_dtemp: do jj = 2, nj
-                 !
-                 !$acc loop
                  do ii = 2, mi
                     error = max(error, dabs(temp(ii,jj)-ftemp(ii,jj)))
-                    ! dtemp(ii,jj) = temp(ii,jj)-ftemp(ii,jj)
                  end do
               end do calculo_diferencias_dtemp
               !
-              ! ------------------------------------------
+              !------------------------------------------
               !
-              ! Criterio de convergencia temperatura
+              ! Criterio de convergencia de la energ\'ia
               !
               if( error < conv_t )then
                  iter_ecuaci = 0
@@ -647,11 +597,13 @@ PROGRAM SIMPLE2D
            end do solucion_energia
            !
            !--------------------------------------------
+           !--------------------------------------------
            !
            ! Criterio de convergencia del paso de tiempo
            !
-           ! call residuou(res_fluido_u,xu,yp,feyp,d_xu,d2_xu,d_yv,u,&
-           !      u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
+           !--------------------------------------------
+           !--------------------------------------------
+           !
            !$acc parallel
            call residuo_u(deltaxu,deltayu,deltaxp,&
                 &deltayv,fexp,feyp,fexu,gamma_momen,&
@@ -661,14 +613,11 @@ PROGRAM SIMPLE2D
                 &)
            !$acc end parallel
            !
-           !$acc parallel loop reduction(max:error)
+           !$acc parallel loop reduction(max:error) ! collapse(2)
            calculo_maximo_residuou: do jj=2, nj
-              !
-              !$acc loop
               do ii = 2, mi-1
                  residuo = max(residuo, dabs(Resu(ii,jj)))
               end do
-              !
            end do calculo_maximo_residuou
            !
            if ( residuo < conv_resi .and. maxbo<conv_paso)then
@@ -686,16 +635,17 @@ PROGRAM SIMPLE2D
            !
         end do ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
         !
+        !-------------------------------------
+        !
         ! Escritura de mensajes y postprocesos
         !
         itera = itera + 1
-        if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,maxval(dabs(b_o)),&
-             &maxval(dabs(Resu))
+        if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,maxval(dabs(b_o)),maxbo
 
         if( mod(itera,100)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
-           ! call nusselt(xp,yp,d_xu,d_yv,temp,nusselt0,nusselt1,placa_min,placa_max)
+           !
            !$acc parallel
            call nusselt_promedio_y(&
                 &xp,yp,deltaxp,deltayp,&
@@ -703,6 +653,7 @@ PROGRAM SIMPLE2D
                 &placa_min,placa_max&
                 &)
            !$acc end parallel
+           !
            temp_med = (temp((placa_min+placa_max)/2,nj/2+1)+&
                 &temp((placa_min+placa_max)/2+1,nj/2+1))/2._DBL
            OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')
@@ -713,28 +664,22 @@ PROGRAM SIMPLE2D
         !*********************************
         tiempo   = tiempo_inicial+itera*dt
         !
-        !$acc parallel loop gang
+        !$acc parallel loop gang collapse(2)
         do jj=1, nj+1
-           !
-           !$acc loop vector
            do ii=1, mi+1
               temp_ant(ii,jj) = temp(ii,jj)
            end do
         end do
         !
-        !$acc parallel loop gang
+        !$acc parallel loop gang collapse(2)
         do jj=1, nj+1
-           !
-           !$acc loop vector
            do ii=1, mi
               u_ant(ii,jj) = u(ii,jj)
            end do
         end do
         !
-        !$acc parallel loop gang
+        !$acc parallel loop gang collapse(2)
         do jj=1, nj
-           !
-           !$acc loop vector
            do ii=1, mi+1
               v_ant(ii,jj) = v(ii,jj)
            end do

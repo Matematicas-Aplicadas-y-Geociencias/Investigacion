@@ -1,6 +1,8 @@
 #ifndef HERRAMIENTAS2_H
 #define HERRAMIENTAS2_H
 
+
+
 // Error handler
 void error_handler(const char error_string[])
 {
@@ -110,6 +112,128 @@ void inicializar_vector(double *vector, const int tamanio_vector, const double v
     {
         vector[i] = valor_inicial;
     }
+}
+
+int obtener_total_elementos_no_cero()
+{
+    int elementos_no_cero = 12 + (mi + nj - 8) * 8 + (mi - 4) * (nj - 4) * 5;
+    return elementos_no_cero;
+}
+
+int obtener_indice_columna(int ii, int jj)
+{
+    int indice_columna;
+    indice_columna = (jj - 1) * (mi - 2) + ii - (mi - 1) - 1;
+    return indice_columna;
+}
+
+void obtener_formato_csr(
+    double **BI,
+    double **AI,
+    double **AC,
+    double **AD,
+    double **BD,
+    int elementos_no_cero,
+    double *csrVal,
+    int *csrIndCol,
+    int *csrPtr)
+{
+    int kk = -1;
+    int tt = 0;
+    int counter = -1;
+    csrPtr[tt] = 0;
+
+    for (int jj = 1; jj < nj - 1; jj++)
+    {
+        for (int ii = 1; ii < mi - 1; ii++)
+        {
+            if (jj >= 2 && jj < nj - 1)
+            {
+                kk++;
+                csrVal[kk] = BI[jj - 1][ii];
+                csrIndCol[kk] = obtener_indice_columna(ii + 1, jj);
+                counter++;
+            }
+
+            if (ii >= 2 && ii < mi - 1)
+            {
+                kk++;
+                csrVal[kk] = AI[ii - 1][jj];
+                csrIndCol[kk] = obtener_indice_columna(ii, jj + 1);
+                counter++;
+            }
+
+            kk++;
+
+            if (kk >= elementos_no_cero)
+                break;
+            
+            csrVal[kk] = AC[ii][jj];
+            csrIndCol[kk] = obtener_indice_columna(ii + 1, jj + 1);
+            counter++;
+
+            if (ii >= 1 && ii < mi - 2)
+            {
+                kk++;
+                csrVal[kk] = AD[ii + 1][jj];
+                csrIndCol[kk] = obtener_indice_columna(ii + 2, jj + 1);
+                counter++;
+            }
+
+            if (jj >= 1 && jj < nj - 2)
+            {
+                kk++;
+                csrVal[kk] = BD[jj + 1][ii];
+                csrIndCol[kk] = obtener_indice_columna(ii + 1, jj + 2);
+                counter++;
+            }
+
+            tt++;
+            csrPtr[tt] = counter + 1;
+        }
+
+    }
+    
+}
+
+// b: vector de terminos independientes b
+void obtener_vector_terminos_independientes(
+    double **BI,
+    double **AI,
+    double **AD,
+    double **BD,
+    double *b)
+{
+    int kk = 0;
+    for (int jj = 1; jj < nj-1; jj++)
+    {
+        for (int ii = 1; ii < mi-1; ii++)
+        {
+            if (jj == 1)
+            {
+                b[kk] += BI[jj-1][ii];
+            }
+
+            if (ii == 1)
+            {
+                b[kk] += AI[ii-1][jj];
+            }
+
+            if (ii == mi-2)
+            {
+                b[kk] += AD[ii+1][jj];
+            }
+
+            if (jj == nj-2)
+            {
+                b[kk] += BD[jj+1][ii];
+            }
+            
+            kk++;
+        }
+        
+    }
+    
 }
 
 // Print to console a Matrix

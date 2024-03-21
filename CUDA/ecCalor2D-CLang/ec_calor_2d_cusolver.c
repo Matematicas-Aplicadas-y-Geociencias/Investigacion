@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "herramientas.h"
-#include "constantes.h"
+#include "constantes2.h"
+#include "herramientas2.h"
 
 int main(int argc, char const *argv[])
 {
@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
         /*
         * Bucle de pseudotiempo
         */
-        for (kk = 0; kk < 30; kk++)
+        for (kk = 0; kk < 1; kk++)
         {
             /*
             * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
@@ -125,16 +125,16 @@ int main(int argc, char const *argv[])
             /*
             * Llamamos al resolvedor
             */
-            #pragma acc parallel loop
-            for (jj = 1; jj < nj-1; jj++)
-            {
-                tri(AI, AC, AD, resultx, mi, jj);
-                #pragma acc loop
-                for (ii = 0; ii < mi; ii++)
-                {
-                    temper[ii][jj] = resultx[ii][jj];
-                }
-            }
+            // #pragma acc parallel loop
+            // for (jj = 1; jj < nj-1; jj++)
+            // {
+            //     tri(AI, AC, AD, resultx, mi, jj);
+            //     #pragma acc loop
+            //     for (ii = 0; ii < mi; ii++)
+            //     {
+            //         temper[ii][jj] = resultx[ii][jj];
+            //     }
+            // }
             /*
             * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
             */
@@ -149,56 +149,82 @@ int main(int argc, char const *argv[])
             /*
             * Llamamos al resolvedor
             */
-            #pragma acc parallel loop
-            for (ii = 1; ii < mi-1; ii++)
-            {
-                tri(BI, BC, BD, resulty, nj, ii);
-                #pragma acc loop
-                for (jj = 0; jj < nj; jj++)
-                {
-                    temper[ii][jj] = resulty[jj][ii];
-                }
-            }
-            /*
-            * Se actualiza la temperatura de la iteracion anterior
-            */
-            #pragma acc parallel loop
-            for (ii = 0; ii < mi; ii++)
-            {
-                #pragma acc loop
-                for (jj = 0; jj < nj; jj++)
-                {
-                    temp_ant[ii][jj] = temper[ii][jj];
-                }
-            }
+            // #pragma acc parallel loop
+            // for (ii = 1; ii < mi-1; ii++)
+            // {
+            //     tri(BI, BC, BD, resulty, nj, ii);
+            //     #pragma acc loop
+            //     for (jj = 0; jj < nj; jj++)
+            //     {
+            //         temper[ii][jj] = resulty[jj][ii];
+            //     }
+            // }
+            // /*
+            // * Se actualiza la temperatura de la iteracion anterior
+            // */
+            // #pragma acc parallel loop
+            // for (ii = 0; ii < mi; ii++)
+            // {
+            //     #pragma acc loop
+            //     for (jj = 0; jj < nj; jj++)
+            //     {
+            //         temp_ant[ii][jj] = temper[ii][jj];
+            //     }
+            // }
             
         }
     /*
     * Cerramos la region de datos paralela
     */
     }
+    // ****************************************************************************
+    double *csr_valores;
+    int *csr_col_ind;
+    int *csr_ptr;
+    double *resultados;
+
+    int numero_elementos_no_cero = obtener_total_elementos_no_cero();
+    int tamanio_matriz_global = (mi-2) * (nj-2);
+    int tamanio_csr_ptr = tamanio_matriz_global + 1;
+
+    csr_valores = allocate_memory_vector(numero_elementos_no_cero);
+    csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
+    csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
+    resultados = allocate_memory_vector(tamanio_matriz_global);
+
+    obtener_vector_terminos_independientes(BI,AI,AD,BD,resultados);
+    obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
+    // print_vector(resultados, tamanio_matriz_global);
+    print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
+    
+    // ****************************************************************************
     /*
     * Escritura de resultados
     */
-   // Abrir el archivo para escribir
-    FILE *file = fopen("clang.101", "w");
+    // Abrir el archivo para escribir
+    // FILE *file = fopen("clang.101", "w");
 
-    if (file != NULL) {
-        // Utilizar un bucle para imprimir y guardar los datos
-        for (ii = 0; ii < mi; ii++) {
-            for (jj = 0; jj < nj; jj++)
-            {
-                fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
-            }
-            fprintf(file, "\n");
-        }
-        // Cerrar el archivo después de escribir
-        fclose(file);
-    } else {
-        printf("Error al abrir el archivo.\n");
-    }
+    // if (file != NULL) {
+    //     // Utilizar un bucle para imprimir y guardar los datos
+    //     for (ii = 0; ii < mi; ii++) {
+    //         for (jj = 0; jj < nj; jj++)
+    //         {
+    //             fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
+    //         }
+    //         fprintf(file, "\n");
+    //     }
+    //     // Cerrar el archivo después de escribir
+    //     fclose(file);
+    // } else {
+    //     printf("Error al abrir el archivo.\n");
+    // }
+    
 
     // Liberar memoria de los punteros
+    free(csr_ptr);
+    free(csr_col_ind);
+    free(csr_valores);
+
     free_matrix(BC,nj,mi);
     free_matrix(BD,nj,mi);
     free_matrix(BI,nj,mi);

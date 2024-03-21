@@ -17,25 +17,21 @@ int main(int argc, char const *argv[])
 
     // Arreglos para incognitas, termino fuente y posicion
     double **temper, **temp_ant;
-    double *sourcex, *xx;
-    double *sourcey, *yy;
-    double **resultx, **tempx;
-    double **resulty, **tempy;
+    double *xx;
+    double *yy;
+    double **resultx;
+    double **resulty;
 
     temper = allocate_memory_matrix(mi, nj);
     temp_ant = allocate_memory_matrix(mi, nj);
 
-    sourcex = allocate_memory_vector(mi);
     xx = allocate_memory_vector(mi);
 
-    sourcey = allocate_memory_vector(nj);
     yy = allocate_memory_vector(nj);
 
     resultx = allocate_memory_matrix(mi, nj);
-    tempx = allocate_memory_matrix(mi, nj);
 
     resulty = allocate_memory_matrix(nj, mi);
-    tempy = allocate_memory_matrix(nj, mi);
 
     //Matriz a invertir
     double **AI, **AD, **AC;
@@ -95,16 +91,14 @@ int main(int argc, char const *argv[])
 
     inicializar_matriz(resultx, mi, nj, 0.0);
     inicializar_matriz(resulty, nj, mi, 0.0);
-    inicializar_matriz(tempx, mi, nj, 0.0);
-    inicializar_matriz(tempy, nj, mi, 0.0);
     /*
     * Abrimos la region de datos paralela
     */
     #pragma acc data copy(temper[:mi][:nj]) \
     copyin(deltax,deltay,temp_ant[:mi][:nj],cond_ter,temp_ini,\
     temp_fin,flux_aba,flux_arr,alpha,resultx[:mi][:nj],resulty[:nj][:mi]) \
-    create(AI[:mi][:nj],AC[:mi][:nj],AD[:mi][:nj],tempx[:mi][:nj],\
-    BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi],tempy[:nj][:mi])
+    create(AI[:mi][:nj],AC[:mi][:nj],AD[:mi][:nj],\
+    BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi])
     {
         /*
         * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
@@ -190,17 +184,13 @@ int main(int argc, char const *argv[])
     free_matrix(AD,mi,nj);
     free_matrix(AI,mi,nj);
 
-    free_matrix(tempy, nj, mi);
     free_matrix(resulty, nj, mi);
 
-    free_matrix(tempx, mi, nj);
     free_matrix(resultx, mi, nj);
 
     free(yy);
-    free(sourcey);
 
     free(xx);
-    free(sourcex);
 
     free_matrix(temp_ant, mi, nj);
     free_matrix(temper, mi, nj);

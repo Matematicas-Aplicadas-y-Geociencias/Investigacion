@@ -107,72 +107,29 @@ int main(int argc, char const *argv[])
     BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi],tempy[:nj][:mi])
     {
         /*
-        * Bucle de pseudotiempo
+        * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
         */
-        for (kk = 0; kk < 1; kk++)
+        #pragma acc parallel loop
+        for (jj = 1; jj < nj-1; jj++)
         {
             /*
-            * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
+            * Ensamblando matrices en direccion x
             */
-            #pragma acc parallel loop
-            for (jj = 1; jj < nj-1; jj++)
-            {
-                /*
-                * Ensamblando matrices en direccion x
-                */
-                ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj);
-            }
-            /*
-            * Llamamos al resolvedor
-            */
-            // #pragma acc parallel loop
-            // for (jj = 1; jj < nj-1; jj++)
-            // {
-            //     tri(AI, AC, AD, resultx, mi, jj);
-            //     #pragma acc loop
-            //     for (ii = 0; ii < mi; ii++)
-            //     {
-            //         temper[ii][jj] = resultx[ii][jj];
-            //     }
-            // }
-            /*
-            * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
-            */
-            #pragma acc parallel loop
-            for (ii = 1; ii < mi-1; ii++)
-            {
-                /*
-                * Ensamblamos matrices tridiagonales en direccion y
-                */
-                ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii);
-            }
-            /*
-            * Llamamos al resolvedor
-            */
-            // #pragma acc parallel loop
-            // for (ii = 1; ii < mi-1; ii++)
-            // {
-            //     tri(BI, BC, BD, resulty, nj, ii);
-            //     #pragma acc loop
-            //     for (jj = 0; jj < nj; jj++)
-            //     {
-            //         temper[ii][jj] = resulty[jj][ii];
-            //     }
-            // }
-            // /*
-            // * Se actualiza la temperatura de la iteracion anterior
-            // */
-            // #pragma acc parallel loop
-            // for (ii = 0; ii < mi; ii++)
-            // {
-            //     #pragma acc loop
-            //     for (jj = 0; jj < nj; jj++)
-            //     {
-            //         temp_ant[ii][jj] = temper[ii][jj];
-            //     }
-            // }
-            
+            ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj);
         }
+
+        /*
+        * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
+        */
+        #pragma acc parallel loop
+        for (ii = 1; ii < mi-1; ii++)
+        {
+            /*
+            * Ensamblamos matrices tridiagonales en direccion y
+            */
+            ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii);
+        }
+            
     /*
     * Cerramos la region de datos paralela
     */
@@ -194,7 +151,7 @@ int main(int argc, char const *argv[])
 
     obtener_vector_terminos_independientes(BI,AI,AD,BD,resultados);
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
-    // print_vector(resultados, tamanio_matriz_global);
+    print_vector(resultados, tamanio_matriz_global);
     print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
     
     // ****************************************************************************

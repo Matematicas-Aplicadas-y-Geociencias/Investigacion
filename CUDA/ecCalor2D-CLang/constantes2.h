@@ -11,10 +11,8 @@ void ensambla_tdmax(
     double **AI,
     double **AC,
     double **AD,
-    double **resultx,
     const double deltax,
     const double deltay,
-    double **temp_ant,
     const double cond_ter,
     const double temp_ini,
     const double temp_fin,
@@ -26,12 +24,8 @@ void ensambla_tdmax(
     * Se definen las condiciones de frontera
     */
     AI[0][jj] = 2.0;
-    // AC[0][jj] = 1.0;
-    AD[0][jj] = 0.0;
-    resultx[0][jj] = temp_ini;
-    AI[mi - 1][jj] = 0.0;
-    // AC[mi - 1][jj] = 1.0;
-    resultx[mi - 1][jj] = temp_fin;
+    // AD[0][jj] = 0.0;
+    // AI[mi - 1][jj] = 0.0;
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */
@@ -41,7 +35,6 @@ void ensambla_tdmax(
         AI[iin][jj] = -1.0 * cond_ter / (deltax * deltax);
         AC[iin][jj] = 2.0 * cond_ter * (1.0 / (deltax * deltax) + 1.0 / (deltay * deltay));
         AD[iin][jj] = -1.0 * cond_ter / (deltax * deltax);
-        resultx[iin][jj] = cond_ter / (deltay * deltay) * temp_ant[iin][jj + 1] + cond_ter / (deltay * deltay) * temp_ant[iin][jj - 1];
     }
 }
 
@@ -50,10 +43,8 @@ void ensambla_tdmay(
     double **BI,
     double **BC,
     double **BD,
-    double **resulty,
     const double deltax,
     const double deltay,
-    double **temper,
     const double cond_ter,
     const double flux_aba,
     const double flux_arr,
@@ -65,12 +56,7 @@ void ensambla_tdmay(
      * Se definen las condiciones de frontera
      */
     BI[0][jj] = 1.0;
-    // BC[0][jj] = 1.0;             // -1.0 / deltay;
-    BD[0][jj] = 0.0;             // 1.0 / deltay;
-    resulty[0][jj] = 308.0;      // flux_aba;
-    BI[nj - 1][jj] = 0.0;        // -1.0 / deltay;
     BD[nj - 1][jj] = 3.0;        // 1.0 / deltay;
-    resulty[nj - 1][jj] = 308.0; // flux_arr
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */
@@ -78,9 +64,7 @@ void ensambla_tdmay(
     for (jjn = 1; jjn < nj - 1; jjn++)
     {
         BI[jjn][jj] = -1.0 * cond_ter / (deltay * deltay);
-        BC[jjn][jj] = 2.0 * cond_ter * (1.0 / (deltay * deltay) + 1.0 / (deltax * deltax));
         BD[jjn][jj] = -1.0 * cond_ter / (deltay * deltay);
-        resulty[jjn][jj] = cond_ter / (deltax * deltax) * temper[jj + 1][jjn] + cond_ter / (deltax * deltax) * temper[jj - 1][jjn];
     }
 }
 

@@ -109,7 +109,7 @@ int main(int argc, char const *argv[])
             /*
             * Ensamblando matrices en direccion x
             */
-            ensambla_tdmax(AI,AC,AD,resultx,deltax,deltay,temp_ant,cond_ter,temp_ini,temp_fin,jj);
+            ensambla_tdmax(AI,AC,AD,deltax,deltay,cond_ter,temp_ini,temp_fin,jj);
         }
 
         /*
@@ -121,7 +121,7 @@ int main(int argc, char const *argv[])
             /*
             * Ensamblamos matrices tridiagonales en direccion y
             */
-            ensambla_tdmay(BI,BC,BD,resulty,deltax,deltay,temper,cond_ter,flux_aba,flux_arr,ii);
+            ensambla_tdmay(BI,BC,BD,deltax,deltay,cond_ter,flux_aba,flux_arr,ii);
         }
             
     /*

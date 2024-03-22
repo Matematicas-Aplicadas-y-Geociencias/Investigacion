@@ -25,7 +25,7 @@ void ensambla_tdmax(
     */
     AI[0][jj] = 2.0;
     // AD[0][jj] = 0.0;
-    // AI[mi - 1][jj] = 0.0;
+    AD[mi - 1][jj] = 0.0;
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */

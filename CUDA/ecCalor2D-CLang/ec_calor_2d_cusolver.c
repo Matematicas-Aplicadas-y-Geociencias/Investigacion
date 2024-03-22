@@ -19,19 +19,12 @@ int main(int argc, char const *argv[])
     double **temper, **temp_ant;
     double *xx;
     double *yy;
-    double **resultx;
-    double **resulty;
 
     temper = allocate_memory_matrix(mi, nj);
     temp_ant = allocate_memory_matrix(mi, nj);
 
     xx = allocate_memory_vector(mi);
-
     yy = allocate_memory_vector(nj);
-
-    resultx = allocate_memory_matrix(mi, nj);
-
-    resulty = allocate_memory_matrix(nj, mi);
 
     //Matriz a invertir
     double **AI, **AD, **AC;
@@ -44,6 +37,25 @@ int main(int argc, char const *argv[])
     BI = allocate_memory_matrix(nj, mi);
     BD = allocate_memory_matrix(nj, mi);
     BC = allocate_memory_matrix(nj, mi);
+
+    // ************************************************************
+    // CSR Sparse Format
+    double *csr_valores;
+    int *csr_col_ind;
+    int *csr_ptr;
+    double *resultados;
+
+    int numero_elementos_no_cero = obtener_total_elementos_no_cero();
+    int tamanio_matriz_global = (mi-2) * (nj-2);
+    int tamanio_csr_ptr = tamanio_matriz_global + 1;
+
+    csr_valores = allocate_memory_vector(numero_elementos_no_cero);
+    csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
+    csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
+    resultados = allocate_memory_vector(tamanio_matriz_global);
+
+    // ************************************************************
+
     /*
     * Se crea la malla 2D
     */
@@ -66,6 +78,7 @@ int main(int argc, char const *argv[])
     deltax = 1.0 / dmi1;
     double dnj1 = (double)(nj - 1);
     deltay = 1.0 / dnj1;
+
     /*
     * Se definen los parametros fisicos del problema
     */
@@ -75,6 +88,7 @@ int main(int argc, char const *argv[])
     flux_aba = 5.0;
     flux_arr = 5.0;
     alpha    = 0.5; //parametro de relajacion
+
     /*
     * Inicializacion de los arreglos a utilizar
     */
@@ -89,14 +103,12 @@ int main(int argc, char const *argv[])
     inicializar_matriz(temper, mi, nj, valor);
     inicializar_matriz(temp_ant, mi, nj, valor);
 
-    inicializar_matriz(resultx, mi, nj, 0.0);
-    inicializar_matriz(resulty, nj, mi, 0.0);
     /*
     * Abrimos la region de datos paralela
     */
     #pragma acc data copy(temper[:mi][:nj]) \
     copyin(deltax,deltay,temp_ant[:mi][:nj],cond_ter,temp_ini,\
-    temp_fin,flux_aba,flux_arr,alpha,resultx[:mi][:nj],resulty[:nj][:mi]) \
+    temp_fin,flux_aba,flux_arr,alpha) \
     create(AI[:mi][:nj],AC[:mi][:nj],AD[:mi][:nj],\
     BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi])
     {
@@ -128,25 +140,13 @@ int main(int argc, char const *argv[])
     * Cerramos la region de datos paralela
     */
     }
+
     // ****************************************************************************
-    double *csr_valores;
-    int *csr_col_ind;
-    int *csr_ptr;
-    double *resultados;
-
-    int numero_elementos_no_cero = obtener_total_elementos_no_cero();
-    int tamanio_matriz_global = (mi-2) * (nj-2);
-    int tamanio_csr_ptr = tamanio_matriz_global + 1;
-
-    csr_valores = allocate_memory_vector(numero_elementos_no_cero);
-    csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
-    csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
-    resultados = allocate_memory_vector(tamanio_matriz_global);
-
+    
     obtener_vector_terminos_independientes(BI,AI,AD,BD,resultados);
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
-    print_vector(resultados, tamanio_matriz_global);
-    print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
+    // print_vector(resultados, tamanio_matriz_global);
+    // print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
     
     // ****************************************************************************
     /*
@@ -184,12 +184,7 @@ int main(int argc, char const *argv[])
     free_matrix(AD,mi,nj);
     free_matrix(AI,mi,nj);
 
-    free_matrix(resulty, nj, mi);
-
-    free_matrix(resultx, mi, nj);
-
     free(yy);
-
     free(xx);
 
     free_matrix(temp_ant, mi, nj);

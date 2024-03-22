@@ -337,13 +337,6 @@ PROGRAM SIMPLE2D
                  Ry(nj+1,ii)  = 0.0_DBL
                  au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
               end do bucle_direccionx
-              ! call ensambla_velu(deltaxu,deltayu,deltaxp,&
-              !      &deltayv,fexp,feyp,fexu,gamma_momen,&
-              !      &u,u_ant,v,&
-              !      &temp,pres,Ri,dt,rel_vel,&
-              !      &AI,AC,AD,Rx,BS,BC,BN,Ry,au&
-              !      &)
-              ! !$acc end parallel
               !
               !-------------------------------------
               !
@@ -614,7 +607,7 @@ PROGRAM SIMPLE2D
               !
               !$acc wait
               if( error<conv_p )then
-                 write(*,*) "PRES: convergencia ", error, " con ", iter_ecuaci," iteraciones"
+                 ! write(*,*) "PRES: convergencia ", error, " con ", iter_ecuaci," iteraciones"
                  iter_ecuaci = 0
                  exit
               else if (iter_ecuaci > iter_ecuaci_max) then

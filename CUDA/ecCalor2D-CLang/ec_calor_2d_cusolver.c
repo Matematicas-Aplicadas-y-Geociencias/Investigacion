@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cusparse.h>
+#include <cusolverSp.h>
 
 #include "constantes2.h"
 #include "herramientas2.h"
 
 int main(int argc, char const *argv[])
 {
+    // *************************************************************
+    // Declaracion de variables
     int ii, jj, kk;
     
     // Variables de tamano de la placa
@@ -20,16 +24,36 @@ int main(int argc, char const *argv[])
     double *xx;
     double *yy;
 
+    //Matriz a invertir
+    double **AI, **AD, **AC;
+    double **BI, **BD, **BC;
+
+    // CSR Sparse Format
+    double *csr_valores;
+    int *csr_col_ind;
+    int *csr_ptr;
+    double *resultados;
+
+    int numero_elementos_no_cero;
+    int tamanio_matriz_completa;
+    int tamanio_csr_ptr;
+
+    double TOL = 1e-6;
+    int REORDER = 0;
+    int singularity = 0;
+
+    cusolverSpHandle_t handle = NULL;
+    cusparseMatDescr_t descrA = NULL;
+    
+    // *************************************************************
+    
     temper = allocate_memory_matrix(mi, nj);
     temp_ant = allocate_memory_matrix(mi, nj);
 
     xx = allocate_memory_vector(mi);
     yy = allocate_memory_vector(nj);
 
-    //Matriz a invertir
-    double **AI, **AD, **AC;
-    double **BI, **BD, **BC;
-
+    
     AI = allocate_memory_matrix(mi, nj);
     AD = allocate_memory_matrix(mi, nj);
     AC = allocate_memory_matrix(mi, nj);
@@ -39,20 +63,22 @@ int main(int argc, char const *argv[])
     BC = allocate_memory_matrix(nj, mi);
 
     // ************************************************************
-    // CSR Sparse Format
-    double *csr_valores;
-    int *csr_col_ind;
-    int *csr_ptr;
-    double *resultados;
 
-    int numero_elementos_no_cero = obtener_total_elementos_no_cero();
-    int tamanio_matriz_global = (mi-2) * (nj-2);
-    int tamanio_csr_ptr = tamanio_matriz_global + 1;
+    numero_elementos_no_cero = obtener_total_elementos_no_cero();
+    tamanio_matriz_completa = (mi-2) * (nj-2);
+    tamanio_csr_ptr = tamanio_matriz_completa + 1;
 
     csr_valores = allocate_memory_vector(numero_elementos_no_cero);
     csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
     csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
-    resultados = allocate_memory_vector(tamanio_matriz_global);
+    resultados = allocate_memory_vector(tamanio_matriz_completa);
+
+    // ************************************************************
+    
+    cusolverSpCreate(&handle);
+    cusparseCreateMatDescr(&descrA);
+    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL); 
+    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
 
     // ************************************************************
 
@@ -68,12 +94,14 @@ int main(int argc, char const *argv[])
         double dmi1 = (double)(mi - 1);
         xx[ii] = a * dii1 / dmi1;
     }
+
     for (jj = 0; jj <= nj-1; jj++)
     {
         double djj1 = (double)jj;
         double dnj1 = (double)(nj -1);
         yy[jj] = b * djj1 / dnj1;
     }
+    
     double dmi1 = (double)(mi - 1);
     deltax = 1.0 / dmi1;
     double dnj1 = (double)(nj - 1);
@@ -145,7 +173,7 @@ int main(int argc, char const *argv[])
     
     obtener_vector_terminos_independientes(BI,AI,AD,BD,resultados);
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
-    // print_vector(resultados, tamanio_matriz_global);
+    // print_vector(resultados, tamanio_matriz_completa);
     // print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
     
     // ****************************************************************************

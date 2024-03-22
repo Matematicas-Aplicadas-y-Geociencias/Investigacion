@@ -24,8 +24,8 @@ contains
     !
     implicit none
     integer, intent(in) :: n
-    double precision, intent(in)    :: a(n),c(n)
-    double precision, intent(inout) :: b(n),r(n)
+    real(kind=DBL), intent(in)    :: a(n),c(n)
+    real(kind=DBL), intent(inout) :: b(n),r(n)
     ! double precision, intent(inout) :: u(n)
     integer :: ii
     

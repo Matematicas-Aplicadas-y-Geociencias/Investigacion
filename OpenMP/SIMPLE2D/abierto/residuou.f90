@@ -70,7 +70,7 @@ END DO
 !$OMP PARALLEL DO
 DO i = nsolid+1, mi-nsolid
   DO j = nsolid+1, nj+1-nsolid
-    IF(DABS(Resu_o(i,j))>1.e-5) THEN 
+    IF(DABS(Resu_o(i,j))>1.e-3) THEN 
       res_fluido_uo = .FALSE.
     END IF
   END DO

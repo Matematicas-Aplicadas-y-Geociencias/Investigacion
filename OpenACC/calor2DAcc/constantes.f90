@@ -1,5 +1,5 @@
 module constantes
-  integer, parameter :: mi = 2048, nj=1024, nn = 1200000
+  integer, parameter :: mi = 1024, nj=512, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
 contains
@@ -55,11 +55,11 @@ contains
       !
       ! Se definen las condiciones de frontera
       !
-      BCo(1,iio)       = 1.d0 !-1.0d0/deltayo
-      BDo(1,iio)       = 0.d0 !1.0d0/deltayo
+      BCo(1,iio)       = 1.d0   !-1.0d0/deltayo
+      BDo(1,iio)       = 0.d0   !1.0d0/deltayo
       resultyo(1,iio)  = 308.d0 !flux_abao
-      BIo(nj,iio)      = 0.d0 !-1.d0/deltayo
-      BCo(nj,iio)      = 1.d0 !1.0d0/deltayo
+      BIo(nj,iio)      = 0.d0   !-1.d0/deltayo
+      BCo(nj,iio)      = 1.d0   !1.0d0/deltayo
       resultyo(nj,iio) = 308.d0 !flux_arro !(temp_fin+temp_ini)/2.d0
       !
       ! Ensamblado de la matriz tridiagonal

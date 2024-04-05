@@ -11,11 +11,11 @@ Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
   CHARACTER(len=40) :: archivoo
   !************************************
   ! VTK
-  open(78, file =trim(archivoo), form = 'formatted')
+  open(78, file =trim(archivoo), form = 'formatted', access='stream')
 
   write(78,110) '# vtk DataFile Version 2.3'
   write(78,110) '3D Mesh'
-  write(78,111) 'ASCII'
+  write(78,111) 'BINARY'
   
   write(78,110) 'DATASET STRUCTURED_GRID'
   write(78,120) 'DIMENSIONS', mi+1, nj+1, lk+1

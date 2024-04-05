@@ -135,4 +135,89 @@ contains
     !
   end subroutine nusselt_promedio_y
   !
+  !************************************************************
+  !
+  ! postprocess_vtk
+  !
+  ! Subrutina de postproceso en formato vtk (archivos binarios)
+  !
+  !************************************************************
+  !
+  subroutine postprocess_vtk(&
+       &xo,yo,uo,vo,presso,tempo,bo,archivoo&
+       &)
+    use malla
+    implicit none
+    INTEGER :: i,j,k
+    REAL(kind=DBL), DIMENSION(mi+1), INTENT(in)           :: xo
+    REAL(kind=DBL), DIMENSION(nj+1), INTENT(in)           :: yo
+    REAL(kind=DBL), DIMENSION(mi+1,nj+1),   INTENT(in)    :: uo, vo
+    REAL(kind=DBL), DIMENSION(mi+1,nj+1),   INTENT(in)    :: tempo,presso
+    REAL(kind=DBL), DIMENSION(mi+1,nj+1),   INTENT(in)    :: bo
+    CHARACTER(46), INTENT(in)                             :: archivoo
+    character(64)                                         :: mic,njc,zkc
+    character(128)                                        :: npuntosc
+    !
+    ! Creaci\'on de cadenas de caracteres para el contenido de los archivos
+    !
+    write(mic,*) mi+1
+    write(njc,*) nj+1
+    write(zkc,*) 1
+    write(npuntosc,*) (mi+1)*(nj+1)
+    print*, "DEBUG:",trim(mic), trim(njc),trim(npuntosc)
+    !************************************
+    ! VTK
+    open(78, file = trim(archivoo), access='stream', convert="big_endian")
+
+    write(78) '# vtk DataFile Version 2.3'//new_line(' ')
+    write(78) '3D Mesh'//new_line(' ')
+    write(78) 'BINARY'//new_line(' ')
+    write(78) 'DATASET STRUCTURED_GRID'//new_line(' ')
+    write(78) 'DIMENSIONS '//mic//njc//zkc//new_line('a')
+    write(78) 'POINTS '//npuntosc//' float',new_line('a')
+    do k = 1, 1
+       do j = 1, nj+1
+          do i = 1, mi+1
+             write(78) real(xo(i)),real(yo(j)),0.0
+          enddo
+       enddo
+    end do
+    write(78) new_line('a')//'POINT_DATA '//npuntosc
+    write(78) 'SCALARS PRESS float',new_line('a')
+    write(78) 'LOOKUP_TABLE default',new_line('a')
+    do k = 1, 1
+       do j =1, nj+1
+          do i =1, mi+1
+             write(78) real(presso(i,j))
+          end do
+       end do
+    end do
+    write(78) new_line('a')//'SCALARS TEMPER float',new_line('a')
+    write(78) 'LOOKUP_TABLE default',new_line('a')
+    do k = 1, 1
+       do j =1, nj+1
+          do i =1, mi+1
+             write(78) real(tempo(i,j))
+          end do
+       end do
+    end do
+    write(78) new_line('a')//'VECTORS VELOCITY float',new_line('a')
+    do k = 1, 1
+       do j =1, nj+1
+          do i =1, mi+1
+             write(78) real(uo(i,j)),real(vo(i,j)),0.0 
+          end do
+       end do
+    end do
+    close(78)
+    !
+    ! 100 FORMAT(3(f12.6));
+    ! 110 FORMAT(A);
+    ! 111 FORMAT(A,/);
+    ! 120 FORMAT(A,I4,I4,I4);
+    ! 130 FORMAT(A,I10,A);
+    ! 140 FORMAT(A,I10);
+    !
+  end subroutine postprocess_vtk
+!
 end module postproceso

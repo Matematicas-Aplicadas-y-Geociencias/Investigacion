@@ -24,7 +24,7 @@ contains
        &i_oo,i_1o&
        &)
     implicit none
-    !$acc routine
+    ! $acc routine
     !
     !-------------------------------------
     !

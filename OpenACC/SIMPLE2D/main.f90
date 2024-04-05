@@ -7,12 +7,12 @@ PROGRAM SIMPLE2D
   ! USE mkl95_LAPACK
   IMPLICIT NONE
   INCLUDE 'omp_lib.h'
-  INTEGER :: i,j,k,l,itera_total,itera,itera_inicial,i_1,paq_itera
+  INTEGER :: i,j,k,l,itera_total,itera,itera_inicial,i_1,paq_itera,itermax
   integer :: iter_ecuaci, iter_ecuaci_max
   integer :: iter_simple, iter_simple_max
   INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
   integer :: ii,jj, iter, auxiliar
-  integer :: stream1 = 1, stream2 = 2
+  integer :: stream1 = 1, stream2 = 2, stream3 = 3
   ! ------------------------------------------------------------
   !
   ! Variables para los archivos de la entrada de datos
@@ -82,6 +82,15 @@ PROGRAM SIMPLE2D
   !declaraci´on de variable DBL
   REAL(kind=DBL) :: var2=0.0_DBL
   !*******************************************
+      !
+    ! Auxiliares de interpolaci\'on
+    !
+    real(kind=DBL) :: ui, ud, vs, vn
+    real(kind=DBL) :: di, dd, ds, dn
+    real(kind=DBL) :: gammai, gammad
+    real(kind=DBL) :: gammas, gamman
+    real(kind=DBL) :: deltax, deltay
+    ! real(kind=DBL) :: temp_int
   !Se muestra cu'antos procesadores hay en uso
   !$OMP PARALLEL private(id)
 !!$  id = omp_get_thread_num()
@@ -101,6 +110,7 @@ PROGRAM SIMPLE2D
   READ (10,*) Ri_1        ! n'umero de Richardson
   READ (10,*) dt          ! incremento de tiempo
   READ (10,*) paq_itera   ! paquete de iteraciones
+  read (10,*) itermax     ! iteraciones totales de la ejecuci\'on
   READ (10,*) rel_pres    ! relajaci'on de la presi'on
   READ (10,*) rel_vel     ! relajaci'on de la velocidad
   READ (10,*) rel_ener    ! relajaci'on de la temperatura
@@ -164,7 +174,7 @@ PROGRAM SIMPLE2D
   !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
-  u_ant = 1.0_DBL
+  ! u_ant = 1.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -207,15 +217,15 @@ PROGRAM SIMPLE2D
      !
      !$acc data copy(&
      !$acc &         u(1:mi,1:nj+1),v(1:mi+1,1:nj),                            &
-     !$acc &         u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),                    &
-     !$acc &         temp_ant(1:mi+1,1:nj+1),                                  &
-     !$acc &         pres(1:mi+1,1:nj+1),temp(1:mi+1,1:nj+1),                  &
-     !$acc &         corr_pres(1:mi+1,1:nj+1),Resu(1:mi,1:nj+1),               &
-     !$acc &         au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1),       &
-     !$acc &         gamma_momen(1:mi+1,1:nj+1),gamma_energ(1:mi+1,1:nj+1),    &
-     !$acc &         tiempo_inicial,nusselt0,nusselt1                          &
+     !$acc &         pres(1:mi+1,1:nj+1),temp(1:mi+1,1:nj+1)                  &
      !$acc &         )                                                         &
      !$acc & copyin(&
+     !$acc &        corr_pres(1:mi+1,1:nj+1),Resu(1:mi,1:nj+1),                &
+     !$acc &        u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),                     &
+     !$acc &        temp_ant(1:mi+1,1:nj+1),                                   &
+     !$acc &        tiempo_inicial,nusselt0,nusselt1,                          &
+     !$acc &        au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1),        &
+     !$acc &        gamma_momen(1:mi+1,1:nj+1),gamma_energ(1:mi+1,1:nj+1),     &
      !$acc &        deltaxp(1:mi),deltayp(1:nj),deltaxu(1:mi),deltayu(1:nj),   &
      !$acc &        deltaxv(1:mi),deltayv(1:nj),                               &
      !$acc &        fexp(1:mi),feyp(1:nj),fexu(1:mi),feyv(1:nj),               &
@@ -255,7 +265,7 @@ PROGRAM SIMPLE2D
               ! error de la ecuacion de momento
               error = 0.0_DBL
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream1)
               inicializacion_fu: do jj=2, nj
                  do ii = 2, mi
                     fu(ii,jj) = u(ii,jj)
@@ -267,20 +277,72 @@ PROGRAM SIMPLE2D
               !
               ! Se ensambla la ecuaci\'on de momento en u
               !
-              !$acc parallel
-              call ensambla_velu(deltaxu,deltayu,deltaxp,&
-                   &deltayv,fexp,feyp,fexu,gamma_momen,&
-                   &u,u_ant,v,&
-                   &temp,pres,Ri,dt,rel_vel,&
-                   &AI,AC,AD,Rx,BS,BC,BN,Ry,au&
-                   &)
-              !$acc end parallel
+              ! !$acc parallel async(stream2)
+              !
+              ! Llenado de la matriz
+              !
+              !$acc parallel loop gang async(stream2)
+              bucle_direccion_y: do jj = 2, nj
+                 !
+                 ! Llenado de la matriz
+                 !
+                 !$acc loop vector
+                 bucle_direccion_x: do ii = 2, mi-1
+                    call ensambla_velu(deltaxu,deltayu,deltaxp,&
+                         &deltayv,fexp,feyp,fexu,gamma_momen,&
+                         &u,u_ant,v,&
+                         &temp,pres,Ri,dt,rel_vel,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,au,&
+                         &ii,jj&
+                         &)
+                    ! $acc end parallel
+                 end do bucle_direccion_x
+              end do bucle_direccion_y
+              ! !***********************
+              ! !Condiciones de frontera
+              ! AC(mi,jj) = 1._DBL
+              ! AI(mi,jj) =-1._DBL !
+              ! Rx(mi,jj) = 0.0_DBL
+              ! au(mi,jj) = 1.e40_DBL !ACi(mi)
+              !
+              ! Condiciones de frontera para la direcci\'on y
+              !
+              !$acc parallel loop vector async(stream1)
+              bucle_direccionx1: do jj = 2, nj
+                 !***********************
+                 !Condiciones de frontera
+                 !***********************
+                 AC(1,jj) = 1._DBL
+                 AD(1,jj) = 0._DBL
+                 Rx(1,jj) = 1._DBL 
+                 au(1,jj) = 1.e40_DBL !ACi(1)
+                 AC(mi,jj) = 1._DBL
+                 AI(mi,jj) =-1._DBL !
+                 Rx(mi,jj) = 0.0_DBL
+                 au(mi,jj) = 1.e40_DBL !ACi(mi)      
+              end do bucle_direccionx1
+              !
+              ! Condiciones de frontera para la direcci\'on y
+              !
+              !$acc parallel loop vector async(stream1)
+              bucle_direccionx: do ii = 2, mi-1
+                 !***********************
+                 !Condiciones de frontera
+                 BC(1,ii)     = 1._DBL
+                 BN(1,ii)     = 0.0_DBL
+                 Ry(1,ii)     = 0.0_DBL
+                 au(ii,1)     = 1.e40_DBL !ACj(1)
+                 BC(nj+1,ii)  = 1._DBL
+                 BS(nj+1,ii)  = 0.0_DBL
+                 Ry(nj+1,ii)  = 0.0_DBL
+                 au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
+              end do bucle_direccionx
               !
               !-------------------------------------
               !
               ! Soluci\'on del sistema de ecuaciones
               !
-              !$acc parallel loop gang async(stream1)
+              !$acc parallel loop gang async(stream1) wait(stream2)
                solucion_momento_ux: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
@@ -289,7 +351,7 @@ PROGRAM SIMPLE2D
                  
               end do solucion_momento_ux
               !
-              !$acc parallel loop gang  async(stream2)            
+              !$acc parallel loop gang async(stream2)            
               solucion_momento_uy: do ii = 2, mi-1
                  
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
@@ -304,7 +366,7 @@ PROGRAM SIMPLE2D
               !
               ! Actualizaci\'on de la velocidad u
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream2) 
               do jj = 2, nj
                  do ii = 2, mi-1
                     u(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
@@ -315,20 +377,59 @@ PROGRAM SIMPLE2D
               !
               ! Se ensambla la velocidad v
               !
-              !$acc parallel
-              call ensambla_velv(deltaxv,deltayv,deltaxu,&
-                   &deltayp,fexp,feyp,feyv,gamma_momen,&
-                   &v,v_ant,u,&
-                   &temp,pres,Riy,dt,rel_vel,&
-                   &AI,AC,AD,Rx,BS,BC,BN,Ry,av&
-                   &)
+              !$acc parallel vector_length(64) async(stream1)
+              !
+              ! Condiciones de frontera para la direcci\'on y
+              !
+              !$acc loop vector
+              bucle_direccionxv: do ii = 2, mi
+                 !***********************
+                 !Condiciones de frontera
+                 BC(1,ii)     = 1._DBL
+                 BN(1,ii)     = 0.0_DBL
+                 Ry(1,ii)     = 0.0_DBL
+                 av(ii,1)     = 1.e40_DBL !ACj(1)
+                 BC(nj,ii)    = 1._DBL
+                 BS(nj,ii)    = 0.0_DBL
+                 Ry(nj,ii)    = 0.0_DBL
+                 av(ii,nj)    = 1.e40_DBL !ACj(nj+1)       
+              end do bucle_direccionxv
+              !$acc loop vector
+              do jj = 2, nj-1
+                 !Condiciones de frontera
+                 AC(1,jj) = 1._DBL
+                 AD(1,jj) = 0._DBL
+                 Rx(1,jj) = 0._DBL 
+                 av(1,jj) = 1.e40_DBL !ACi(1)
+                 !***********************
+                 !Condiciones de frontera
+                 AC(mi+1,jj) = 1.0_DBL
+                 AI(mi+1,jj) = 0.0_DBL !
+                 Rx(mi+1,jj) = 0.0_DBL
+                 av(mi+1,jj) = 1.e40_DBL !ACi(mi)
+              end do
               !$acc end parallel
+              !
+              !$acc parallel loop gang async(stream2)
+              do jj = 2, nj-1
+                 !$acc loop vector
+                 do ii = 2, mi
+                    call ensambla_velv(deltaxv,deltayv,deltaxu,&
+                         &deltayp,fexp,feyp,feyv,gamma_momen,&
+                         &v,v_ant,u,&
+                         &temp,pres,Riy,dt,rel_vel,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
+                         &ii,jj&
+                         &)
+                 end do
+              end do
+              ! $acc end parallel
               !
               !------------------------------------
               !
               ! Soluci\'on de las ecs. de momento v
               !
-              !$acc parallel loop gang async(stream1)
+              !$acc parallel loop gang async(stream1) wait(stream2)
               solucion_momento_vx: do jj = 2, nj-1
 
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
@@ -351,14 +452,14 @@ PROGRAM SIMPLE2D
               !
               ! Actualizaci\'on de la velocidad v
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj-1
                  do ii = 1, mi
                     v(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc parallel loop gang reduction(max:error)
+              !$acc parallel loop gang reduction(max:error) async(stream1)
               calculo_diferencias_dv: do jj=2, nj
                  !
                  !$acc loop vector
@@ -370,6 +471,7 @@ PROGRAM SIMPLE2D
               !
               ! Criterio de convergencia de la velocidad
               !
+              !$acc wait
               if ( error < conv_u ) then
                  iter_ecuaci = 0
                  exit
@@ -391,7 +493,7 @@ PROGRAM SIMPLE2D
            !-----------------------------------------
            !-----------------------------------------
            !
-           !$acc parallel loop gang collapse(2)
+           !$acc parallel loop gang collapse(2) async(stream2)
            inicializa_corrector_presion: do jj = 1, nj+1
               do ii = 1, mi+1
                  corr_pres(ii,jj) = 0.0_DBL
@@ -404,27 +506,65 @@ PROGRAM SIMPLE2D
               error = 0.0_DBL
               maxbo = 0.0_DBL
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream1) wait(stream2)
               inicializa_fcorr_press: do jj=2, nj
                  do ii = 2, mi
                     fcorr_pres(ii,jj) = corr_pres(ii,jj)
                  end do
               end do inicializa_fcorr_press
               !
-              !$acc parallel
-              call ensambla_corr_pres(deltaxp,deltayp,&
-                   &deltaxu,deltayv,&
-                   &u,v,b_o,&
-                   &corr_pres,0.85_DBL,&
-                   &AI,AC,AD,Rx,BS,BC,BN,Ry,au,av&
-                   &)
+              !-------------------------
+              !
+              ! Condiciones de frontera
+              !
+              !$acc parallel loop vector async(stream1)
+              bucle_direccionxe: do ii = 2, mi
+                 !***********************
+                 !Condiciones de frontera
+                 BC(1,ii)     = 1._DBL
+                 BN(1,ii)     = 0.0_DBL
+                 Ry(1,ii)     = 0.0_DBL
+                 !
+                 BC(nj+1,ii)  = 1._DBL
+                 BS(nj+1,ii)  = 0.0_DBL
+                 Ry(nj+1,ii)  = 0.0_DBL
+              end do bucle_direccionxe
+              !
+              !$acc parallel loop vector async(stream1)
+              do jj = 2, nj
+                 !------------------------
+                 ! Condiciones de frontera
+                 AC(1,jj) = 1._DBL
+                 AD(1,jj) = 0._DBL
+                 Rx(1,jj) = 0._DBL
+                 !
+                 AI(mi+1,jj) = 0.0_DBL
+                 AC(mi+1,jj) = 1.0_DBL
+                 Rx(mi+1,jj) = 0.0_DBL
+              end do
+              !------------------------------------------
+              !
+              ! Se ensambla la ecuaci\'on de la presi\'on
+              !
+              !$acc parallel loop gang async(stream2)
+              do jj = 2, nj
+                 !$acc loop vector
+                 do ii = 2, mi
+                    call ensambla_corr_pres(deltaxp,deltayp,&
+                         &deltaxu,deltayv,&
+                         &u,v,b_o,&
+                         &corr_pres,0.85_DBL,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,au,av,&
+                         &ii,jj)
+                 end do
+              end do
               !$acc end parallel
               !
               !----------------------------------------------
               !
               ! Soluci\'on de la correcci\'on de la presi\'on
               !
-              !$acc parallel loop gang async(stream1)
+              !$acc parallel loop gang async(stream1) wait(stream2)
               solucion_presion_x: do jj = 2, nj
 
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
@@ -445,7 +585,7 @@ PROGRAM SIMPLE2D
               !
               ! Actualizaci\'on del corrector de la presi\'on
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj
                  do ii = 1, mi
                     corr_pres(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
@@ -454,7 +594,7 @@ PROGRAM SIMPLE2D
               !
               ! C\'alculo de diferencias y criterio de convergencia
               !
-              !$acc parallel loop gang reduction(max:error,maxbo)
+              !$acc parallel loop gang reduction(max:error,maxbo) async(stream1)
               calculo_dif_corr_pres: do jj=1, nj+1
                  do ii=1, mi+1
                     error = max(error,dabs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
@@ -465,7 +605,9 @@ PROGRAM SIMPLE2D
               !
               ! Critero de convergencia del corrector de la presi'on
               !
+              !$acc wait
               if( error<conv_p )then
+                 ! write(*,*) "PRES: convergencia ", error, " con ", iter_ecuaci," iteraciones"
                  iter_ecuaci = 0
                  exit
               else if (iter_ecuaci > iter_ecuaci_max) then
@@ -482,7 +624,7 @@ PROGRAM SIMPLE2D
            !
            ! Se corrige la presion
            !
-           !$acc parallel loop gang collapse(2)
+           !$acc parallel loop gang collapse(2) async(stream2)
            do jj = 2, nj
               do ii = 2, mi
                  pres(ii,jj) = pres(ii,jj) + corr_pres(ii,jj)
@@ -493,7 +635,7 @@ PROGRAM SIMPLE2D
            !
            ! Se corrigen las velocidades
            !
-           !$acc parallel loop gang collapse(2)
+           !$acc parallel loop gang collapse(2) async(stream1)
            do jj = 2, nj-1
               do ii = 2, mi-1
                  u(ii,jj) = u(ii,jj)+deltayu(jj)*(corr_pres(ii,jj)-corr_pres(ii+1,jj))/au(ii,jj)
@@ -501,12 +643,12 @@ PROGRAM SIMPLE2D
               end do
            end do
            !
-           !$acc parallel loop vector
+           !$acc parallel loop vector async(stream1)
            do ii = 2, mi-1
               u(ii,nj) = u(ii,nj)+deltayu(nj)*(corr_pres(ii,nj)-corr_pres(ii+1,nj))/au(ii,nj)
            end do
            !
-           !$acc parallel loop vector
+           !$acc parallel loop vector async(stream2)
            do jj = 2, nj-1
               v(mi,jj) = v(mi,jj)+deltaxv(mi)*(corr_pres(mi,jj)-corr_pres(mi,jj+1))/av(mi,jj)
            end do
@@ -522,31 +664,80 @@ PROGRAM SIMPLE2D
               !
               error = 0.0_DBL
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream2)
               inicializacion_ftemp: do jj=2, nj
                  do ii = 2, mi
                     ftemp(ii,jj) = temp(ii,jj)
                  end do
               end do inicializacion_ftemp
               !
+              !
+              !-------------------------
+              !
+              ! Condiciones de frontera
+              !
+              !$acc parallel loop vector async(stream1)
+              bucle_direccionxp: do ii = 2, mi
+                 !***********************
+                 !Condiciones de frontera
+                 if (ii>=placa_min .and. ii<=placa_max) then
+                    BC(1,ii) = 1.0_DBL
+                    BN(1,ii) = 0.0_DBL
+                    Ry(1,ii) = 1.0_DBL
+                 else
+                    BC(1,ii) =-1.0_DBL
+                    BN(1,ii) = 1.0_DBL
+                    Ry(1,ii) = 0.0_DBL
+                 end if
+                 !-----------------
+                 if (ii>=placa_min .and. ii<=placa_max) then
+                    BC(nj+1,ii) = 1.0_DBL
+                    BN(nj+1,ii) = 0.0_DBL
+                    Ry(nj+1,ii) = 1.0_DBL
+                 else
+                    BC(nj+1,ii)  = 1.0_DBL
+                    BS(nj+1,ii)  =-1.0_DBL
+                    Ry(nj+1,ii)  = 0.0_DBL
+                 end if
+                 ! ------------------
+              end do bucle_direccionxp
+              !
+              !$acc parallel loop vector async(stream1)
+              do jj = 2, nj
+                 !------------------------
+                 ! Condiciones de frontera
+                 AC(1,jj) =-1._DBL
+                 AD(1,jj) = 1._DBL
+                 Rx(1,jj) = 0._DBL
+                 !
+                 AI(mi+1,jj) =-1._DBL 
+                 AC(mi+1,jj) = 1._DBL
+                 Rx(mi+1,jj) = 0.0_DBL
+                 !
+              end do
               !------------------------------------------
               !
               ! Se ensambla la ecuaci\'on de la energ\'ia
               !
-              !$acc parallel
-              call ensambla_energia(deltaxp,deltayp,&
-                   &deltaxu,deltayv,fexu,feyv,gamma_energ,&
-                   &u,v,&
-                   &temp,temp_ant,dt,&
-                   &rel_ener,placa_min,placa_max,&
-                   &AI,AC,AD,Rx,BS,BC,BN,Ry)
-              !$acc end parallel
+              !$acc parallel loop gang async(stream1)
+              do jj = 2, nj
+                 !$acc loop vector
+                 do ii = 2, mi
+                    call ensambla_energia(deltaxp,deltayp,&
+                         &deltaxu,deltayv,fexu,feyv,gamma_energ,&
+                         &u,v,&
+                         &temp,temp_ant,dt,&
+                         &rel_ener,placa_min,placa_max,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,&
+                         &ii,jj)
+                 end do
+              end do
               !
               !---------------------------------------------
               !
               ! Soluci\'on de la ecuaci\'on de la energ\'ia
               !
-              !$acc parallel loop gang async(stream1)
+              !$acc parallel loop gang async(stream2) wait(stream1)
               solucion_energia_x: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi+1,jj),AC(1:mi+1,jj),AD(1:mi+1,jj),Rx(1:mi+1,jj),mi+1)
@@ -554,7 +745,7 @@ PROGRAM SIMPLE2D
                  temp(mi+1,jj) = Rx(mi+1,jj)
               end do solucion_energia_x
               !
-              !$acc parallel loop gang async(stream2)
+              !$acc parallel loop gang async(stream1) 
               solucion_energia_y: do ii = 2, mi
 
                  call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
@@ -563,14 +754,14 @@ PROGRAM SIMPLE2D
               end do solucion_energia_y
               !$acc wait
               !
-              !$acc parallel loop gang collapse(2)
+              !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj
                  do ii = 1, mi
                     temp(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
               !
-              !$acc parallel loop reduction(max:error) ! collapse(2)
+              !$acc parallel loop reduction(max:error) async(stream1)
               calculo_diferencias_dtemp: do jj = 2, nj
                  do ii = 2, mi
                     error = max(error, dabs(temp(ii,jj)-ftemp(ii,jj)))
@@ -581,6 +772,7 @@ PROGRAM SIMPLE2D
               !
               ! Criterio de convergencia de la energ\'ia
               !
+              !$acc wait
               if( error < conv_t )then
                  iter_ecuaci = 0
                  exit
@@ -604,7 +796,7 @@ PROGRAM SIMPLE2D
            !--------------------------------------------
            !--------------------------------------------
            !
-           !$acc parallel
+           !$acc parallel async(stream1)
            call residuo_u(deltaxu,deltayu,deltaxp,&
                 &deltayv,fexp,feyp,fexu,gamma_momen,&
                 &u,u_ant,v,&
@@ -613,13 +805,14 @@ PROGRAM SIMPLE2D
                 &)
            !$acc end parallel
            !
-           !$acc parallel loop reduction(max:error) ! collapse(2)
+           !$acc parallel loop reduction(max:residuo) async(stream1)
            calculo_maximo_residuou: do jj=2, nj
               do ii = 2, mi-1
                  residuo = max(residuo, dabs(Resu(ii,jj)))
               end do
            end do calculo_maximo_residuou
            !
+           !$acc wait
            if ( residuo < conv_resi .and. maxbo<conv_paso)then
               iter_simple = 0
               exit
@@ -640,51 +833,54 @@ PROGRAM SIMPLE2D
         ! Escritura de mensajes y postprocesos
         !
         itera = itera + 1
-        if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,maxval(dabs(b_o)),maxbo
+        if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,residuo,maxbo
 
-        if( mod(itera,100)==0 )then
+        if( mod(itera,5)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
            !
-           !$acc parallel
+           !$acc update self(temp(1:mi+1,1:nj+1)) async(stream2)
+           ! $acc parallel async(stream2)
            call nusselt_promedio_y(&
                 &xp,yp,deltaxp,deltayp,&
                 &temp,nusselt0,nusselt1,&
                 &placa_min,placa_max&
                 &)
-           !$acc end parallel
+           ! $acc end parallel
+           ! $acc wait
            !
            temp_med = (temp((placa_min+placa_max)/2,nj/2+1)+&
                 &temp((placa_min+placa_max)/2+1,nj/2+1))/2._DBL
-           OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')
-           WRITE(5,form26) tiempo_inicial+itera*dt,nusselt0,&
-                &-nusselt1,temp_med,temp_int,entropia_int
-           CLOSE(unit = 5)
-        ENDIF
+           ! OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')
+           ! WRITE(5,form26) tiempo_inicial+itera*dt,nusselt0,&
+           !      &-nusselt1,temp_med,temp_int,entropia_int
+           ! CLOSE(unit = 5)
+        end if
         !*********************************
         tiempo   = tiempo_inicial+itera*dt
         !
-        !$acc parallel loop gang collapse(2)
+        !$acc parallel loop gang collapse(2) async(stream1)
         do jj=1, nj+1
            do ii=1, mi+1
               temp_ant(ii,jj) = temp(ii,jj)
            end do
         end do
         !
-        !$acc parallel loop gang collapse(2)
+        !$acc parallel loop gang collapse(2) async(stream1)
         do jj=1, nj+1
            do ii=1, mi
               u_ant(ii,jj) = u(ii,jj)
            end do
         end do
         !
-        !$acc parallel loop gang collapse(2)
+        !$acc parallel loop gang collapse(2) async(stream2)
         do jj=1, nj
            do ii=1, mi+1
               v_ant(ii,jj) = v(ii,jj)
            end do
         end do
-     END DO
+        !
+     end do
      !--------------------------------------------
      !
      ! Se cierra la regi\'on paralela de datos
@@ -698,8 +894,10 @@ PROGRAM SIMPLE2D
      millar      = itera_total/(1000*paq_itera)
      centena     = (itera_total-millar*1000*paq_itera)/(100*paq_itera)
      decena      = (itera_total-millar*1000*paq_itera-centena*100*paq_itera)/(10*paq_itera)
-     unidad      = (itera_total-millar*1000*paq_itera-centena*100*paq_itera-decena*10*paq_itera)/(paq_itera)
-     decima      = (itera_total-millar*1000*paq_itera-centena*100*paq_itera-decena*10*paq_itera-unidad*paq_itera)/(paq_itera/10)
+     unidad      = (itera_total-millar*1000*paq_itera-centena*100*paq_itera-decena*10*paq_itera)&
+          &/(paq_itera)
+     decima      = (itera_total-millar*1000*paq_itera-centena*100*paq_itera-decena*10*paq_itera&
+          &-unidad*paq_itera)/(paq_itera/10)
      WRITE(dec,16)decima;16 format(I1)
      WRITE(un,16) unidad
      WRITE(de,16) decena
@@ -726,7 +924,7 @@ PROGRAM SIMPLE2D
      !************************************
      WRITE(*,*) 'itera_total=',itera_total
      WRITE(*,103) nusselt0,nusselt1
-     WRITE(*,104) MAXVAL(DABS(b_o)),MAXVAL(DABS(Resu))
+     WRITE(*,104) maxbo,residuo
      WRITE(*,105) MAXVAL(DABS(Restemp)),MAXVAL(DABS(Resv))
      WRITE(*,*)' '
 103  FORMAT(1X,'N_Izq=',D23.15,', N_Der=',D23.15)

@@ -1,7 +1,7 @@
 #ifndef CONSTANTES2_H
 #define CONSTANTES2_H
 
-const int mi = 256, nj = 128, nn = 1024;
+const int mi = 20, nj = 20, nn = 1024;
 const double pi = 3.1415926535;
 
 #include "herramientas2.h"
@@ -23,9 +23,9 @@ void ensambla_tdmax(
     /*
     * Se definen las condiciones de frontera
     */
-    AI[0][jj] = -2.0* cond_ter / (deltax * deltax);
+    AI[0][jj] = -0.0* cond_ter / (deltax * deltax);
     // AD[0][jj] = 0.0;
-    AD[mi - 1][jj] = -1.0* cond_ter / (deltax * deltax);
+    AD[mi - 1][jj] = -0.0* cond_ter / (deltax * deltax);
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */
@@ -55,7 +55,7 @@ void ensambla_tdmay(
     /*
      * Se definen las condiciones de frontera
      */
-    BI[0][jj] = -1.0 * cond_ter/ (deltay * deltay);
+    BI[0][jj] = -0.0 * cond_ter/ (deltay * deltay);
     BD[nj - 1][jj] = -3.0* cond_ter / (deltay * deltay);        // 1.0 / deltay;
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados

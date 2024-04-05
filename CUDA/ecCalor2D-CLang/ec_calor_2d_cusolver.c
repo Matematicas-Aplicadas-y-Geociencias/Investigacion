@@ -39,12 +39,13 @@ int main(int argc, char const *argv[])
     int tamanio_matriz_completa;
     int tamanio_csr_ptr;
 
-    double TOL = 1e-6;
-    int REORDER = 0;
+    double TOL = 1e-5;
+    int REORDER = 3;
     int singularity = 0;
 
     cusolverSpHandle_t handle = NULL;
     cusparseMatDescr_t descrA = NULL;
+    cusolverStatus_t status;
     
     // *************************************************************
     
@@ -153,6 +154,7 @@ int main(int argc, char const *argv[])
     // ****************************************************************************
     obtener_vector_terminos_independientes(BI,AI,AD,BD,vector_b);
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
+    // print_vector(csr_valores, numero_elementos_no_cero);
 
     // *************************************************************************
     // print_matrix(BI, nj, mi);
@@ -169,11 +171,13 @@ int main(int argc, char const *argv[])
     {
         #pragma acc host_data use_device(vector_b, csr_valores, csr_ptr, csr_col_ind, resultados)
         {
-            cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+            // cusolverSpDcsrlsvluHost(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+            // cusolverSpDcsrlsvqr(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+            status = cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
 
         }       
     } // * Cerramos la region de datos paralela
-
+    printf("status = %d", status);
     // ****************************************************************************
     
     // print_vector(vector_b, tamanio_matriz_completa);
@@ -204,7 +208,6 @@ int main(int argc, char const *argv[])
     } else {
         printf("Error al abrir el archivo.\n");
     }
-    
 
     // Liberar memoria de los punteros
     free(csr_ptr);

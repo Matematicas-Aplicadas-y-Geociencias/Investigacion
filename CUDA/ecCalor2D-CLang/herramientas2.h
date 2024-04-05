@@ -289,12 +289,12 @@ void llenar_matriz_temper(double **matriz)
 {
     for (int j = 1; j < nj-1; j++)
     {
-        matriz[0][j] = 2.0;
+        matriz[0][j] = 0.0;
         matriz[mi-1][j] = 0.0;
     }
     for (int i = 1; i < mi-1; i++)
     {
-        matriz[i][0] = 1.0;
+        matriz[i][0] = 0.0;
         matriz[i][nj-1] = 3.0;
     }
 }

@@ -10,14 +10,14 @@ int main(int argc, char const *argv[])
 {
     // *************************************************************
     // Declaracion de variables
-    int ii, jj, kk;
+    int ii, jj; //, kk;
     
     // Variables de tamano de la placa
     double a, b, deltax, deltay;
 
     // Parametros fisicos del problema
     double cond_ter, temp_ini, temp_fin;
-    double flux_aba, flux_arr, alpha;
+    double flux_aba, flux_arr; //, alpha;
 
     // Arreglos para incognitas, termino fuente y posicion
     double **temper, **temp_ant;
@@ -32,6 +32,7 @@ int main(int argc, char const *argv[])
     double *csr_valores;
     int *csr_col_ind;
     int *csr_ptr;
+    double *vector_b;
     double *resultados;
 
     int numero_elementos_no_cero;
@@ -71,6 +72,7 @@ int main(int argc, char const *argv[])
     csr_valores = allocate_memory_vector(numero_elementos_no_cero);
     csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
     csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
+    vector_b = allocate_memory_vector(tamanio_matriz_completa);
     resultados = allocate_memory_vector(tamanio_matriz_completa);
 
     // ************************************************************
@@ -111,11 +113,11 @@ int main(int argc, char const *argv[])
     * Se definen los parametros fisicos del problema
     */
     cond_ter = 100.0;
-    temp_ini = 308.0;
-    temp_fin = 298.0;
+    temp_ini = 2.0;
+    temp_fin = 0.0;
     flux_aba = 5.0;
     flux_arr = 5.0;
-    alpha    = 0.5; //parametro de relajacion
+    // alpha    = 0.5; //parametro de relajacion
 
     /*
     * Inicializacion de los arreglos a utilizar
@@ -131,72 +133,77 @@ int main(int argc, char const *argv[])
     inicializar_matriz(temper, mi, nj, valor);
     inicializar_matriz(temp_ant, mi, nj, valor);
 
-    /*
-    * Abrimos la region de datos paralela
-    */
-    #pragma acc data copy(temper[:mi][:nj]) \
-    copyin(deltax,deltay,temp_ant[:mi][:nj],cond_ter,temp_ini,\
-    temp_fin,flux_aba,flux_arr,alpha) \
-    create(AI[:mi][:nj],AC[:mi][:nj],AD[:mi][:nj],\
-    BI[:nj][:mi],BC[:nj][:mi],BD[:nj][:mi])
+    // *************************************************************************
+    for (jj = 1; jj < nj-1; jj++)
     {
         /*
-        * Inicia el ciclo que recorre la coordenada y resolviendo problemas 1D en la direccion de x
+        * Ensamblando matrices en direccion x
         */
-        #pragma acc parallel loop
-        for (jj = 1; jj < nj-1; jj++)
-        {
-            /*
-            * Ensamblando matrices en direccion x
-            */
-            ensambla_tdmax(AI,AC,AD,deltax,deltay,cond_ter,temp_ini,temp_fin,jj);
-        }
+        ensambla_tdmax(AI,AC,AD,deltax,deltay,cond_ter,temp_ini,temp_fin,jj);
+    }
 
+    for (ii = 1; ii < mi-1; ii++)
+    {
         /*
-        * Inicia el ciclo que recorre la coordenada x resolviendo problemas 1D en la direccion de y
+        * Ensamblamos matrices tridiagonales en direccion y
         */
-        #pragma acc parallel loop
-        for (ii = 1; ii < mi-1; ii++)
-        {
-            /*
-            * Ensamblamos matrices tridiagonales en direccion y
-            */
-            ensambla_tdmay(BI,BC,BD,deltax,deltay,cond_ter,flux_aba,flux_arr,ii);
-        }
-            
-    /*
-    * Cerramos la region de datos paralela
-    */
+        ensambla_tdmay(BI,BC,BD,deltax,deltay,cond_ter,flux_aba,flux_arr,ii);
     }
 
     // ****************************************************************************
-    
-    obtener_vector_terminos_independientes(BI,AI,AD,BD,resultados);
+    obtener_vector_terminos_independientes(BI,AI,AD,BD,vector_b);
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
+
+    // *************************************************************************
+    // print_matrix(BI, nj, mi);
+//     print_matrix(AI, mi, nj);
+    // print_matrix(AC, mi, nj);
+    // print_matrix(AD, mi, nj);
+    // print_matrix(BD, nj, mi);
+    /*
+    * Abrimos la region de datos paralela
+    */
+    #pragma acc data copyin(vector_b[:tamanio_matriz_completa], csr_valores[:numero_elementos_no_cero], \
+    csr_col_ind[:numero_elementos_no_cero], csr_ptr[:tamanio_csr_ptr]) \
+    copyout(resultados[:tamanio_matriz_completa])
+    {
+        #pragma acc host_data use_device(vector_b, csr_valores, csr_ptr, csr_col_ind, resultados)
+        {
+            cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+
+        }       
+    } // * Cerramos la region de datos paralela
+
+    // ****************************************************************************
+    
+    // print_vector(vector_b, tamanio_matriz_completa);
     // print_vector(resultados, tamanio_matriz_completa);
     // print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
+    llenar_matriz_temper(temper);
+    completar_matriz_temper(temper, resultados, tamanio_matriz_completa);
+    // print_matrix(temper, mi, nj);
     
     // ****************************************************************************
     /*
     * Escritura de resultados
     */
     // Abrir el archivo para escribir
-    // FILE *file = fopen("clang.101", "w");
+    FILE *file = fopen("cusolver.101", "w");
 
-    // if (file != NULL) {
-    //     // Utilizar un bucle para imprimir y guardar los datos
-    //     for (ii = 0; ii < mi; ii++) {
-    //         for (jj = 0; jj < nj; jj++)
-    //         {
-    //             fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
-    //         }
-    //         fprintf(file, "\n");
-    //     }
-    //     // Cerrar el archivo después de escribir
-    //     fclose(file);
-    // } else {
-    //     printf("Error al abrir el archivo.\n");
-    // }
+    if (file != NULL) {
+        // Utilizar un bucle para imprimir y guardar los datos
+        for (ii = 0; ii < mi; ii++) {
+            for (jj = 0; jj < nj; jj++)
+            {
+                fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
+            }
+            fprintf(file, "\n");
+        }
+        // Cerrar el archivo después de escribir
+        fclose(file);
+    } else {
+        printf("Error al abrir el archivo.\n");
+    }
     
 
     // Liberar memoria de los punteros

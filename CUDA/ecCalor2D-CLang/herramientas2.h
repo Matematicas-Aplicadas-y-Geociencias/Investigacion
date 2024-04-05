@@ -211,22 +211,22 @@ void obtener_vector_terminos_independientes(
         {
             if (jj == 1)
             {
-                b[kk] += BI[jj-1][ii];
+                b[kk] += -BI[jj-1][ii];
             }
 
             if (ii == 1)
             {
-                b[kk] += AI[ii-1][jj];
+                b[kk] += -AI[ii-1][jj];
             }
 
             if (ii == mi-2)
             {
-                b[kk] += AD[ii+1][jj];
+                b[kk] += -AD[ii+1][jj];
             }
 
             if (jj == nj-2)
             {
-                b[kk] += BD[jj+1][ii];
+                b[kk] += -BD[jj+1][ii];
             }
             
             kk++;
@@ -283,5 +283,31 @@ void print_formato_csr(double *csrVal, int *csrIndCol, int *csrPtr, int elemento
         }
         printf("Val[%d] = %f | ColInd[%d] = %d\n", ii, csrVal[ii], ii, csrIndCol[ii]);
     }
+}
+
+void llenar_matriz_temper(double **matriz)
+{
+    for (int j = 1; j < nj-1; j++)
+    {
+        matriz[0][j] = 2.0;
+        matriz[mi-1][j] = 0.0;
+    }
+    for (int i = 1; i < mi-1; i++)
+    {
+        matriz[i][0] = 1.0;
+        matriz[i][nj-1] = 3.0;
+    }
+}
+
+void completar_matriz_temper(double **matriz, double *vector, int tam_matriz_completa)
+{
+    for (int j = 1; j < mi-1; j++)
+    {
+        for (int i = 1; i < nj-1; i++)
+        {
+            matriz[j][i] = vector[(i) + 3 * (i-1) - 1];
+        }
+    }
+    
 }
 #endif

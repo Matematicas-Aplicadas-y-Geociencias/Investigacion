@@ -164,7 +164,7 @@ contains
     write(njc,*) nj+1
     write(zkc,*) 1
     write(npuntosc,*) (mi+1)*(nj+1)
-    print*, "DEBUG:",trim(mic), trim(njc),trim(npuntosc)
+    !
     !************************************
     ! VTK
     open(78, file = trim(archivoo), access='stream', convert="big_endian")
@@ -173,8 +173,8 @@ contains
     write(78) '3D Mesh'//new_line(' ')
     write(78) 'BINARY'//new_line(' ')
     write(78) 'DATASET STRUCTURED_GRID'//new_line(' ')
-    write(78) 'DIMENSIONS '//mic//njc//zkc//new_line('a')
-    write(78) 'POINTS '//npuntosc//' float',new_line('a')
+    write(78) 'DIMENSIONS '//trim(mic)//trim(njc)//trim(zkc)//new_line('a')
+    write(78) 'POINTS '//trim(npuntosc)//' float',new_line('a')
     do k = 1, 1
        do j = 1, nj+1
           do i = 1, mi+1
@@ -182,7 +182,7 @@ contains
           enddo
        enddo
     end do
-    write(78) new_line('a')//'POINT_DATA '//npuntosc
+    write(78) new_line('a')//'POINT_DATA '//trim(npuntosc)
     write(78) 'SCALARS PRESS float',new_line('a')
     write(78) 'LOOKUP_TABLE default',new_line('a')
     do k = 1, 1

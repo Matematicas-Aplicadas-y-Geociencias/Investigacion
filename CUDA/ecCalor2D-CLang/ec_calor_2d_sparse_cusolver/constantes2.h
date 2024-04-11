@@ -1,7 +1,7 @@
 #ifndef CONSTANTES2_H
 #define CONSTANTES2_H
 
-const int mi = 20, nj = 20, nn = 1024;
+const int mi = 6, nj = 5, nn = 1024;
 const double pi = 3.1415926535;
 
 #include "herramientas2.h"

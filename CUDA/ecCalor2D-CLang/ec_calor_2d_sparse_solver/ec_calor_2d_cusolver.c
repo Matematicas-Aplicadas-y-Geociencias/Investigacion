@@ -156,6 +156,14 @@ int main(int argc, char const *argv[])
     obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
     // print_vector(csr_valores, numero_elementos_no_cero);
 
+    int rows, columns;
+    double *bgbsm;
+    rows = (mi - 2) * (nj - 2);
+    columns = rows;
+
+    bgbsm = csr_to_band(csr_valores, csr_col_ind, csr_ptr, 2, 2, rows, columns);
+    // print_vector(bgbsm, (2+2+1) * columns);
+
     // *************************************************************************
     // print_matrix(BI, nj, mi);
 //     print_matrix(AI, mi, nj);
@@ -165,26 +173,26 @@ int main(int argc, char const *argv[])
     /*
     * Abrimos la region de datos paralela
     */
-    #pragma acc data copyin(vector_b[:tamanio_matriz_completa], csr_valores[:numero_elementos_no_cero], \
-    csr_col_ind[:numero_elementos_no_cero], csr_ptr[:tamanio_csr_ptr]) \
-    copyout(resultados[:tamanio_matriz_completa])
-    {
-        #pragma acc host_data use_device(vector_b, csr_valores, csr_ptr, csr_col_ind, resultados)
-        {
-            // cusolverSpDcsrlsvluHost(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
-            // cusolverSpDcsrlsvqr(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
-            status = cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+    // #pragma acc data copyin(vector_b[:tamanio_matriz_completa], csr_valores[:numero_elementos_no_cero], \
+    // csr_col_ind[:numero_elementos_no_cero], csr_ptr[:tamanio_csr_ptr]) \
+    // copyout(resultados[:tamanio_matriz_completa])
+    // {
+    //     #pragma acc host_data use_device(vector_b, csr_valores, csr_ptr, csr_col_ind, resultados)
+    //     {
+    //         // cusolverSpDcsrlsvluHost(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+    //         // cusolverSpDcsrlsvqr(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+    //         status = cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
 
-        }       
-    } // * Cerramos la region de datos paralela
-    printf("status = %d", status);
+    //     }       
+    // } // * Cerramos la region de datos paralela
+    // printf("status = %d", status);
     // ****************************************************************************
     
     // print_vector(vector_b, tamanio_matriz_completa);
     // print_vector(resultados, tamanio_matriz_completa);
     // print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
-    llenar_matriz_temper(temper);
-    completar_matriz_temper(temper, resultados, tamanio_matriz_completa);
+    // llenar_matriz_temper(temper);
+    // completar_matriz_temper(temper, resultados, tamanio_matriz_completa);
     // print_matrix(temper, mi, nj);
     
     // ****************************************************************************
@@ -192,22 +200,22 @@ int main(int argc, char const *argv[])
     * Escritura de resultados
     */
     // Abrir el archivo para escribir
-    FILE *file = fopen("cusolver.101", "w");
+    // FILE *file = fopen("cusolver.101", "w");
 
-    if (file != NULL) {
-        // Utilizar un bucle para imprimir y guardar los datos
-        for (ii = 0; ii < mi; ii++) {
-            for (jj = 0; jj < nj; jj++)
-            {
-                fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
-            }
-            fprintf(file, "\n");
-        }
-        // Cerrar el archivo después de escribir
-        fclose(file);
-    } else {
-        printf("Error al abrir el archivo.\n");
-    }
+    // if (file != NULL) {
+    //     // Utilizar un bucle para imprimir y guardar los datos
+    //     for (ii = 0; ii < mi; ii++) {
+    //         for (jj = 0; jj < nj; jj++)
+    //         {
+    //             fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
+    //         }
+    //         fprintf(file, "\n");
+    //     }
+    //     // Cerrar el archivo después de escribir
+    //     fclose(file);
+    // } else {
+    //     printf("Error al abrir el archivo.\n");
+    // }
 
     // Liberar memoria de los punteros
     free(csr_ptr);

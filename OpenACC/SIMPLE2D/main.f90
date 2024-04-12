@@ -217,12 +217,13 @@ PROGRAM SIMPLE2D
      !
      !$acc data copy(&
      !$acc &         u(1:mi,1:nj+1),v(1:mi+1,1:nj),                            &
-     !$acc &         pres(1:mi+1,1:nj+1),temp(1:mi+1,1:nj+1)                  &
-     !$acc &         )                                                         &
+     !$acc &         pres(1:mi+1,1:nj+1),temp(1:mi+1,1:nj+1),                  &
+     !$acc &         corr_pres(1:mi+1,1:nj+1),                                 &
+     !$acc &         u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),                    &
+     !$acc &         temp_ant(1:mi+1,1:nj+1)                                   &
+     !$acc &         )&     
      !$acc & copyin(&
-     !$acc &        corr_pres(1:mi+1,1:nj+1),Resu(1:mi,1:nj+1),                &
-     !$acc &        u_ant(1:mi,1:nj+1),v_ant(1:mi+1,1:nj),                     &
-     !$acc &        temp_ant(1:mi+1,1:nj+1),                                   &
+     !$acc &        Resu(1:mi,1:nj+1),                                         &
      !$acc &        tiempo_inicial,nusselt0,nusselt1,                          &
      !$acc &        au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1),        &
      !$acc &        gamma_momen(1:mi+1,1:nj+1),gamma_energ(1:mi+1,1:nj+1),     &
@@ -851,10 +852,10 @@ PROGRAM SIMPLE2D
            !
            temp_med = (temp((placa_min+placa_max)/2,nj/2+1)+&
                 &temp((placa_min+placa_max)/2+1,nj/2+1))/2._DBL
-           ! OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')
-           ! WRITE(5,form26) tiempo_inicial+itera*dt,nusselt0,&
-           !      &-nusselt1,temp_med,temp_int,entropia_int
-           ! CLOSE(unit = 5)
+           OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rec//'.dat',access = 'append')
+           WRITE(5,form26) tiempo_inicial+itera*dt,nusselt0,&
+                &-nusselt1,temp_med,temp_int,entropia_int
+           CLOSE(unit = 5)
         end if
         !*********************************
         tiempo   = tiempo_inicial+itera*dt

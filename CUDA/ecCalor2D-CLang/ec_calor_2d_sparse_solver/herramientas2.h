@@ -272,6 +272,19 @@ void print_vector_int(int *vector, int vector_size)
     printf("\n");
 }
 
+void print_flat_matrix(double *matrix, int matrix_size)
+{
+    for (int i = 0; i < matrix_size; i++)
+    {
+        for (int j = 0; j < matrix_size; j++)
+        {
+            printf("%.7f ", matrix[i * matrix_size + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
 void print_formato_csr(double *csrVal, int *csrIndCol, int *csrPtr, int elementos_no_cero, int tamanio_ptr)
 {
     for (int ii = 0; ii < elementos_no_cero; ii++)
@@ -311,41 +324,23 @@ void completar_matriz_temper(double **matriz, double *vector, int tam_matriz_com
     
 }
 
-double *csr_to_band(
-    double *csr_val, 
-    double *csr_col_ind, 
-    double *csr_row_ptr, 
-    int lower_bandwith, 
-    int upper_bandwith, 
-    int rows_number, 
-    int columns_number)
+void csr_to_dense(
+    double *csr_val,
+    int *csr_col_ind,
+    int *csr_row_ptr,
+    double *dense_matrix,
+    int matrix_size
+)
 {
-    int lda;
-    size_t size_in_bytes;
-    double *blas_general_band_storage_mode;
-
-    lda = lower_bandwith + upper_bandwith + 1;
-    size_in_bytes = lda * columns_number * sizeof(double);
-
-    blas_general_band_storage_mode = (double *)malloc(size_in_bytes);
-
-    for (int i = 0; i < rows_number; i++)
-    {
-        for (int j = csr_row_ptr[i]; j < csr_row_ptr[i + 1]; j++)
-        { 
-            int col_idx = csr_col_ind[j];
-            int distance = col_idx - i;
-
-            if (distance >= -lower_bandwith && distance <= upper_bandwith)
-            {
-                int band_idx = distance + lower_bandwith;
-                blas_general_band_storage_mode[band_idx * columns_number * + col_idx] = csr_val[j];
-            }
-
-        }
-
+    // Iterate through each row in the CSR format
+  for (int i = 0; i < matrix_size; i++) {
+    // Loop through the non-zero elements in the current row
+    for (int j = csr_row_ptr[i]; j < csr_row_ptr[i + 1]; j++) {
+      int col_index = csr_col_ind[j];
+      double value = csr_val[j];
+      dense_matrix[i * matrix_size + col_index] = value; // Set the corresponding element in the dense matrix
     }
-    print_vector(blas_general_band_storage_mode, lda * columns_number);
-    return blas_general_band_storage_mode;
+  }
 }
+
 #endif

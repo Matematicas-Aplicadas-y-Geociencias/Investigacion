@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <cusparse.h>
-#include <cusolverSp.h>
+#include <lapacke.h>
 
 #include "constantes2.h"
 #include "herramientas2.h"
@@ -31,21 +30,17 @@ int main(int argc, char const *argv[])
     // CSR Sparse Format
     double *csr_valores;
     int *csr_col_ind;
-    int *csr_ptr;
-    double *vector_b;
+    int *csr_row_ptr;
+    double *vector_bx;
     double *resultados;
 
     int numero_elementos_no_cero;
     int tamanio_matriz_completa;
-    int tamanio_csr_ptr;
+    int tamanio_csr_row_ptr;
 
     double TOL = 1e-5;
     int REORDER = 3;
     int singularity = 0;
-
-    cusolverSpHandle_t handle = NULL;
-    cusparseMatDescr_t descrA = NULL;
-    cusolverStatus_t status;
     
     // *************************************************************
     
@@ -68,25 +63,18 @@ int main(int argc, char const *argv[])
 
     numero_elementos_no_cero = obtener_total_elementos_no_cero();
     tamanio_matriz_completa = (mi-2) * (nj-2);
-    tamanio_csr_ptr = tamanio_matriz_completa + 1;
+    tamanio_csr_row_ptr = tamanio_matriz_completa + 1;
 
     csr_valores = allocate_memory_vector(numero_elementos_no_cero);
     csr_col_ind = allocate_memory_vector_int(numero_elementos_no_cero);
-    csr_ptr = allocate_memory_vector_int(tamanio_csr_ptr);
-    vector_b = allocate_memory_vector(tamanio_matriz_completa);
+    csr_row_ptr = allocate_memory_vector_int(tamanio_csr_row_ptr);
+    vector_bx = allocate_memory_vector(tamanio_matriz_completa);
     resultados = allocate_memory_vector(tamanio_matriz_completa);
-
-    // ************************************************************
-    
-    cusolverSpCreate(&handle);
-    cusparseCreateMatDescr(&descrA);
-    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL); 
-    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
 
     // ************************************************************
 
     /*
-    * Se crea la malla 2D
+        * Se crea la malla 2D
     */
     a = 10.0;
     b = 5.0;
@@ -152,17 +140,9 @@ int main(int argc, char const *argv[])
     }
 
     // ****************************************************************************
-    obtener_vector_terminos_independientes(BI,AI,AD,BD,vector_b);
-    obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_ptr);
-    // print_vector(csr_valores, numero_elementos_no_cero);
 
-    int rows, columns;
-    double *bgbsm;
-    rows = (mi - 2) * (nj - 2);
-    columns = rows;
-
-    bgbsm = csr_to_band(csr_valores, csr_col_ind, csr_ptr, 2, 2, rows, columns);
-    // print_vector(bgbsm, (2+2+1) * columns);
+    obtener_vector_terminos_independientes(BI,AI,AD,BD,vector_bx);
+    obtener_formato_csr(BI, AI, AC, AD, BD, numero_elementos_no_cero, csr_valores, csr_col_ind, csr_row_ptr);
 
     // *************************************************************************
     // print_matrix(BI, nj, mi);
@@ -170,27 +150,47 @@ int main(int argc, char const *argv[])
     // print_matrix(AC, mi, nj);
     // print_matrix(AD, mi, nj);
     // print_matrix(BD, nj, mi);
-    /*
-    * Abrimos la region de datos paralela
-    */
-    // #pragma acc data copyin(vector_b[:tamanio_matriz_completa], csr_valores[:numero_elementos_no_cero], \
-    // csr_col_ind[:numero_elementos_no_cero], csr_ptr[:tamanio_csr_ptr]) \
-    // copyout(resultados[:tamanio_matriz_completa])
-    // {
-    //     #pragma acc host_data use_device(vector_b, csr_valores, csr_ptr, csr_col_ind, resultados)
-    //     {
-    //         // cusolverSpDcsrlsvluHost(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
-    //         // cusolverSpDcsrlsvqr(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
-    //         status = cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, numero_elementos_no_cero, descrA, csr_valores, csr_ptr, csr_col_ind, vector_b, TOL, REORDER, resultados, &singularity);
+    // ****************************************************************************
+    // CSR to Dense Format
+    double *dense_matrix;
+    int matrix_size = tamanio_matriz_completa * tamanio_matriz_completa;
 
-    //     }       
-    // } // * Cerramos la region de datos paralela
-    // printf("status = %d", status);
+    dense_matrix = allocate_memory_vector(matrix_size);
+    inicializar_vector(dense_matrix, matrix_size, 0.0);
+    csr_to_dense(csr_valores, csr_col_ind, csr_row_ptr, dense_matrix, tamanio_matriz_completa);
+    // print_flat_matrix(dense_matrix, tamanio_matriz_completa);
+    // ****************************************************************************
+    /*
+        * Region del solver
+    */
+    int N = tamanio_matriz_completa;
+    int NRHS = 1;
+    int LDA = N;
+    int LDB = NRHS;
+    int INFO_TRF = 0;
+    int INFO_TRS = 0;
+    int INFO_TRI = 0;
+    int INFO = 0;
+    int *IPIV = allocate_memory_vector_int(N);
+
+    // print_vector(vector_bx, tamanio_matriz_completa);
+    INFO_TRF = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, N, N, dense_matrix, LDA, IPIV);
+    INFO_TRS = LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', N, NRHS, dense_matrix, LDA, IPIV, vector_bx, LDB);
+    // INFO_TRI = LAPACKE_dgetri(LAPACK_ROW_MAJOR, N, dense_matrix, LDA, IPIV);
+    // INFO = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, NRHS, dense_matrix, LDA, IPIV, vector_bx, LDB);
+
+    // printf("Info DGETRF = %d\n", INFO_TRF);
+    // printf("Info DGETRS = %d\n", INFO_TRS);
+    // printf("Info DGETRI = %d\n", INFO_TRI);
+    // printf("Info DGESV = %d\n\n", INFO);
+
+    print_vector(vector_bx, N);
+
     // ****************************************************************************
     
-    // print_vector(vector_b, tamanio_matriz_completa);
+    // print_vector(vector_bx, tamanio_matriz_completa);
     // print_vector(resultados, tamanio_matriz_completa);
-    // print_formato_csr(csr_valores, csr_col_ind, csr_ptr, numero_elementos_no_cero, tamanio_csr_ptr);
+    // print_formato_csr(csr_valores, csr_col_ind, csr_row_ptr, numero_elementos_no_cero, tamanio_csr_row_ptr);
     // llenar_matriz_temper(temper);
     // completar_matriz_temper(temper, resultados, tamanio_matriz_completa);
     // print_matrix(temper, mi, nj);
@@ -218,7 +218,7 @@ int main(int argc, char const *argv[])
     // }
 
     // Liberar memoria de los punteros
-    free(csr_ptr);
+    free(csr_row_ptr);
     free(csr_col_ind);
     free(csr_valores);
 

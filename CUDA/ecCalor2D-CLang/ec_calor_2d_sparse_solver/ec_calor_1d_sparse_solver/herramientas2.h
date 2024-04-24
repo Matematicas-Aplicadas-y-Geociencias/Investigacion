@@ -168,6 +168,8 @@ void get_csr_schema(
 
         kk++;
     }
+
+    csr_row_ptr[kk] = nonzero_elements;
     
 }
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <lapacke.h>
+#include <cusparse.h>
 #include <cusolverSp.h>
 
 #include "constantes2.h"
@@ -10,7 +11,7 @@ int main(int argc, char const *argv[])
 {
     // *************************************************************
     // Declaracion de variables
-    int ii, jj; //, kk;
+    int ii;
     
     // Variables de tamano de la barra
     double t, deltax;
@@ -63,8 +64,8 @@ int main(int argc, char const *argv[])
     * Se definen los parametros fisicos del problema
     */
     cond_ter = 100.0;
-    start_temp = 0;
-    end_temp = 10;
+    start_temp = 1.0;
+    end_temp = 10.0;
 
     /*
     * Inicializacion de los arreglos a utilizar
@@ -92,7 +93,7 @@ int main(int argc, char const *argv[])
     nnz_elements = get_nonzero_elements();
     value_size = nnz_elements;
     col_ind_size = value_size;
-    row_ptr_size = problem_dimension;
+    row_ptr_size = problem_dimension + 1;
 
     value = allocate_memory_vector(value_size);
     col_ind = allocate_memory_vector_int(col_ind_size);
@@ -100,14 +101,12 @@ int main(int argc, char const *argv[])
 
     get_csr_schema(cond_ter, nnz_elements, value, col_ind, row_ptr);
 
+    print_vector(b, b_size);
     print_vector(value, value_size);
     print_vector_int(col_ind, col_ind_size);
     print_vector_int(row_ptr, row_ptr_size);
     // ****************************************************************************
 
-    /*
-        * Region del solver
-    */
     // int N = problem_dimension;
     // int NRHS = 1;
     // int LDA = N;
@@ -132,27 +131,33 @@ int main(int argc, char const *argv[])
 
     // ****************************************************************************
     double TOL = 1e-5;
-    int REORDER = 3;
+    int REORDER = 0;
     int singularity = 0;
-    double *u;
-    int u_size = b_size;
 
-    u = allocate_memory_vector(u_size);
-
-    cusolverSpHandle_t handle;
-    cusparseMatDescr_t descrMat;
+    cusolverSpHandle_t handle = NULL;
+    cusparseMatDescr_t descrMat = NULL;
     cusolverStatus_t status;
 
     cusolverSpCreate(&handle);
     cusparseCreateMatDescr(&descrMat);
-    cusparseSetMatType(descrMat, CUSPARSE_INDEX_BASE_ZERO);
-    cusparseSetMatIndexBase(descrMat, CUSPARSE_INDEX_BASE_ZERO);
+    // cusparseSetMatType(descrMat, CUSPARSE_MATRIX_TYPE_GENERAL);
+    // cusparseSetMatIndexBase(descrMat, CUSPARSE_INDEX_BASE_ZERO);
 
-    #pragma acc data copyin(b[:b_size], value[:value_size], col_ind[:col_ind_size], row_ptr[:row_ptr_size]) copyout(u[:u_size])
+    #pragma acc data copyin(b[:b_size], value[:value_size], col_ind[:col_ind_size], row_ptr[:row_ptr_size]) copyout(resultados[:resultados_size])
     {
-        status = cusolverSpDcsrlsvchol(handle, A_size, nnz_elements, descrMat, value, row_ptr, col_ind, b, TOL, REORDER, u, &singularity);
+        #pragma acc host_data use_device(b, value, row_ptr, col_ind, resultados) 
+        {
+
+        status = cusolverSpDcsrlsvchol(handle, A_size, nnz_elements, descrMat, value, row_ptr, col_ind, b, TOL, REORDER, resultados, &singularity);
+
+        }
     }
+
     printf("status = %d\n", status);
+    printf("singularity = %d\n", singularity);
+    get_temper_array(temper, resultados, start_temp, end_temp);
+    print_vector(resultados, resultados_size);
+    print_vector(xx, ni);
 
     // ****************************************************************************
 

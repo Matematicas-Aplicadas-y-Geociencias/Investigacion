@@ -2,7 +2,7 @@
 #define CONSTANTES2_H
 
 // const int mi = 6, nj = 5;
-const int ni = 8;
+const int ni = 14;
 const double pi = 3.1415926535;
 
 #include "herramientas2.h"

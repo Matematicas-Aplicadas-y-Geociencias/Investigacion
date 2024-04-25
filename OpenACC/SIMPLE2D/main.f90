@@ -174,7 +174,7 @@ PROGRAM SIMPLE2D
   !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
-  ! u_ant = 1.0_DBL
+  u_ant = 1.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -224,7 +224,7 @@ PROGRAM SIMPLE2D
      !$acc &         )&     
      !$acc & copyin(&
      !$acc &        Resu(1:mi,1:nj+1),                                         &
-     !$acc &        tiempo_inicial,nusselt0,nusselt1,                          &
+     !$acc &        tiempo_inicial,                                            &
      !$acc &        au(1:mi,1:nj+1),av(1:mi+1,1:nj),b_o(1:mi+1,1:nj+1),        &
      !$acc &        gamma_momen(1:mi+1,1:nj+1),gamma_energ(1:mi+1,1:nj+1),     &
      !$acc &        deltaxp(1:mi),deltayp(1:nj),deltaxu(1:mi),deltayu(1:nj),   &
@@ -267,8 +267,8 @@ PROGRAM SIMPLE2D
               error = 0.0_DBL
               !
               !$acc parallel loop gang collapse(2) async(stream1)
-              inicializacion_fu: do jj=2, nj
-                 do ii = 2, mi
+              inicializacion_fu: do jj=1, nj
+                 do ii = 1, mi
                     fu(ii,jj) = u(ii,jj)
                     fv(ii,jj) = v(ii,jj)
                  end do
@@ -370,7 +370,7 @@ PROGRAM SIMPLE2D
               !$acc parallel loop gang collapse(2) async(stream2) 
               do jj = 2, nj
                  do ii = 2, mi-1
-                    u(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
+                    u(ii,jj) = 0.7_DBL*Rx(ii,jj)+0.3_DBL*Ry(jj,ii)
                  end do
               end do
               !
@@ -409,6 +409,7 @@ PROGRAM SIMPLE2D
                  Rx(mi+1,jj) = 0.0_DBL
                  av(mi+1,jj) = 1.e40_DBL !ACi(mi)
               end do
+              !
               !$acc end parallel
               !
               !$acc parallel loop gang async(stream2)
@@ -455,17 +456,17 @@ PROGRAM SIMPLE2D
               !
               !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj-1
-                 do ii = 1, mi
-                    v(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
+                 do ii = 2, mi
+                    v(ii,jj) = 0.7_DBL*Rx(ii,jj)+0.3_DBL*Ry(jj,ii)
                  end do
               end do
               !
               !$acc parallel loop gang reduction(max:error) async(stream1)
-              calculo_diferencias_dv: do jj=2, nj
+              calculo_diferencias_dv: do jj=2, nj-1
                  !
                  !$acc loop vector
                   do ii = 2, mi
-                    error = max(error, dabs(u(ii,jj)-fu(ii,jj)))
+                    ! error = max(error, dabs(u(ii,jj)-fu(ii,jj)))
                     error = max(error, dabs(v(ii,jj)-fv(ii,jj)))
                   end do
               end do calculo_diferencias_dv
@@ -588,7 +589,7 @@ PROGRAM SIMPLE2D
               !
               !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj
-                 do ii = 1, mi
+                 do ii = 2, mi
                     corr_pres(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
@@ -596,8 +597,8 @@ PROGRAM SIMPLE2D
               ! C\'alculo de diferencias y criterio de convergencia
               !
               !$acc parallel loop gang reduction(max:error,maxbo) async(stream1)
-              calculo_dif_corr_pres: do jj=1, nj+1
-                 do ii=1, mi+1
+              calculo_dif_corr_pres: do jj=2, nj
+                 do ii=2, mi
                     error = max(error,dabs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
                     maxbo = max(maxbo,dabs(b_o(ii,jj)))
                  end do
@@ -757,7 +758,7 @@ PROGRAM SIMPLE2D
               !
               !$acc parallel loop gang collapse(2) async(stream1)
               do jj = 2, nj
-                 do ii = 1, mi
+                 do ii = 2, mi
                     temp(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
                  end do
               end do
@@ -836,11 +837,11 @@ PROGRAM SIMPLE2D
         itera = itera + 1
         if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,residuo,maxbo
 
-        if( mod(itera,5)==0 )then
+        if( mod(itera,100)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
            !
-           !$acc update self(temp(1:mi+1,1:nj+1)) async(stream2)
+           !$acc update self(temp(1:mi+1,1:nj+1)) ! async(stream2)
            ! $acc parallel async(stream2)
            call nusselt_promedio_y(&
                 &xp,yp,deltaxp,deltayp,&

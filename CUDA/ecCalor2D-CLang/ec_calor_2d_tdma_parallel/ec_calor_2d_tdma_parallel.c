@@ -74,8 +74,8 @@ int main(int argc, char const *argv[])
     * Se definen los parametros fisicos del problema
     */
     cond_ter = 100.0;
-    temp_ini = 308.0;
-    temp_fin = 298.0;
+    temp_ini = 0.0;//308.0;
+    temp_fin = 0.0;//298.0;
     flux_aba = 5.0;
     flux_arr = 5.0;
     alpha    = 0.5; //parametro de relajacion

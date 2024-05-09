@@ -199,13 +199,12 @@ int main(int argc, char const *argv[])
     // print_formato_csr(csr_values, csr_column_index, csr_row_pointer, nonzero_elements, csr_row_pointer_size);
     fill_boundary_conditions_temper_matrix(temper);
     // completar_matriz_temper(temper, bx, rows_number);
+    // TODO: Revisar y corregir la manera en como se guardan los valores del resultado obtenido con el solver en la matriz temper y también como se guardan en el archivo de texto.
     completar_matriz_temper(temper, brh, rows_number);
     // print_matrix(temper, mi, nj);
     
     // ****************************************************************************
-    /*
-    * Escritura de resultados
-    */
+    // * Escritura de resultados
     // Abrir el archivo para escribir
     FILE *file = fopen("LS.101", "w");
 

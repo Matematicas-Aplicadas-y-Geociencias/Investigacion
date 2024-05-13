@@ -75,7 +75,7 @@ double **allocate_memory_bidimensional_matrix_double(const int rows_number, cons
     // Check that the memory allocation was successful.
     if (!matrix)
     {
-        error_handler("Allocation failure in allocate_memory_matrix()");
+        error_handler("Allocation failure in allocate_bidimensional_memory_matrix_double() - rows");
     }
 
     // Allocate pointers to columns_number
@@ -93,8 +93,9 @@ double **allocate_memory_bidimensional_matrix_double(const int rows_number, cons
             {
                 free(matrix[jj]);
             }
+
             free(matrix);
-            error_handler("Allocation failure in allocate_memory_matrix()");
+            error_handler("Allocation failure in allocate_bidimensional_memory_matrix_double() - columns");
         }
     }
 
@@ -121,7 +122,7 @@ void free_memory_unidimensional_matrix_double(double *matrix)
 
 void free_memory_bidimensional_matrix_double(double **matrix, const int rows_number, const int columns_number)
 {
-    // Liberar la memoria al final del programa
+    // Freeing up memory at the end of the programme
     for (size_t ii = 0; ii < rows_number; ii++)
     {
         free(matrix[ii]);
@@ -132,23 +133,23 @@ void free_memory_bidimensional_matrix_double(double **matrix, const int rows_num
 // **************************************************************************************************
 // **************************************************************************************************
 
-void initialise_bidimensional_matrix_with_double(double **matrix, const int rows_number, const int columns_number, const double value)
+void initialise_bidimensional_matrix_double(double **matrix, const int rows_number, const int columns_number, const double initial_value)
 {
     for (size_t ii = 0; ii < rows_number; ii++)
     {
 
         for (size_t jj = 0; jj < columns_number; jj++)
         {
-            matrix[ii][jj] = value;
+            matrix[ii][jj] = initial_value;
         }
     }
 }
 
-void initialise_vector_with_double(double *vector, const int vector_size, const double value)
+void initialise_vector_double(double *vector, const int vector_size, const double initial_value)
 {
     for (size_t ii = 0; ii < vector_size; ii++)
     {
-        vector[ii] = value;
+        vector[ii] = initial_value;
     }
 }
 
@@ -459,11 +460,15 @@ void fill_boundary_conditions_temper_matrix(double **matrix)
 
 void completar_matriz_temper(double **matrix, double *vector, int tam_matriz_completa)
 {
-    for (size_t jj = 1; jj < mi-1; jj++)
+    size_t vector_index = 0;
+    
+    for (size_t jj = 1; jj < nj-1; jj++)
     {
-        for (size_t ii = 1; ii < nj-1; ii++)
+        for (size_t ii = 1; ii < mi-1; ii++)
         {
-            matrix[jj][ii] = vector[(ii) + 3 * (ii-1) - 1];
+            matrix[ii][jj] = vector[vector_index];
+            vector_index++;
+            // matrix[ii][jj] = vector[(ii) + 3 * (ii-1) - 1];
         }
     }
     

@@ -1,9 +1,8 @@
 #ifndef HERRAMIENTAS2_H
 #define HERRAMIENTAS2_H
 
+// ************************************************************************************
 
-
-// Error handler
 void error_handler(const char error_string[])
 {
     fprintf(stderr, "C language runtime error...\n");
@@ -12,192 +11,233 @@ void error_handler(const char error_string[])
     exit(EXIT_FAILURE);
 }
 
-// Allocate memory to an vector of double data type
-double *allocate_memory_vector(int vector_size)
+// ************************************************************************************
+double *allocate_memory_vector_double(const int vector_size)
 {
     double *vector;
     size_t size_in_bytes;
-    size_in_bytes = vector_size * sizeof(double);
 
+    size_in_bytes = vector_size * sizeof(double);
     vector = (double *)malloc(size_in_bytes);
 
     // Check that the memory allocation was successful.
     if (!vector)
     {
-        error_handler("Allocation failure in allocate_memory_vector()");
+        error_handler("Allocation failure in allocate_memory_vector_double()");
     }
     return vector;
 }
 
-// Allocate memory to an vector of int data type
-int *allocate_memory_vector_int(int vector_size)
+int *allocate_memory_vector_int(const int vector_size)
 {
     int *vector;
     size_t size_in_bytes;
+    
     size_in_bytes = vector_size * sizeof(int);
-
     vector = (int *)malloc(size_in_bytes);
 
     // Check that the memory allocation was successful.
     if (!vector)
     {
-        error_handler("Allocation failure in allocate_memory_vector()");
+        error_handler("Allocation failure in allocate_memory_vector_int()");
     }
     return vector;
 }
 
-// Allocate memory to an matrix of double data type
-double **allocate_memory_matrix(int rows, int columns)
-{
-    double **matrix;
-    size_t r_size_in_bytes;
-    r_size_in_bytes = rows * sizeof(double *);
+// ************************************************************************************
 
-    // Allocate pointers to rows
-    matrix = (double **)malloc(r_size_in_bytes);
+int *allocate_memory_unidimensional_matrix_double(const int rows_number, const int columns_number)
+{
+    int *matrix;
+    size_t size_in_bytes;
+    
+    size_in_bytes = rows_number * columns_number * sizeof(int);
+    matrix = (int *)malloc(size_in_bytes);
+
     // Check that the memory allocation was successful.
     if (!matrix)
     {
-        error_handler("Allocation failure in allocate_memory_matrix()");
+        error_handler("Allocation failure in allocate_memory_vector_int()");
+    }
+    return matrix;
+}
+
+
+double **allocate_memory_bidimensional_matrix_double(const int rows_number, const int columns_number)
+{
+    double **matrix;
+    size_t row_size_in_bytes;
+
+    row_size_in_bytes = rows_number * sizeof(double *);
+    // Allocate pointers to rows_number
+    matrix = (double **)malloc(row_size_in_bytes);
+
+    // Check that the memory allocation was successful.
+    if (!matrix)
+    {
+        error_handler("Allocation failure in allocate_bidimensional_memory_matrix_double() - rows");
     }
 
-    // Allocate pointers to columns
-    size_t c_size_in_bytes;
-    c_size_in_bytes = columns * sizeof(double);
+    // Allocate pointers to columns_number
+    size_t column_size_in_bytes;
+    column_size_in_bytes = columns_number * sizeof(double);
 
-    for (int i = 0; i < rows; i++)
+    for (size_t ii = 0; ii < rows_number; ii++)
     {
-        matrix[i] = (double *)malloc(c_size_in_bytes);
+        matrix[ii] = (double *)malloc(column_size_in_bytes);
         // Check that the memory allocation was successful.
-        if (!matrix[i])
+        if (!matrix[ii])
         {
-            // Liberar la memoria ya asignada para las filas antes de salir
-            for (int j = 0; j < i; j++)
+            // Liberar la memoria ya asignada para las rows_number antes de salir
+            for (size_t jj = 0; jj < ii; jj++)
             {
-                free(matrix[j]);
+                free(matrix[jj]);
             }
+            
             free(matrix);
-            error_handler("Allocation failure in allocate_memory_matrix()");
+            error_handler("Allocation failure in allocate_bidimensional_memory_matrix_double() - columns");
         }
     }
 
     return matrix;
 }
 
-void free_matrix(double **matrix, int rows, int columns)
+// ************************************************************************************
+
+void free_memory_vector_double(double *vector)
 {
-    // Liberar la memoria al final del programa
-    for (int i = 0; i < rows; i++)
+    free(vector);
+}
+
+void free_memory_vector_int(int *vector)
+{
+    free(vector);
+}
+
+void free_memory_unidimensional_matrix_double(double *matrix)
+{
+    free(matrix);
+}
+
+void free_memory_bidimensional_matrix_double(double **matrix, const int rows_number, const int columns_number)
+{
+    // Freeing up memory at the end of the programme
+    for (size_t ii = 0; ii < rows_number; ii++)
     {
-        free(matrix[i]);
+        free(matrix[ii]);
     }
     free(matrix);
 }
 
-void inicializar_matriz(double **matriz, const int filas, const int columnas, const double valor_inicial)
+// ************************************************************************************
+
+void initialise_bidimensional_matrix_double(double **matriz, const int rows_number, const int columns_number, const double initial_value)
 {
-    for (int i = 0; i < filas; i++)
+    for (size_t ii = 0; ii < rows_number; ii++)
     {
 
-        for (int j = 0; j < columnas; j++)
+        for (size_t jj = 0; jj < columns_number; jj++)
         {
-            matriz[i][j] = valor_inicial;
+            matriz[ii][jj] = initial_value;
         }
     }
 }
 
-void inicializar_vector(double *vector, const int tamanio_vector, const double valor_inicial)
+void initialise_vector_double(double *vector, const int vector_size, const double initial_value)
 {
-    for (int i = 0; i < tamanio_vector; i++)
+    for (size_t ii = 0; ii < vector_size; ii++)
     {
-        vector[i] = valor_inicial;
+        vector[ii] = initial_value;
     }
 }
 
-int obtener_total_elementos_no_cero()
+// ************************************************************************************
+int get_nonzero_elements()
 {
-    int elementos_no_cero = 12 + (mi + nj - 8) * 8 + (mi - 4) * (nj - 4) * 5;
-    return elementos_no_cero;
+
+    int nonzero_elements = 12 + (mi + nj - 8) * 8 + (mi - 4) * (nj - 4) * 5;
+    return nonzero_elements;
 }
 
-int obtener_indice_columna(int ii, int jj)
+int get_column_index(const int ii, const int jj)
 {
-    int indice_columna;
-    indice_columna = (jj - 1) * (mi - 2) + ii - (mi - 1) - 1;
-    return indice_columna;
+    int column_index;
+    column_index = (jj - 1) * (mi - 2) + ii - (mi - 1) - 1;
+    // column_index = (jj - 1) * (mi - 2) + ii - (mi - 1); // for index-one
+    // column_index = jj * (mi - 2) + ii - (mi - 1); // for index-zero
+    return column_index;
 }
 
-void obtener_formato_csr(
+void get_csr_format_stores(
     double **BI,
     double **AI,
     double **AC,
     double **AD,
     double **BD,
-    int elementos_no_cero,
-    double *csrVal,
-    int *csrIndCol,
-    int *csrPtr)
+    int nonzero_elements,
+    double *csr_values,
+    int *csr_column_index,
+    int *csr_row_pointer)
 {
-    int kk = -1;
-    int tt = 0;
-    int counter = -1;
-    csrPtr[tt] = 0;
+    int kk = -1;        // csr_values index
+    int tt = 0;         // csr_row_pointer index
+    int counter = -1;   // nonzero elements counter
+    csr_row_pointer[tt] = 0;
 
-    for (int jj = 1; jj < nj - 1; jj++)
+    for (size_t jj = 1; jj < nj - 1; jj++)
     {
-        for (int ii = 1; ii < mi - 1; ii++)
+        for (size_t ii = 1; ii < mi - 1; ii++)
         {
             if (jj >= 2 && jj < nj - 1)
             {
                 kk++;
-                csrVal[kk] = BI[jj - 1][ii];
-                csrIndCol[kk] = obtener_indice_columna(ii + 1, jj);
+                csr_values[kk] = BI[jj - 1][ii];
+                csr_column_index[kk] = get_column_index(ii + 1, jj);
                 counter++;
             }
 
             if (ii >= 2 && ii < mi - 1)
             {
                 kk++;
-                csrVal[kk] = AI[ii - 1][jj];
-                csrIndCol[kk] = obtener_indice_columna(ii, jj + 1);
+                csr_values[kk] = AI[ii - 1][jj];
+                csr_column_index[kk] = get_column_index(ii, jj + 1);
                 counter++;
             }
 
             kk++;
 
-            if (kk >= elementos_no_cero)
+            if (kk >= nonzero_elements)
                 break;
             
-            csrVal[kk] = AC[ii][jj];
-            csrIndCol[kk] = obtener_indice_columna(ii + 1, jj + 1);
+            csr_values[kk] = AC[ii][jj];
+            csr_column_index[kk] = get_column_index(ii + 1, jj + 1);
             counter++;
 
             if (ii >= 1 && ii < mi - 2)
             {
                 kk++;
-                csrVal[kk] = AD[ii + 1][jj];
-                csrIndCol[kk] = obtener_indice_columna(ii + 2, jj + 1);
+                csr_values[kk] = AD[ii + 1][jj];
+                csr_column_index[kk] = get_column_index(ii + 2, jj + 1);
                 counter++;
             }
 
             if (jj >= 1 && jj < nj - 2)
             {
                 kk++;
-                csrVal[kk] = BD[jj + 1][ii];
-                csrIndCol[kk] = obtener_indice_columna(ii + 1, jj + 2);
+                csr_values[kk] = BD[jj + 1][ii];
+                csr_column_index[kk] = get_column_index(ii + 1, jj + 2);
                 counter++;
             }
 
             tt++;
-            csrPtr[tt] = counter + 1;
+            csr_row_pointer[tt] = counter + 1;
         }
 
     }
     
 }
 
-// b: vector de terminos independientes b
-void obtener_vector_terminos_independientes(
+void get_vector_independent_terms(
     double **BI,
     double **AI,
     double **AD,
@@ -236,79 +276,136 @@ void obtener_vector_terminos_independientes(
     
 }
 
-// Print to console a Matrix
-void print_matrix(double **matrix, int rows, int columns)
+// ************************************************************************************
+
+void print_vector_double(double *vector, const int vector_size)
 {
-    for (int i = 0; i < rows; i++)
+    for (size_t ii = 0; ii < vector_size; ++ii)
     {
-        for (int j = 0; j < columns; j++)
+        printf("%4.4f ", vector[ii]);
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void print_vector_int(int *vector, const int vector_size)
+{
+    for (size_t ii = 0; ii < vector_size; ++ii)
+    {
+        printf("%d ", vector[ii]);
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void print_unidimensional_matrix_double(double *matrix, const int rows_number, const int columns_number)
+{
+    for (size_t ii = 0; ii < rows_number; ii++)
+    {
+        for (size_t jj = 0; jj < columns_number; jj++)
         {
-            printf("%f ", matrix[i][j]);
+            size_t index = ii * rows_number + jj; 
+            printf("%4.4f ", matrix[index]);
         }
         printf("\n");
     }
     printf("\n");
 }
 
-// Print to console a Vector
-void print_vector(double *vector, int vector_size)
+void print_bidimensional_matrix_double(double **matrix, const int rows_number, const int columns_number)
 {
-    for (int i = 0; i < vector_size; ++i)
+    for (size_t ii = 0; ii < rows_number; ii++)
     {
-        printf("%f ", vector[i]);
-        printf("\n");
-    }
-    printf("\n");
-}
-
-// Print to console a Vector
-void print_vector_int(int *vector, int vector_size)
-{
-    for (int i = 0; i < vector_size; ++i)
-    {
-        printf("%d ", vector[i]);
-        printf("\n");
-    }
-    printf("\n");
-}
-
-void print_formato_csr(double *csrVal, int *csrIndCol, int *csrPtr, int elementos_no_cero, int tamanio_ptr)
-{
-    for (int ii = 0; ii < elementos_no_cero; ii++)
-    {
-        if (ii < tamanio_ptr)
+        for (size_t jj = 0; jj < columns_number; jj++)
         {
-            printf("Val[%d] = %f | ColInd[%d] = %d | Ptr[%d] = %d\n", ii, csrVal[ii], ii, csrIndCol[ii], ii, csrPtr[ii]);
+            printf("%4.4f ", matrix[ii][jj]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void print_csr_format_stores(double *csr_values, int *csr_column_index, int *csr_row_pointer, int nonzero_elements, const int csr_row_pointer_size)
+{
+    for (int ii = 0; ii < nonzero_elements; ii++)
+    {
+        if (ii < csr_row_pointer_size)
+        {
+            printf("Val[%d] = %f | ColInd[%d] = %d | Ptr[%d] = %d\n", ii, csr_values[ii], ii, csr_column_index[ii], ii, csr_row_pointer[ii]);
             continue;
         }
-        printf("Val[%d] = %f | ColInd[%d] = %d\n", ii, csrVal[ii], ii, csrIndCol[ii]);
+        printf("Val[%d] = %f | ColInd[%d] = %d\n", ii, csr_values[ii], ii, csr_column_index[ii]);
     }
 }
 
-void llenar_matriz_temper(double **matriz)
+// ************************************************************************************
+
+void fill_boundary_conditions_temper_matrix(double **matrix)
 {
-    for (int j = 1; j < nj-1; j++)
+    for (size_t jj = 1; jj < nj-1; jj++)
     {
-        matriz[0][j] = 0.0;
-        matriz[mi-1][j] = 0.0;
+        // BI
+        matrix[0][jj] = 0.0;
+        matrix[mi-1][jj] = 0.0;
     }
-    for (int i = 1; i < mi-1; i++)
+    for (size_t ii = 1; ii < mi-1; ii++)
     {
-        matriz[i][0] = 0.0;
-        matriz[i][nj-1] = 3.0;
+        matrix[ii][0] = 0.0;
+        matrix[ii][nj-1] = 3.0;
     }
 }
 
-void completar_matriz_temper(double **matriz, double *vector, int tam_matriz_completa)
+void fill_matrix_temper_with_results(double **matriz, double *vector, int tam_matriz_completa)
 {
-    for (int j = 1; j < mi-1; j++)
+    size_t kk = 0;  // vector index
+
+    for (size_t jj = 1; jj < nj-1; jj++)
     {
-        for (int i = 1; i < nj-1; i++)
+        for (size_t ii = 1; ii < mi-1; ii++)
         {
-            matriz[j][i] = vector[(i) + 3 * (i-1) - 1];
+            matriz[ii][jj] = vector[kk];
+            kk++;
         }
     }
     
+}
+
+// ************************************************************************************
+
+char *cuda_solver_get_status(cusolverStatus_t status)
+{
+    switch (status) {
+        case CUSOLVER_STATUS_SUCCESS:
+            return "CUSOLVER_STATUS_SUCCESS";
+        case CUSOLVER_STATUS_NOT_INITIALIZED:
+            return "CUSOLVER_STATUS_NOT_INITIALIZED";
+        case CUSOLVER_STATUS_ALLOC_FAILED:
+            return "CUSOLVER_STATUS_ALLOC_FAILED";
+        case CUSOLVER_STATUS_INVALID_VALUE:
+            return "CUSOLVER_STATUS_INVALID_VALUE";
+        case CUSOLVER_STATUS_ARCH_MISMATCH:
+            return "CUSOLVER_STATUS_ARCH_MISMATCH";
+        case CUSOLVER_STATUS_EXECUTION_FAILED:
+            return "CUSOLVER_STATUS_EXECUTION_FAILED";
+        case CUSOLVER_STATUS_INTERNAL_ERROR:
+            return "CUSOLVER_STATUS_INTERNAL_ERROR";
+        case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+            return "CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+        case CUSOLVER_STATUS_NOT_SUPPORTED:
+            return "CUSOLVER_STATUS_NOT_SUPPORTED";
+  }
+  return "NULL";
+}
+
+void print_info_cuda_solver(cusolverStatus_t status)
+{
+    char *info;
+
+    info = cuda_solver_get_status(status);
+
+    printf("Estado del solver de CUDA:\n");
+    printf("%s...\n", info);
+
 }
 
 #endif

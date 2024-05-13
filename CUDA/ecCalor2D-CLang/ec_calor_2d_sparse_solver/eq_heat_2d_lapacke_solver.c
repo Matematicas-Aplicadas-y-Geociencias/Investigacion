@@ -172,8 +172,8 @@ int main(int argc, char const *argv[])
 
     dense_matrix = allocate_memory_unidimensional_matrix_double(rows_number, columns_number);
     initialise_vector_with_double(dense_matrix, matrix_size, 0.0);
-    // csr_to_dense(csr_values, csr_column_index, csr_row_pointer, dense_matrix, rows_number);
-    csr_to_dense(values, column_index, row_pointer, dense_matrix, rows_number);
+    csr_to_dense(csr_values, csr_column_index, csr_row_pointer, dense_matrix, rows_number);
+    // csr_to_dense(values, column_index, row_pointer, dense_matrix, rows_number);
     // print_flat_matrix(dense_matrix, rows_number);
     // ****************************************************************************
     /* Region del solver    */
@@ -185,8 +185,8 @@ int main(int argc, char const *argv[])
     int *IPIV = allocate_memory_vector_int(N);
 
     // print_vector(bx, rows_number);
-    // INFO = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, NRHS, dense_matrix, LDA, IPIV, bx, LDB);
-    INFO = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, NRHS, dense_matrix, LDA, IPIV, brh, LDB);
+    INFO = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, NRHS, dense_matrix, LDA, IPIV, bx, LDB);
+    // INFO = LAPACKE_dgesv(LAPACK_ROW_MAJOR, N, NRHS, dense_matrix, LDA, IPIV, brh, LDB);
 
     printf("Info DGESV = %d\n\n", INFO);
 
@@ -194,14 +194,13 @@ int main(int argc, char const *argv[])
 
     // ****************************************************************************
     
-    print_vector_double(brh, rows_number);
+    // print_vector_double(brh, rows_number);
     // print_vector(results, rows_number);
     // print_formato_csr(csr_values, csr_column_index, csr_row_pointer, nonzero_elements, csr_row_pointer_size);
     fill_boundary_conditions_temper_matrix(temper);
-    // completar_matriz_temper(temper, bx, rows_number);
-    // TODO: Revisar y corregir la manera en como se guardan los valores del resultado obtenido con el solver en la matriz temper y también como se guardan en el archivo de texto.
-    completar_matriz_temper(temper, brh, rows_number);
-    // print_matrix(temper, mi, nj);
+    completar_matriz_temper(temper, bx, rows_number);
+    // completar_matriz_temper(temper, brh, rows_number);
+    // print_bidimensional_matrix_double(temper, mi, nj);
     
     // ****************************************************************************
     // * Escritura de resultados

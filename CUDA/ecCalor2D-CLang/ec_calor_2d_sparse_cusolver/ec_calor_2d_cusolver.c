@@ -8,55 +8,72 @@
 
 int main(int argc, char const *argv[])
 {
-    // *************************************************************
-    // Declaracion de variables
+// ************************************************************************************
+ 
+    // ****** VARIABLE DECLARATION: PRIMITIVE ******
+
+    // LOOP ITERATION INDEX
     int ii, jj; //, kk;
     
-    // Variables de tamano de la placa
-    double a, b, deltax, deltay;
+    // VARIABLES FOR THE SIZE OF THE PLATE
+    double a, b, delta_x, delta_y;
 
-    // Parametros fisicos del problema
+    // PHYSICAL PARAMETERS OF THE PROBLEM
     double cond_ter, temp_ini, temp_fin;
     double flux_aba, flux_arr; //, alpha;
 
-    // Arreglos para incognitas, termino fuente y posicion
-    double **temper, **temp_ant;
-    double *xx;
-    double *yy;
-
-    //Matriz a invertir
-    double **AI, **AD, **AC;
-    double **BI, **BD, **BC;
-
-    // CSR Sparse Format
-    double *csr_values;
-    int *csr_column_index;
-    int *csr_row_pointer;
-    double *vector_b;
-    double *resultados;
-
+    // CSR parameters
     int nonzero_elements;
     int rows_number;
     int columns_number;
     int csr_row_pointer_size;
 
-    double TOL = 1e-5;
-    int REORDER = 3;
-    int singularity = 0;
+    // CUSOLVER: HIGHT LEVEL FUNCTION PARAMETERS
+    double TOLERANCE;
+    int REORDER;
+    int SINGULARITY;
 
-    cusolverSpHandle_t handle = NULL;
+    // ****** VARIABLE DECLARATION: POINTERS ******
+    // ARRAYS FOR POSITION
+    double *xx;
+    double *yy;
+
+    // ARRAYS FOR VECTOR OF INDEPENDENT TERMS AND VECTOR OF RESULTS
+    double *vector_b;
+    double *results;
+
+    // ARRAYS FOR COMPRESSED SPARSE ROW STORE (CSR)
+    double *csr_values;
+    int *csr_column_index;
+    int *csr_row_pointer;
+
+    // ****** VARIABLE DECLARATION: POINTERS TO POINTERS ******
+    // ARRAYS FOR SOURCE TERM
+    double **temper, **temp_ant;
+
+    //BIDIMENSIONAL ARRAYS FOR NONZERO COEFFICIENTS
+    double **AI, **AD, **AC;
+    double **BI, **BD, **BC;
+
+    // ****** VARIABLE DECLARATION: CUSPARSE AND CUSOLVER ******
+    // HELPER FUNCTIONS PARAMETERS
     cusparseMatDescr_t descrA = NULL;
-    cusolverStatus_t status;
+    cusolverSpHandle_t handle = NULL;
+
+    // ERROR STATUS PARAMETERS
+    cusparseStatus_t cusparse_status;
+    cusolverStatus_t cusolver_status;
     
-    // *************************************************************
+// ************************************************************************************
     
+    // MEMORY ALLOCATION SECTION
+
     temper      = allocate_memory_bidimensional_matrix_double(mi, nj);
     temp_ant    = allocate_memory_bidimensional_matrix_double(mi, nj);
 
     xx = allocate_memory_vector_double(mi);
     yy = allocate_memory_vector_double(nj);
 
-    
     AI = allocate_memory_bidimensional_matrix_double(mi, nj);
     AD = allocate_memory_bidimensional_matrix_double(mi, nj);
     AC = allocate_memory_bidimensional_matrix_double(mi, nj);
@@ -65,31 +82,39 @@ int main(int argc, char const *argv[])
     BD = allocate_memory_bidimensional_matrix_double(nj, mi);
     BC = allocate_memory_bidimensional_matrix_double(nj, mi);
 
-    // ************************************************************
+// ************************************************************************************
 
+    // INITIALISATION SECTION OF CSR STORAGE PARAMETERS
     nonzero_elements        = get_nonzero_elements();
     rows_number             = (mi-2) * (nj-2);
     columns_number          = (mi-2) * (nj-2);
     csr_row_pointer_size    = rows_number + 1;
 
+    // MEMORY ALLOCATION FOR CSR STORAGES ARRAYS
     csr_values          = allocate_memory_vector_double(nonzero_elements);
     csr_column_index    = allocate_memory_vector_int(nonzero_elements);
     csr_row_pointer     = allocate_memory_vector_int(csr_row_pointer_size);
     vector_b            = allocate_memory_vector_double(columns_number);
-    resultados          = allocate_memory_vector_double(columns_number);
+    results             = allocate_memory_vector_double(columns_number);
 
-    // ************************************************************
+// ************************************************************************************
     
-    cusolverSpCreate(&handle);
-    cusparseCreateMatDescr(&descrA);
+    // INITIALISATION OF THE PARAMETERS OF THE HELPER FUNCTIONS CUSPARSE AND CUSOLVER
+    cusolver_status = cusolverSpCreate(&handle);
+    print_info_cusolver("Handler", cusolver_status);
+
+    cusparse_status = cusparseCreateMatDescr(&descrA);
+    print_info_cusparse("Matrix descriptor", cusparse_status);
+
+    /* This parameters are by default (read documentation: https://docs.nvidia.com/ cuda/cusparse/index.html#cusparse-types-reference):
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL); 
     cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-
-    // ************************************************************
-
-    /*
-    * Se crea la malla 2D
     */
+
+// ************************************************************************************
+
+    // THE 2D MESH IS CREATED
+
     a = 10.0;
     b = 5.0;
 
@@ -108,13 +133,12 @@ int main(int argc, char const *argv[])
     }
     
     double dmi1 = (double)(mi - 1);
-    deltax = 1.0 / dmi1;
+    delta_x = 1.0 / dmi1;
     double dnj1 = (double)(nj - 1);
-    deltay = 1.0 / dnj1;
+    delta_y = 1.0 / dnj1;
 
-    /*
-    * Se definen los parametros fisicos del problema
-    */
+    // The physical parameters of the problem are defined
+
     cond_ter = 100.0;
     temp_ini = 0.0;
     temp_fin = 0.0;
@@ -122,104 +146,92 @@ int main(int argc, char const *argv[])
     flux_arr = 5.0;
     // alpha    = 0.5; //parametro de relajacion
 
-    /*
-    * Inicializacion de los arreglos a utilizar
-    */
-    inicializar_matriz(AI, mi, nj, 0.0);
-    inicializar_matriz(AC, mi, nj, 0.0);
-    inicializar_matriz(AD, mi, nj, 0.0);
-    inicializar_matriz(BI, nj, mi, 0.0);
-    inicializar_matriz(BC, nj, mi, 0.0);
-    inicializar_matriz(BD, nj, mi, 0.0);
-    
-    double valor = (temp_fin+temp_ini)/2.0;
-    inicializar_matriz(temper, mi, nj, valor);
-    inicializar_matriz(temp_ant, mi, nj, valor);
+    // INITIALISATION OF CUSOLVER HIGHT LEVEL FUNCTION PARAMETERS
+    TOLERANCE = 1e-5;
+    REORDER = 3;
+    SINGULARITY = 0;
 
-    // *************************************************************************
+    // BIDIMENSIONAL ARRAYS INITIALISATION
+    initialise_bidimensional_matrix_double(AI, mi, nj, 0.0);
+    initialise_bidimensional_matrix_double(AC, mi, nj, 0.0);
+    initialise_bidimensional_matrix_double(AD, mi, nj, 0.0);
+    initialise_bidimensional_matrix_double(BI, nj, mi, 0.0);
+    initialise_bidimensional_matrix_double(BC, nj, mi, 0.0);
+    initialise_bidimensional_matrix_double(BD, nj, mi, 0.0);
+    
+    double value = (temp_fin+temp_ini)/2.0;
+    initialise_bidimensional_matrix_double(temper, mi, nj, value);
+    fill_boundary_conditions_temper_matrix(temper);
+    initialise_bidimensional_matrix_double(temp_ant, mi, nj, value);
+
+// ************************************************************************************
+
+    // ASSEMBLING ARRAYS
+
     for (jj = 1; jj < nj-1; jj++)
     {
-        /*
-        * Ensamblando matrices en direccion x
-        */
-        ensambla_tdmax(AI,AC,AD,deltax,deltay,cond_ter,temp_ini,temp_fin,jj);
+        // IN X-DIRECTION
+        ensambla_tdmax(AI,AC,AD,delta_x,delta_y,cond_ter,temp_ini,temp_fin,jj);
     }
 
     for (ii = 1; ii < mi-1; ii++)
     {
-        /*
-        * Ensamblamos matrices tridiagonales en direccion y
-        */
-        ensambla_tdmay(BI,BC,BD,deltax,deltay,cond_ter,flux_aba,flux_arr,ii);
+        // IN Y-DIRECTION
+        ensambla_tdmay(BI,BC,BD,delta_x,delta_y,cond_ter,flux_aba,flux_arr,ii);
     }
 
-    // ****************************************************************************
+    get_vector_independent_terms(BI,AI,AD,BD,vector_b);
 
-    obtener_vector_terminos_independientes(BI,AI,AD,BD,vector_b);
-    obtener_formato_csr(BI, AI, AC, AD, BD, nonzero_elements, csr_values, csr_column_index, csr_row_pointer);
+    get_compressed_sparse_row_storages(BI, AI, AC, AD, BD, nonzero_elements, csr_values, csr_column_index, csr_row_pointer);
 
-    // *************************************************************************
-    // Abrimos la region de datos paralela
-    #pragma acc data copyin(vector_b[:tamanio_matriz_completa], csr_values[:nonzero_elements], \
+// ************************************************************************************
+    
+    // PARALLEL DATA REGION OPENS
+    #pragma acc data copyin(vector_b[:columns_number], csr_values[:nonzero_elements], \
     csr_column_index[:nonzero_elements], csr_row_pointer[:csr_row_pointer_size]) \
-    copyout(resultados[:tamanio_matriz_completa])
+    copyout(results[:columns_number])
     {
-        #pragma acc host_data use_device(vector_b, csr_values, csr_row_pointer, csr_column_index, resultados)
+        #pragma acc host_data use_device(vector_b, csr_values, csr_row_pointer, csr_column_index, results)
         {
-            // cusolverSpDcsrlsvluHost(handle, tamanio_matriz_completa, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOL, REORDER, resultados, &singularity);
-            // cusolverSpDcsrlsvqr(handle, tamanio_matriz_completa, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOL, REORDER, resultados, &singularity);
-            status = cusolverSpDcsrlsvchol(handle, tamanio_matriz_completa, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOL, REORDER, resultados, &singularity);
+            // cusolverSpDcsrlsvluHost(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
+            // cusolverSpDcsrlsvqr(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
+            cusolver_status = cusolverSpDcsrlsvchol(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
 
         }       
     } 
-    // Cerramos la region de datos paralela
+    // PARALLEL DATA REGION IS CLOSED
 
-    print_info_cuda_solver(status);
+    print_info_cusolver("Cholesky Solver", cusolver_status);
 
-    // ****************************************************************************
+// ************************************************************************************
     
-    llenar_matriz_temper(temper);
-    completar_matriz_temper(temper, resultados, tamanio_matriz_completa);
+    fill_matrix_temper_with_results(temper, results);
     
-    // ****************************************************************************
+// ************************************************************************************
 
-    // Escritura de resultados
-    // Abrir el archivo para escribir
-    FILE *file = fopen("cusolver.101", "w");
+    // RESULTS WRITING
+    write_results(xx, yy, temper);
 
-    if (file != NULL) {
-        // Utilizar un bucle para imprimir y guardar los datos
-        for (ii = 0; ii < mi; ii++) {
-            for (jj = 0; jj < nj; jj++)
-            {
-                fprintf(file, "%f %f %f\n", xx[ii], yy[jj], temper[ii][jj]);
-            }
-            fprintf(file, "\n");
-        }
-        // Cerrar el archivo después de escribir
-        fclose(file);
-    } else {
-        printf("Error al abrir el archivo.\n");
-    }
+// ************************************************************************************
 
-    // Liberar memoria de los punteros
+    // FREE UP MEMORY
     free(csr_row_pointer);
     free(csr_column_index);
     free(csr_values);
 
-    free_matrix(BC,nj,mi);
-    free_matrix(BD,nj,mi);
-    free_matrix(BI,nj,mi);
+    free_memory_bidimensional_matrix_double(BC,nj,mi);
+    free_memory_bidimensional_matrix_double(BD,nj,mi);
+    free_memory_bidimensional_matrix_double(BI,nj,mi);
 
-    free_matrix(AC,mi,nj);
-    free_matrix(AD,mi,nj);
-    free_matrix(AI,mi,nj);
+    free_memory_bidimensional_matrix_double(AC,mi,nj);
+    free_memory_bidimensional_matrix_double(AD,mi,nj);
+    free_memory_bidimensional_matrix_double(AI,mi,nj);
 
     free(yy);
     free(xx);
 
-    free_matrix(temp_ant, mi, nj);
-    free_matrix(temper, mi, nj);
+    free_memory_bidimensional_matrix_double(temp_ant, mi, nj);
+    free_memory_bidimensional_matrix_double(temper, mi, nj);
 
     return 0;
 }

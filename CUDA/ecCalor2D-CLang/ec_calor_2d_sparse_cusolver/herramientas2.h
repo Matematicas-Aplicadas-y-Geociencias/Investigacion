@@ -168,7 +168,7 @@ int get_column_index(const int ii, const int jj)
     return column_index;
 }
 
-void get_csr_format_stores(
+void get_compressed_sparse_row_storages(
     double **BI,
     double **AI,
     double **AC,
@@ -245,9 +245,9 @@ void get_vector_independent_terms(
     double *b)
 {
     int kk = 0;
-    for (int jj = 1; jj < nj-1; jj++)
+    for (size_t jj = 1; jj < nj-1; jj++)
     {
-        for (int ii = 1; ii < mi-1; ii++)
+        for (size_t ii = 1; ii < mi-1; ii++)
         {
             if (jj == 1)
             {
@@ -272,6 +272,38 @@ void get_vector_independent_terms(
             kk++;
         }
         
+    }
+    
+}
+
+// ************************************************************************************
+
+void fill_boundary_conditions_temper_matrix(double **matrix)
+{
+    for (size_t jj = 1; jj < nj-1; jj++)
+    {
+        // BI
+        matrix[0][jj] = 0.0;
+        matrix[mi-1][jj] = 0.0;
+    }
+    for (size_t ii = 1; ii < mi-1; ii++)
+    {
+        matrix[ii][0] = 0.0;
+        matrix[ii][nj-1] = 3.0;
+    }
+}
+
+void fill_matrix_temper_with_results(double **matriz, double *vector)
+{
+    size_t kk = 0;  // vector index
+
+    for (size_t jj = 1; jj < nj-1; jj++)
+    {
+        for (size_t ii = 1; ii < mi-1; ii++)
+        {
+            matriz[ii][jj] = vector[kk];
+            kk++;
+        }
     }
     
 }
@@ -340,39 +372,36 @@ void print_csr_format_stores(double *csr_values, int *csr_column_index, int *csr
 
 // ************************************************************************************
 
-void fill_boundary_conditions_temper_matrix(double **matrix)
+void write_results(double *x_coordinates, double *y_coordinates, double **temper)
 {
-    for (size_t jj = 1; jj < nj-1; jj++)
-    {
-        // BI
-        matrix[0][jj] = 0.0;
-        matrix[mi-1][jj] = 0.0;
-    }
-    for (size_t ii = 1; ii < mi-1; ii++)
-    {
-        matrix[ii][0] = 0.0;
-        matrix[ii][nj-1] = 3.0;
-    }
-}
+    // Abrir el archivo para escribir
+    FILE *file = fopen("cusolver.101", "w");
 
-void fill_matrix_temper_with_results(double **matriz, double *vector, int tam_matriz_completa)
-{
-    size_t kk = 0;  // vector index
+    if (file != NULL) {
 
-    for (size_t jj = 1; jj < nj-1; jj++)
-    {
-        for (size_t ii = 1; ii < mi-1; ii++)
-        {
-            matriz[ii][jj] = vector[kk];
-            kk++;
+        // Utilizar un bucle para imprimir y guardar los datos
+        for (size_t ii = 0; ii < mi; ii++) {
+            for (size_t jj = 0; jj < nj; jj++)
+            {
+                fprintf(file, "%f %f %f\n", x_coordinates[ii], y_coordinates[jj], temper[ii][jj]);
+            }
+
+            fprintf(file, "\n");
+
         }
+
+        // Cerrar el archivo después de escribir
+        fclose(file);
+
+    } else {
+
+        printf("Error al abrir el archivo.\n");
+
     }
-    
+
 }
 
-// ************************************************************************************
-
-char *cuda_solver_get_status(cusolverStatus_t status)
+char *cusolver_get_error_status(cusolverStatus_t status)
 {
     switch (status) {
         case CUSOLVER_STATUS_SUCCESS:
@@ -394,17 +423,28 @@ char *cuda_solver_get_status(cusolverStatus_t status)
         case CUSOLVER_STATUS_NOT_SUPPORTED:
             return "CUSOLVER_STATUS_NOT_SUPPORTED";
   }
-  return "NULL";
+  return "UNRECOGNIZED ERROR CODE";
 }
 
-void print_info_cuda_solver(cusolverStatus_t status)
+void print_info_cusolver(char *event_to_be_reported, cusolverStatus_t status)
 {
     char *info;
 
-    info = cuda_solver_get_status(status);
+    info = cusolver_get_error_status(status);
 
-    printf("Estado del solver de CUDA:\n");
-    printf("%s...\n", info);
+    printf("CUSOLVER Status - %s:\n", event_to_be_reported);
+    printf("%s...\n\n", info);
+
+}
+
+void print_info_cusparse(char *event_to_be_reported, cusparseStatus_t status)
+{
+    const char *info;
+
+    info = cusparseGetErrorName(status);
+
+    printf("CUSPARSE Status - %s:\n", event_to_be_reported);
+    printf("%s...\n\n", info);
 
 }
 

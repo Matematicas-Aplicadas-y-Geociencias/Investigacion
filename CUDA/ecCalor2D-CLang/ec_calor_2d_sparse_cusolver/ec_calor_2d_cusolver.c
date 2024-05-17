@@ -3,8 +3,8 @@
 #include <cusparse.h>
 #include <cusolverSp.h>
 
-#include "constantes2.h"
-#include "herramientas2.h"
+#include "constantes.h"
+#include "herramientas.h"
 
 int main(int argc, char const *argv[])
 {
@@ -49,11 +49,11 @@ int main(int argc, char const *argv[])
 
     // ****** VARIABLE DECLARATION: POINTERS TO POINTERS ******
     // ARRAYS FOR SOURCE TERM
-    double **temper, **temp_ant;
+    double **temper;
 
     //BIDIMENSIONAL ARRAYS FOR NONZERO COEFFICIENTS
     double **AI, **AD, **AC;
-    double **BI, **BD, **BC;
+    double **BI, **BD;
 
     // ****** VARIABLE DECLARATION: CUSPARSE AND CUSOLVER ******
     // HELPER FUNCTIONS PARAMETERS
@@ -63,26 +63,32 @@ int main(int argc, char const *argv[])
     // ERROR STATUS PARAMETERS
     cusparseStatus_t cusparse_status;
     cusolverStatus_t cusolver_status;
-    
-// ************************************************************************************
-    
-    // MEMORY ALLOCATION SECTION
-
-    temper      = allocate_memory_bidimensional_matrix_double(mi, nj);
-    temp_ant    = allocate_memory_bidimensional_matrix_double(mi, nj);
-
-    xx = allocate_memory_vector_double(mi);
-    yy = allocate_memory_vector_double(nj);
-
-    AI = allocate_memory_bidimensional_matrix_double(mi, nj);
-    AD = allocate_memory_bidimensional_matrix_double(mi, nj);
-    AC = allocate_memory_bidimensional_matrix_double(mi, nj);
-
-    BI = allocate_memory_bidimensional_matrix_double(nj, mi);
-    BD = allocate_memory_bidimensional_matrix_double(nj, mi);
-    BC = allocate_memory_bidimensional_matrix_double(nj, mi);
 
 // ************************************************************************************
+
+    // 2D MESH PARAMETERS
+    a = 10.0;
+    b = 5.0;
+    
+    // CALCULATE DELTA VALUES
+    double dmi1 = (double)(mi - 1);
+    delta_x = 1.0 / dmi1;
+
+    double dnj1 = (double)(nj - 1);
+    delta_y = 1.0 / dnj1;
+
+    // THE PHYSICAL PARAMETERS OF THE PROBLEM ARE DEFINED
+    cond_ter = 100.0;
+    temp_ini = 308.0;
+    temp_fin = 298.0;
+    flux_aba = 308.0;
+    flux_arr = 308.0;
+    // alpha    = 0.5; //parametro de relajacion
+
+    // INITIALISATION OF CUSOLVER HIGHT LEVEL FUNCTION PARAMETERS
+    TOLERANCE = 1e-5;
+    REORDER = 3;
+    SINGULARITY = 0;
 
     // INITIALISATION SECTION OF CSR STORAGE PARAMETERS
     nonzero_elements        = get_nonzero_elements();
@@ -90,18 +96,9 @@ int main(int argc, char const *argv[])
     columns_number          = (mi-2) * (nj-2);
     csr_row_pointer_size    = rows_number + 1;
 
-    // MEMORY ALLOCATION FOR CSR STORAGES ARRAYS
-    csr_values          = allocate_memory_vector_double(nonzero_elements);
-    csr_column_index    = allocate_memory_vector_int(nonzero_elements);
-    csr_row_pointer     = allocate_memory_vector_int(csr_row_pointer_size);
-    vector_b            = allocate_memory_vector_double(columns_number);
-    results             = allocate_memory_vector_double(columns_number);
-
-// ************************************************************************************
-    
     // INITIALISATION OF THE PARAMETERS OF THE HELPER FUNCTIONS CUSPARSE AND CUSOLVER
     cusolver_status = cusolverSpCreate(&handle);
-    print_info_cusolver("Handler", cusolver_status);
+    print_info_cusolver("Handle", cusolver_status);
 
     cusparse_status = cusparseCreateMatDescr(&descrA);
     print_info_cusparse("Matrix descriptor", cusparse_status);
@@ -110,14 +107,34 @@ int main(int argc, char const *argv[])
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL); 
     cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
     */
+    
+// ************************************************************************************
+    
+    // MEMORY ALLOCATION SECTION
+
+    // FOR POSITIONS
+    xx = allocate_memory_vector_double(mi);
+    yy = allocate_memory_vector_double(nj);
+
+    // FOR CSR STORAGES ARRAYS
+    csr_values          = allocate_memory_vector_double(nonzero_elements);
+    csr_column_index    = allocate_memory_vector_int(nonzero_elements);
+    csr_row_pointer     = allocate_memory_vector_int(csr_row_pointer_size);
+    vector_b            = allocate_memory_vector_double(columns_number);
+    results             = allocate_memory_vector_double(columns_number);
+
+    // BIDIMENSIONAL ARRAYS
+    temper      = allocate_memory_bidimensional_matrix_double(mi, nj);
+    BI = allocate_memory_bidimensional_matrix_double(nj, mi);
+    AI = allocate_memory_bidimensional_matrix_double(mi, nj);
+    AD = allocate_memory_bidimensional_matrix_double(mi, nj);
+    AC = allocate_memory_bidimensional_matrix_double(mi, nj);
+    BD = allocate_memory_bidimensional_matrix_double(nj, mi);
+
 
 // ************************************************************************************
 
     // THE 2D MESH IS CREATED
-
-    a = 10.0;
-    b = 5.0;
-
     for (ii = 0; ii <= mi-1; ii++)
     {
         double dii1 = (double)ii;
@@ -131,38 +148,17 @@ int main(int argc, char const *argv[])
         double dnj1 = (double)(nj -1);
         yy[jj] = b * djj1 / dnj1;
     }
-    
-    double dmi1 = (double)(mi - 1);
-    delta_x = 1.0 / dmi1;
-    double dnj1 = (double)(nj - 1);
-    delta_y = 1.0 / dnj1;
-
-    // The physical parameters of the problem are defined
-
-    cond_ter = 100.0;
-    temp_ini = 0.0;
-    temp_fin = 0.0;
-    flux_aba = 5.0;
-    flux_arr = 5.0;
-    // alpha    = 0.5; //parametro de relajacion
-
-    // INITIALISATION OF CUSOLVER HIGHT LEVEL FUNCTION PARAMETERS
-    TOLERANCE = 1e-5;
-    REORDER = 3;
-    SINGULARITY = 0;
 
     // BIDIMENSIONAL ARRAYS INITIALISATION
     initialise_bidimensional_matrix_double(AI, mi, nj, 0.0);
     initialise_bidimensional_matrix_double(AC, mi, nj, 0.0);
     initialise_bidimensional_matrix_double(AD, mi, nj, 0.0);
     initialise_bidimensional_matrix_double(BI, nj, mi, 0.0);
-    initialise_bidimensional_matrix_double(BC, nj, mi, 0.0);
     initialise_bidimensional_matrix_double(BD, nj, mi, 0.0);
     
     double value = (temp_fin+temp_ini)/2.0;
     initialise_bidimensional_matrix_double(temper, mi, nj, value);
-    fill_boundary_conditions_temper_matrix(temper);
-    initialise_bidimensional_matrix_double(temp_ant, mi, nj, value);
+    fill_boundary_conditions_temper_matrix(temper, temp_ini, temp_fin, flux_aba, flux_arr);
 
 // ************************************************************************************
 
@@ -177,7 +173,7 @@ int main(int argc, char const *argv[])
     for (ii = 1; ii < mi-1; ii++)
     {
         // IN Y-DIRECTION
-        ensambla_tdmay(BI,BC,BD,delta_x,delta_y,cond_ter,flux_aba,flux_arr,ii);
+        ensambla_tdmay(BI,BD,delta_x,delta_y,cond_ter,flux_aba,flux_arr,ii);
     }
 
     get_vector_independent_terms(BI,AI,AD,BD,vector_b);
@@ -194,44 +190,46 @@ int main(int argc, char const *argv[])
         #pragma acc host_data use_device(vector_b, csr_values, csr_row_pointer, csr_column_index, results)
         {
             // cusolverSpDcsrlsvluHost(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
-            // cusolverSpDcsrlsvqr(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
-            cusolver_status = cusolverSpDcsrlsvchol(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
+            cusolver_status = cusolverSpDcsrlsvqr(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
+            // cusolver_status = cusolverSpDcsrlsvchol(handle, rows_number, nonzero_elements, descrA, csr_values, csr_row_pointer, csr_column_index, vector_b, TOLERANCE, REORDER, results, &SINGULARITY);
 
         }       
     } 
     // PARALLEL DATA REGION IS CLOSED
 
-    print_info_cusolver("Cholesky Solver", cusolver_status);
 
 // ************************************************************************************
     
+    // print_info_cusolver("Cholesky Solver", cusolver_status);
+    print_info_cusolver("QR Solver", cusolver_status);
     fill_matrix_temper_with_results(temper, results);
+    write_results(xx, yy, temper); // RESULTS WRITING
+
+// ************************************************************************************
+
+    // RELEASE THE MEMORY ALLOCATED FOR THE MATRIX DESCRIPTOR AND CPU-SIDE RESOURCES USED BY THE CUSOLVERSP LIBRARY
+
+    cusolver_status = cusolverSpDestroy(handle);
+    // print_info_cusolver("Release resource for handle", cusolver_status);
+    cusparse_status = cusparseDestroyMatDescr(descrA);
+    // print_info_cusparse("Release resource for the matrix descriptor", cusparse_status);
     
-// ************************************************************************************
-
-    // RESULTS WRITING
-    write_results(xx, yy, temper);
-
-// ************************************************************************************
-
     // FREE UP MEMORY
-    free(csr_row_pointer);
-    free(csr_column_index);
-    free(csr_values);
-
-    free_memory_bidimensional_matrix_double(BC,nj,mi);
+    
     free_memory_bidimensional_matrix_double(BD,nj,mi);
-    free_memory_bidimensional_matrix_double(BI,nj,mi);
-
-    free_memory_bidimensional_matrix_double(AC,mi,nj);
     free_memory_bidimensional_matrix_double(AD,mi,nj);
+    free_memory_bidimensional_matrix_double(AC,mi,nj);
     free_memory_bidimensional_matrix_double(AI,mi,nj);
-
-    free(yy);
-    free(xx);
-
-    free_memory_bidimensional_matrix_double(temp_ant, mi, nj);
+    free_memory_bidimensional_matrix_double(BI,nj,mi);
     free_memory_bidimensional_matrix_double(temper, mi, nj);
+
+    free_memory_vector_double(results);
+    free_memory_vector_double(vector_b);
+    free_memory_vector_int(csr_row_pointer);
+    free_memory_vector_int(csr_column_index);
+    free_memory_vector_double(csr_values);
+    free_memory_vector_double(yy);
+    free_memory_vector_double(xx);
 
     return 0;
 }

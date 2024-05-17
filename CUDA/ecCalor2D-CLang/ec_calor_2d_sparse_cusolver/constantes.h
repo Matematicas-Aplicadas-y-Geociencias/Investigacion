@@ -1,10 +1,10 @@
-#ifndef CONSTANTES2_H
-#define CONSTANTES2_H
+#ifndef CONSTANTES_H
+#define CONSTANTES_H
 
-const int mi = 60, nj = 60, nn = 1024;
+const int mi = 60, nj = 50, nn = 1024;
 const double pi = 3.1415926535;
 
-#include "herramientas2.h"
+#include "herramientas.h"
 
 #pragma acc routine vector
 void ensambla_tdmax(
@@ -23,9 +23,9 @@ void ensambla_tdmax(
     /*
     * Se definen las condiciones de frontera
     */
-    AI[0][jj] = -0.0* cond_ter / (deltax * deltax);
+    AI[0][jj] = -temp_ini * cond_ter / (deltax * deltax);
     // AD[0][jj] = 0.0;
-    AD[mi - 1][jj] = -0.0* cond_ter / (deltax * deltax);
+    AD[mi - 1][jj] = -temp_fin * cond_ter / (deltax * deltax);
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */
@@ -41,7 +41,7 @@ void ensambla_tdmax(
 #pragma acc routine vector
 void ensambla_tdmay(
     double **BI,
-    double **BC,
+    // double **BC,
     double **BD,
     const double deltax,
     const double deltay,
@@ -55,8 +55,10 @@ void ensambla_tdmay(
     /*
      * Se definen las condiciones de frontera
      */
-    BI[0][jj] = -0.0 * cond_ter/ (deltay * deltay);
-    BD[nj - 1][jj] = -3.0* cond_ter / (deltay * deltay);        // 1.0 / deltay;
+    BI[0][jj] = -flux_aba * cond_ter / (deltay * deltay);
+    // BI[0][jj] = -0.0 * cond_ter / (deltay * deltay);
+    BD[nj - 1][jj] = -flux_arr * cond_ter / (deltay * deltay);        // 1.0 / deltay;
+    // BD[nj - 1][jj] = -3.0 * cond_ter / (deltay * deltay);        // 1.0 / deltay;
     /*
     * Ensamblado de la matriz tridiagonal y del vector de resultados
     */

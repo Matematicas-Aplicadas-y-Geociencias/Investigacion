@@ -1,5 +1,5 @@
-#ifndef HERRAMIENTAS2_H
-#define HERRAMIENTAS2_H
+#ifndef HERRAMIENTAS_H
+#define HERRAMIENTAS_H
 
 // ************************************************************************************
 
@@ -162,22 +162,13 @@ int get_nonzero_elements()
 int get_column_index(const int ii, const int jj)
 {
     int column_index;
-    column_index = (jj - 1) * (mi - 2) + ii - (mi - 1) - 1;
+    // column_index = (jj - 1) * (mi - 2) + ii - (mi - 1) - 1;
     // column_index = (jj - 1) * (mi - 2) + ii - (mi - 1); // for index-one
-    // column_index = jj * (mi - 2) + ii - (mi - 1); // for index-zero
+    column_index = jj * (mi - 2) + ii - (mi - 1); // for index-zero
     return column_index;
 }
 
-void get_compressed_sparse_row_storages(
-    double **BI,
-    double **AI,
-    double **AC,
-    double **AD,
-    double **BD,
-    int nonzero_elements,
-    double *csr_values,
-    int *csr_column_index,
-    int *csr_row_pointer)
+void get_compressed_sparse_row_storages(double **BI, double **AI, double **AC, double **AD, double **BD, int nonzero_elements, double *csr_values, int *csr_column_index, int *csr_row_pointer)
 {
     int kk = -1;        // csr_values index
     int tt = 0;         // csr_row_pointer index
@@ -192,7 +183,7 @@ void get_compressed_sparse_row_storages(
             {
                 kk++;
                 csr_values[kk] = BI[jj - 1][ii];
-                csr_column_index[kk] = get_column_index(ii + 1, jj);
+                csr_column_index[kk] = get_column_index(ii, jj - 1);
                 counter++;
             }
 
@@ -200,7 +191,7 @@ void get_compressed_sparse_row_storages(
             {
                 kk++;
                 csr_values[kk] = AI[ii - 1][jj];
-                csr_column_index[kk] = get_column_index(ii, jj + 1);
+                csr_column_index[kk] = get_column_index(ii - 1, jj);
                 counter++;
             }
 
@@ -210,14 +201,14 @@ void get_compressed_sparse_row_storages(
                 break;
             
             csr_values[kk] = AC[ii][jj];
-            csr_column_index[kk] = get_column_index(ii + 1, jj + 1);
+            csr_column_index[kk] = get_column_index(ii, jj);
             counter++;
 
             if (ii >= 1 && ii < mi - 2)
             {
                 kk++;
                 csr_values[kk] = AD[ii + 1][jj];
-                csr_column_index[kk] = get_column_index(ii + 2, jj + 1);
+                csr_column_index[kk] = get_column_index(ii + 1, jj);
                 counter++;
             }
 
@@ -225,7 +216,7 @@ void get_compressed_sparse_row_storages(
             {
                 kk++;
                 csr_values[kk] = BD[jj + 1][ii];
-                csr_column_index[kk] = get_column_index(ii + 1, jj + 2);
+                csr_column_index[kk] = get_column_index(ii, jj + 1);
                 counter++;
             }
 
@@ -237,12 +228,7 @@ void get_compressed_sparse_row_storages(
     
 }
 
-void get_vector_independent_terms(
-    double **BI,
-    double **AI,
-    double **AD,
-    double **BD,
-    double *b)
+void get_vector_independent_terms(double **BI, double **AI, double **AD, double **BD, double *b)
 {
     int kk = 0;
     for (size_t jj = 1; jj < nj-1; jj++)
@@ -278,18 +264,18 @@ void get_vector_independent_terms(
 
 // ************************************************************************************
 
-void fill_boundary_conditions_temper_matrix(double **matrix)
+void fill_boundary_conditions_temper_matrix(double **matrix, double temp_ini, double temp_fin, double flux_aba, double flux_arr)
 {
     for (size_t jj = 1; jj < nj-1; jj++)
     {
         // BI
-        matrix[0][jj] = 0.0;
-        matrix[mi-1][jj] = 0.0;
+        matrix[0][jj] = temp_ini;
+        matrix[mi-1][jj] = temp_fin;
     }
     for (size_t ii = 1; ii < mi-1; ii++)
     {
-        matrix[ii][0] = 0.0;
-        matrix[ii][nj-1] = 3.0;
+        matrix[ii][0] = flux_aba;
+        matrix[ii][nj-1] = flux_arr;
     }
 }
 
@@ -430,10 +416,19 @@ void print_info_cusolver(char *event_to_be_reported, cusolverStatus_t status)
 {
     char *info;
 
-    info = cusolver_get_error_status(status);
-
-    printf("CUSOLVER Status - %s:\n", event_to_be_reported);
-    printf("%s...\n\n", info);
+    if (status != CUSOLVER_STATUS_SUCCESS)
+    {
+        info = cusolver_get_error_status(status);
+        printf("cusolver error - %s: ", event_to_be_reported);
+        printf("%s...\n\n", info);
+        
+    }
+    else
+    {
+        printf("%s: SUCCESS ", event_to_be_reported);
+        printf("\n\n");
+        
+    }
 
 }
 
@@ -441,10 +436,19 @@ void print_info_cusparse(char *event_to_be_reported, cusparseStatus_t status)
 {
     const char *info;
 
-    info = cusparseGetErrorName(status);
+    if (status != CUSPARSE_STATUS_SUCCESS)
+    {
+        info = cusparseGetErrorName(status);
+        printf("cusparse error - %s: ", event_to_be_reported);
+        printf("%s...\n\n", info);
 
-    printf("CUSPARSE Status - %s:\n", event_to_be_reported);
-    printf("%s...\n\n", info);
+    }
+    else
+    {
+        printf("%s: SUCCESS", event_to_be_reported);
+        printf("\n\n");
+
+    }
 
 }
 

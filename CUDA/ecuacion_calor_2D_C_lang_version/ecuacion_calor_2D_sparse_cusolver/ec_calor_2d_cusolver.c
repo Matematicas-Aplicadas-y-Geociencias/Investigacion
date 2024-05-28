@@ -1,8 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <openacc.h>
 #include <cusparse.h>
 #include <cusolverSp.h>
 
@@ -59,7 +56,6 @@ int main(int argc, char const *argv[])
     double **BI, **BD;
 
     // ****** VARIABLE DECLARATION: CUSPARSE AND CUSOLVER ******
-    cudaStream_t stream;
     // HELPER FUNCTIONS PARAMETERS
     cusparseMatDescr_t descrA = NULL;
     cusolverSpHandle_t handle = NULL;
@@ -101,14 +97,11 @@ int main(int argc, char const *argv[])
     csr_row_pointer_size = rows_number + 1;
 
     // INITIALISATION OF THE PARAMETERS OF THE HELPER FUNCTIONS CUSPARSE AND CUSOLVER
-    stream = (cudaStream_t)acc_get_cuda_stream(1);
     cusolver_status = cusolverSpCreate(&handle);
     print_info_cusolver("Handle", cusolver_status);
 
     cusparse_status = cusparseCreateMatDescr(&descrA);
     print_info_cusparse("Matrix descriptor", cusparse_status);
-
-    cusolverSpSetStream(handle, stream);
 
     /* This parameters are by default (read documentation: https://docs.nvidia.com/ cuda/cusparse/index.html#cusparse-types-reference):
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
@@ -204,12 +197,12 @@ int main(int argc, char const *argv[])
     }
     // PARALLEL DATA REGION IS CLOSED
 
+    // ************************************************************************************
+
     if (cusolver_status == CUSOLVER_STATUS_SUCCESS)
     {
         printf("SUCCESS!");
     }
-    // ************************************************************************************
-
     print_info_cusolver("Cholesky Solver", cusolver_status);
     // print_info_cusolver("QR Solver", cusolver_status);
     fill_matrix_temper_with_results(temper, results);

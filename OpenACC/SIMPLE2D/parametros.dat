@@ -3,21 +3,21 @@
 7.0d0  !Pr
 0.0d0  !Ri
 1.0d-3 !dt
-200000  !paq_itera
-400000 !itermax
+10000   !paq_itera
+200000  !itermax
 0.40d0 !relajaci'on_presi'on
-0.50d0 !relajaci'on velocidad
-0.50d0 !relajaci'on temperatura
+0.40d0 !relajaci'on velocidad
+0.40d0 !relajaci'on temperatura
 1.d-2  !convergencia velocidad
-5.d-3  !convergencia temperatura
+1.d-2  !convergencia temperatura
 1.d-3  !convergencia presi'on
 1.d-5  !convergencia del residuo
 1.d-5  !convergencia paso
-350    !iteraciones m\'aximas para las ecuaciones
-60     !iter m\'aximas para algoritmo SIMPLE
-out_n153m361_Rxxxu.dat   !archivo de entrada de t y p
-out_n153m361_Rxxxv.dat   !archivo de entrada de v
-out_n153m361_Rxxxp.dat   !archivo de entrada de t y p
+10    !iteraciones m\'aximas para las ecuaciones
+15    !iter m\'aximas para algoritmo SIMPLE
+out_n301m701_Rxxxu.dat   !archivo de entrada de t y p
+out_n301m701_Rxxxv.dat   !archivo de entrada de v
+out_n301m701_Rxxxp.dat   !archivo de entrada de t y p
 #
 # ini_n501m901_Ri00u.dat   !archivo de entrada de u
 # ini_n501m901_Ri00v.dat   !archivo de entrada de u

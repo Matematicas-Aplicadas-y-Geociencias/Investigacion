@@ -311,7 +311,7 @@ PROGRAM SIMPLE2D
                  !***********************
                  AC(1,jj) = 1._DBL
                  AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 1._DBL 
+                 Rx(1,jj) = 1._DBL ! *tanh((itera_total-1)*dt/3.0_DBL) 
                  au(1,jj) = 1.e40_DBL !ACi(1)
                  AC(mi,jj) = 1._DBL
                  AI(mi,jj) =-1._DBL !
@@ -621,8 +621,8 @@ PROGRAM SIMPLE2D
                  exit
               else if (iter_ecuaci > iter_ecuaci_max) then
                  iter_ecuaci = 0
-                 write(*,*) "ADVER. PRES: convergencia no alcanzada ", &
-                      error
+                 ! write(*,*) "ADVER. PRES: convergencia no alcanzada ", &
+                 !      error
                  exit
               else
                  iter_ecuaci = iter_ecuaci+1
@@ -839,7 +839,7 @@ PROGRAM SIMPLE2D
               exit
            else if ( iter_simple > iter_simple_max ) then
               iter_simple = 0
-              write(*,*) "Advertencia SIMPLE: convergencia no alcanzada, ", residuo,maxbo   
+              ! write(*,*) "Advertencia SIMPLE: convergencia no alcanzada, ", residuo,maxbo   
               exit
            else
               iter_simple = iter_simple + 1
@@ -857,7 +857,7 @@ PROGRAM SIMPLE2D
         itera = itera + 1
         if( mod(itera,500)==0 )write(*,*) 'ITERACION: ',itera,residuo,maxbo
 
-        if( mod(itera,100)==0 )then
+        if( mod(itera,1000)==0 )then
            !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,&
            !&entropia_int,temp_int,a_ent,lambda_ent)
            !

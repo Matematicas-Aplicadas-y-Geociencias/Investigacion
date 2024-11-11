@@ -8,7 +8,7 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
     real(kind=DBL), intent(in):: df1, df2, df3, df4, df5
     real(kind=DBL), intent(out):: a, b, c, d, e
 
-    real(kind=DBL) numerador, denominador
+    real(kind=DBL) :: numerador, denominador
 
    ! Coeficiente a
    numerador = dx2 * df1 + dx1 * df2
@@ -16,8 +16,9 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
    a = numerador / denominador
 
    ! Coeficiente c
-   numerador = df1 + df2 - a * (dx1**2 + dx2**2)
-   denominador = dx1 - dx2
+   numerador = dx2**2 * df1 - dx1**2 * df2
+   ! denominador = dx1 - dx2 + epsilon(1.0d0)
+   denominador = dx1 * dx2 * (dx1 + dx2)
    c = numerador / denominador
 
    ! Coeficiente b
@@ -26,8 +27,9 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
    b = numerador / denominador
 
    ! Coeficiente d
-   numerador = df4 + df5 - b * (dy1**2 + dy2**2)
-   denominador = dy1 - dy2
+   numerador = dy2**2 * df4 - dy1**2 * df5
+   ! denominador = dy1 - dy2 + epsilon(1.0d0)
+   denominador = dy1 * dy2 * (dy1 + dy2)
    d = numerador / denominador
 
    e = df3
@@ -37,5 +39,6 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
    print *,'-------------------------'
    print *,b
    print *,d
+   print *,e
 
 end subroutine get_coef

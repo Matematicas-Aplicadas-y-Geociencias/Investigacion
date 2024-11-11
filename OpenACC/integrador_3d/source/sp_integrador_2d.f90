@@ -4,29 +4,31 @@ subroutine sp_integrador_2d(integral)
 
     implicit none
 
-    ! real(kind=DBL), dimension(NUMERO_PUNTOS), intent(in) :: x
-    ! real(kind=DBL), dimension(NUMERO_PUNTOS), intent(in) :: y
-    ! real(kind=DBL), dimension(NUMERO_PUNTOS), intent(in) :: f
     real(kind=DBL), intent(out) :: integral
 
-    ! real(kind=DBL), dimension(NUMERO_PUNTOS) :: coef
+    real(kind=DBL) :: x0, x2, y0, y2
     real(kind=DBL) :: a, b, c, d, e
     real(kind=DBL) :: dx1, dx2, dy1, dy2
     real(kind=DBL) :: df1,df2,df3,df4,df5
-    ! real(kind=DBL) :: termino_A, termino_B, termino_C, termino_D, termino_E
 
-    dx1 = 2.0
-    dx2 = 3.0
-    dy1 = 4.5
-    dy2 = 2.3
+    x0 = -1!1
+    x2 = 1!2
+    y0 = -1!3
+    y2 = 1!4
 
-    df1 = 8.0
-    df2 = 7.0
-    df3 = 0.0
-    df4 = 5.6
-    df5 = 1.1
+    dx1 = 1
+    dx2 = 1
+    dy1 = 1
+    dy2 = 1
+
+    df1 = -1
+    df2 = -1
+    df3 = 1
+    df4 = -1
+    df5 = -1
 
     call get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
 
-    integral = 3.8
+    call integrador_3d(a,b,c,d,e,x0,x2,y0,y2,integral)
+    print *,integral
 end subroutine sp_integrador_2d

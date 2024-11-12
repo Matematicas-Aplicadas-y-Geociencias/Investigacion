@@ -9,4 +9,5 @@ OpenAcc/calor2DAcc/fort.101
 clang.101
 test
 pruebaformatocsr
-
+# Ignora los siguiente directorios
+**/build/

@@ -10,5 +10,5 @@ real(kind=DBL) function fun(x,y)
     ! fun = y * cos(x) + 2
     ! fun = x*y*exp(x+y)
     ! fun = -x*log(y)
-    fun = x + y
+    fun = 0.d0*x*x +2.d0*x+ 0.d0*y*y+3.0_DBL * y
 end function fun

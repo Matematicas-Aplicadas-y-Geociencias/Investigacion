@@ -15,11 +15,13 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df0,df1,df2,df3,df4,a,b,c,d,e)
    denominador = dx1 * dx2 * (dx1 + dx2)
    a = numerador / denominador
 
+   print*, "DEBUG: num den a = ", numerador, denominador, a
+
    ! Coeficiente c
-   numerador = dx2**2 * df1 - dx1**2 * df2
+   c = ( a * dx2*dx2 - df2) / dx2
    ! denominador = dx1 - dx2 + epsilon(1.0d0)
-   denominador = dx1 * dx2 * (dx1 + dx2)
-   c = numerador / denominador
+   ! denominador = dx1 * dx2 * (dx1 + dx2)
+   ! c = numerador / denominador
 
    ! Coeficiente b
    numerador = dy2 * df3 + dy1 * df4
@@ -27,10 +29,10 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df0,df1,df2,df3,df4,a,b,c,d,e)
    b = numerador / denominador
 
    ! Coeficiente d
-   numerador = dy2**2 * df3 - dy1**2 * df4
+   ! numerador = dy2**2 * df3 - dy1**2 * df4
    ! denominador = dy1 - dy2 + epsilon(1.0d0)
-   denominador = dy1 * dy2 * (dy1 + dy2)
-   d = numerador / denominador
+   ! denominador = dy1 * dy2 * (dy1 + dy2)
+   d = ( b * dy2*dy2 - df4) / dy2
 
    e = df0
 

@@ -13,10 +13,10 @@ subroutine sp_integrador_2d(x0, x2, cx, cy, y0, y2, integral)
     real(kind=DBL) :: f0,f1,f2,f3,f4
     real(kind=DBL) :: df0,df1,df2,df3,df4
 
-    dx1 = cx - x0
-    dx2 = x2 - cx
-    dy1 = cy - y0
-    dy2 = y2 - cy
+    dx2 = cx - x0
+    dx1 = x2 - cx
+    dy2 = cy - y0
+    dy1 = y2 - cy
 
     f1 = fun(dx1, 0.0_DBL)
     f2 = fun(-dx2, 0.0_DBL)
@@ -30,6 +30,8 @@ subroutine sp_integrador_2d(x0, x2, cx, cy, y0, y2, integral)
     df3 = f3 - f0
     df4 = f4 - f0
 
+    print*, "DEBUG: funs = ", f1, f2, f0
+    
     call get_coef(dx1,dx2,dy1,dy2,df0,df1,df2,df3,df4,a,b,c,d,e)
 
     call integrador_3d(a,b,c,d,e,x0,x2,y0,y2,integral)

@@ -1,4 +1,4 @@
-# Install script for directory: /home/edwin/Workbench/Investigacion/OpenACC/integrador_3d/source
+# Install script for directory: /home/jcajas/ENES/git/ENES-Merida/Investigacion/OpenACC/integrador_3d/source
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/edwin/Workbench/Investigacion/OpenACC/integrador_3d/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/jcajas/ENES/git/ENES-Merida/Investigacion/OpenACC/integrador_3d/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/integrador.dir/function.f90.o"
   "CMakeFiles/integrador.dir/get_coef.f90.o"
   "CMakeFiles/integrador.dir/integrador_3d.f90.o"
   "CMakeFiles/integrador.dir/main.f90.o"

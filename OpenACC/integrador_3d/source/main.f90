@@ -4,18 +4,18 @@ program main
 
   implicit none
 
+  real(kind=DBL) :: x0, x2, cx, cy, y0, y2
   real(kind=DBL) :: integral
 
-  real(kind=DBL), dimension(5) :: x
-  real(kind=DBL), dimension(5) :: y
-  real(kind=DBL), dimension(5) :: f
+  x0 = 0.0_DBL
+  x2 = 1.0_DBL
+  cx = 0.5_DBL
+  cy = 0.5_DBL
+  y0 = 0.0_DBL
+  y2 = 1.0_DBL
 
-  x = [5.0_DBL, 5.0_DBL, 5.0_DBL, 3.0_DBL, 8.0_DBL]
-  y = [11.0_DBL, 7.0_DBL, 4.0_DBL, 7.0_DBL, 7.0_DBL]
-  f = [5.4_DBL, 7.0_DBL, 1.2_DBL, 1.1_DBL, 6.0_DBL]
+  call sp_integrador_2d(x0, x2, cx, cy, y0, y2, integral)
 
-  call sp_integrador_2d(integral)
-
-  print '(A, F6.4)', "El valor de la integral es: ", integral
+  print '(A, F8.4)', "El valor de la integral es: ", integral
 
 end program main

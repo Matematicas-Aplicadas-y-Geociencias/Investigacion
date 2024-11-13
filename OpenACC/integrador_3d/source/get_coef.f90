@@ -1,11 +1,11 @@
-subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
+subroutine get_coef(dx1,dx2,dy1,dy2,df0,df1,df2,df3,df4,a,b,c,d,e)
 
     use mod_constantes
 
     implicit none
 
     real(kind=DBL), intent(in):: dx1, dx2, dy1, dy2
-    real(kind=DBL), intent(in):: df1, df2, df3, df4, df5
+    real(kind=DBL), intent(in):: df0, df1, df2, df3, df4
     real(kind=DBL), intent(out):: a, b, c, d, e
 
     real(kind=DBL) :: numerador, denominador
@@ -22,23 +22,22 @@ subroutine get_coef(dx1,dx2,dy1,dy2,df1,df2,df3,df4,df5,a,b,c,d,e)
    c = numerador / denominador
 
    ! Coeficiente b
-   numerador = dy2 * df4 + dy1 * df5
+   numerador = dy2 * df3 + dy1 * df4
    denominador = dy1 * dy2 * (dy1 + dy2)
    b = numerador / denominador
 
    ! Coeficiente d
-   numerador = dy2**2 * df4 - dy1**2 * df5
+   numerador = dy2**2 * df3 - dy1**2 * df4
    ! denominador = dy1 - dy2 + epsilon(1.0d0)
    denominador = dy1 * dy2 * (dy1 + dy2)
    d = numerador / denominador
 
-   e = df3
+   e = df0
 
-   print *,a
-   print *,c
-   print *,'-------------------------'
-   print *,b
-   print *,d
-   print *,e
+   print '(A, F12.6)', 'Coef a:', a
+   print '(A, F12.6)', 'Coef b:', b
+   print '(A, F12.6)', 'Coef c:', c
+   print '(A, F12.6)', 'Coef d:', d
+   print '(A, F12.6)', 'Coef e:', e
 
 end subroutine get_coef

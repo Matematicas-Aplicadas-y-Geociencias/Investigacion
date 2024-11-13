@@ -129,6 +129,30 @@ integrador/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/integrador.dir/build.make CMakeFiles/integrador.dir/build
 .PHONY : integrador/fast
 
+function.o: function.f90.o
+.PHONY : function.o
+
+# target to build an object file
+function.f90.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/integrador.dir/build.make CMakeFiles/integrador.dir/function.f90.o
+.PHONY : function.f90.o
+
+function.i: function.f90.i
+.PHONY : function.i
+
+# target to preprocess a source file
+function.f90.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/integrador.dir/build.make CMakeFiles/integrador.dir/function.f90.i
+.PHONY : function.f90.i
+
+function.s: function.f90.s
+.PHONY : function.s
+
+# target to generate assembly for a file
+function.f90.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/integrador.dir/build.make CMakeFiles/integrador.dir/function.f90.s
+.PHONY : function.f90.s
+
 get_coef.o: get_coef.f90.o
 .PHONY : get_coef.o
 
@@ -258,6 +282,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... integrador"
+	@echo "... function.o"
+	@echo "... function.i"
+	@echo "... function.s"
 	@echo "... get_coef.o"
 	@echo "... get_coef.i"
 	@echo "... get_coef.s"

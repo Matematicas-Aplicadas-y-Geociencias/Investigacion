@@ -17,4 +17,4 @@ test
 build/
 profiler/
 # Los siguientes archivos si se pueden rastrear por git:
-! CMakeLists.txt
+!CMakeLists.txt

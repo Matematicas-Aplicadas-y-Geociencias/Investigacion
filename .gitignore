@@ -1,13 +1,20 @@
+# No rastrear los cambios de los siguientes archivos:
 *.vtk
 *.txt
 *.png
 *.nsys-rep
 *.sqlite
-fort.101
 *.mod
-# Ignora estos archivos de generados por Clang
+*.ncu-proj
+*.nsight-cuproj
+*.nvvp
+*.qdstrm
+*.nsight-cuprof-report
+fort.101
 clang.101
 test
-paruebaformatocsr
-# Ignorar los siguiente directorios
+# No rastrear los siguiente directorios:
 build/
+profiler/
+# Los siguientes archivos si se pueden rastrear por git:
+! CMakeLists.txt

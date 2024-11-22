@@ -1,4 +1,4 @@
-subroutine integrador_2D(xpo, ypo, ii, integral)
+subroutine integrador_2D(xpo, ypo, ii, valor_integral)
     ! TODO
     ! - Buscar mejores nombres para las variables
     use mod_constantes
@@ -11,7 +11,7 @@ subroutine integrador_2D(xpo, ypo, ii, integral)
     integer, intent(in) :: ii
     real(kind=DBL) :: fun
     real(kind=DBL), dimension(3), intent(in) :: xpo, ypo
-    real(kind=DBL), intent(out) :: integral
+    real(kind=DBL), intent(out) :: valor_integral
 
     real(kind=DBL) :: x1, x2, x3, y1, y2, y3
     real(kind=DBL) :: a, b, c, d, e
@@ -19,7 +19,7 @@ subroutine integrador_2D(xpo, ypo, ii, integral)
     real(kind=DBL) :: f0,f1,f2,f3,f4
     real(kind=DBL) :: df0,df1,df2,df3,df4
     real(kind=DBL) :: numerador, denominador
-    real(kind=DBL) :: term_a, term_b, term_c, term_d, term_e
+    real(kind=DBL) :: term_1, term_2, term_3, term_4, term_5
     ! -------------------------------------------------------------------------------
     ! Inicializacion de Variables ---------------------------------------------------
     ! -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ subroutine integrador_2D(xpo, ypo, ii, integral)
     df0 = f0
     df3 = f3 - f0
     df4 = f4 - f0
-    print*, "DEBUG: funs = ", f1, f2, f0
+    ! print*, "DEBUG: funs = ", f1, f2, f0
     ! -------------------------------------------------------------------------------
     ! Calcular coeficientes ---------------------------------------------------------
     ! -------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ subroutine integrador_2D(xpo, ypo, ii, integral)
     denominador = dx1 * dx2 * (dx1 + dx2)
     a = numerador / denominador
 
-    print*, "DEBUG: num den a = ", numerador, denominador, a
+    ! print*, "DEBUG: num den a = ", numerador, denominador, a
 
     ! Coeficiente c
     numerador = a * dx2 * dx2 - df2
@@ -80,14 +80,14 @@ subroutine integrador_2D(xpo, ypo, ii, integral)
     print *, 'Coef d:', d
     print *, 'Coef e:', e
     ! -------------------------------------------------------------------------------
-    ! Calcular integral -------------------------------------------------------------
+    ! Calcular el valor de la integral -------------------------------------------------------------
     ! -------------------------------------------------------------------------------
-    term_a = (a/3) * (x3 * x3 * x3 - x1 * x1 * x1) * (y3 - y1)
-    term_b = (b/3) * (x3 - x1) * (y3 * y3 *y3 - y1 * y1 * y1)
-    term_c = (c/2) * (x3 * x3 - x1 * x1) * (y3 - y1)
-    term_d = (d/2) * (x3 - x1) * (y3 * y3 - y1 * y1)
-    term_e = e * (x3 - x1) * (y3 - y1)
+    term_1 = (a/3) * (x3 * x3 * x3 - x1 * x1 * x1) * (y3 - y1)
+    term_2 = (b/3) * (x3 - x1) * (y3 * y3 *y3 - y1 * y1 * y1)
+    term_3 = (c/2) * (x3 * x3 - x1 * x1) * (y3 - y1)
+    term_4 = (d/2) * (x3 - x1) * (y3 * y3 - y1 * y1)
+    term_5 = e * (x3 - x1) * (y3 - y1)
 
-    integral = term_a + term_b + term_c + term_d + term_e
+    valor_integral = term_1 + term_2 + term_3 + term_4 + term_5
     ! -------------------------------------------------------------------------------
 end subroutine integrador_2D

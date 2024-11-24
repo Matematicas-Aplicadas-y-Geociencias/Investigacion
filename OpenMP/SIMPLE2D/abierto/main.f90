@@ -182,7 +182,7 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
       !****************************************************
       !critero de convergencia del corrector de la presi'on
       IF(MAXVAL(DABS(dcorr_pres))<conv_p)EXIT
-!       WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))!, MAXVAL(DABS(corr_pres))
+      WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres)), MAXVAL(DABS(b_o))!, MAXVAL(DABS(corr_pres))
     END DO
     corr_pres = rel_pres * corr_pres
     !*********************
@@ -225,7 +225,7 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
     CALL residuou(res_fluido_u,xu,y,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
     IF(res_fluido_u .EQV. .TRUE. .AND. MAXVAL(DABS(Resu))<conv_resi .AND. MAXVAL(DABS(b_o))<conv_paso)EXIT
 !     IF( MAXVAL(DABS(Resu))<conv_resi .AND. MAXVAL(DABS(b_o))<conv_paso)EXIT
-    ! WRITE(*,*) 'tiempo ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
+    WRITE(*,*) 'tiempo ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))
   END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
   itera = itera + 1
   IF(mod(itera,100)==0) WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o)),MAXVAL(DABS(pres))

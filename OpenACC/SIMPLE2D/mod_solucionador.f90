@@ -7,9 +7,13 @@
   !    Ax=b
   !
 module solucionador
-  use malla
+  !
+  use malla, only : DBL
+  !
   implicit none
+  !
 contains
+  !
   !*******************************************************************
   !
   ! tridiagonal

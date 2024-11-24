@@ -1,6 +1,7 @@
 SUBROUTINE residuou(res_fluido_uo,xuo,yo,fey,d_xuo,d2_xuo,d_yvo,u_o,u_anto,v_o,temp_o,pres_o,Resu_o,gamma_uo,Ri_o,dt_o)
 USE malla
 IMPLICIT NONE
+!$acc routine
 INTEGER :: i,j,k
 !**********************************
 ! Variables del flujo e inc'ognitas

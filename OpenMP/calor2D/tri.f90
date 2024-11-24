@@ -3,7 +3,6 @@
 !	flame2stepsinterna
 !
 !	Created by J.E. Barrios on 9/17/06.
-!	Copyright 2006 __MyCompanyName__. All rights reserved.
 !
 subroutine tri(a,b,c,r,u,n)
 implicit none

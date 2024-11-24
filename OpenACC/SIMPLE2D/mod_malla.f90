@@ -7,14 +7,50 @@
 !
 !
 MODULE malla
+  !
   implicit none
+  !
+  ! Dimensiones de la malla
+  !
   INTEGER(4), PARAMETER :: mi=701, nj=301, nsolid = 7
+  !
+  ! Tipo de variables reales, definen precici'on y rango
+  !
   INTEGER(4), PARAMETER :: SGL=SELECTED_REAL_KIND(P=6,R=37)
   INTEGER(4), PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=307)
-  character(len=9), parameter :: form24="(3e23.15)",form25="(4e23.15)"
-  character(len=9), parameter :: form26="(6e23.15)",form27="(10e15.7)"
+  !
+  ! formatos de escritura
+  !
+  character(len=9), parameter :: form24="(3D23.15)",form25="(4D23.15)"
+  character(len=9), parameter :: form26="(6D23.15)",form27="(10e15.7)"
+  !
+  ! viscosidad para frontera inmersa
+  !
   REAL(kind=DBL),   PARAMETER :: cero=0._DBL, visc_solido = 1.e40_DBL
+  !
+  ! caracteres para los nombres de archivos de salida
+  !
+  character(20) :: mic, njc, zkc
+  !
+  ! Variables de la malla, volumen de control y factores de interpolaci\'on
+  !
+  REAL(kind=DBL), DIMENSION(mi)   ::  xu
+  REAL(kind=DBL), DIMENSION(nj)   ::  yv
+  REAL(kind=DBL), DIMENSION(mi+1) ::  xp
+  REAL(kind=DBL), DIMENSION(nj+1) ::  yp
+  real(kind=DBL), dimension(mi)   ::  deltaxp
+  real(kind=DBL), dimension(nj)   ::  deltayp
+  real(kind=DBL), dimension(mi)   ::  deltaxu
+  real(kind=DBL), dimension(nj)   ::  deltayu
+  real(kind=DBL), dimension(mi)   ::  deltaxv   
+  real(kind=DBL), dimension(nj)   ::  deltayv
+  REAL(kind=DBL), DIMENSION(mi)   ::  fexp
+  REAL(kind=DBL), DIMENSION(nj)   ::  feyp
+  REAL(kind=DBL), DIMENSION(mi)   ::  fexu
+  REAL(kind=DBL), DIMENSION(nj)   ::  feyv
+  !
 contains
+  !
   !-----------------------------------------------------------------------------
   !
   ! Esta subrutina abre los archivos para leer las mallas escalonadas
@@ -46,20 +82,20 @@ contains
     !
     ! Variables de la malla, volumen de control e interpolaciones
     !
-    real(kind=DBL), dimension(mi+1), intent(out) :: xpo
-    real(kind=DBL), dimension(nj+1), intent(out) :: ypo
-    REAL(kind=DBL), DIMENSION(mi),   intent(out) :: xuo
-    REAL(kind=DBL), DIMENSION(nj),   intent(out) :: yvo
-    real(kind=DBL), dimension(mi),   intent(out) :: deltaxpo
-    real(kind=DBL), dimension(nj),   intent(out) :: deltaypo
-    real(kind=DBL), dimension(mi),   intent(out) :: deltaxuo
-    real(kind=DBL), dimension(nj),   intent(out) :: deltayuo
-    real(kind=DBL), dimension(mi),   intent(out) :: deltaxvo   
-    real(kind=DBL), dimension(nj),   intent(out) :: deltayvo
-    REAL(kind=DBL), DIMENSION(mi),   intent(out) :: fexpo
-    REAL(kind=DBL), DIMENSION(nj),   intent(out) :: feypo
-    REAL(kind=DBL), DIMENSION(mi-1), intent(out) :: fexuo
-    REAL(kind=DBL), DIMENSION(nj-1), intent(out) :: feyvo
+    real(kind=DBL), dimension(mi+1),      intent(out) :: xpo
+    real(kind=DBL), dimension(nj+1),      intent(out) :: ypo
+    REAL(kind=DBL), DIMENSION(mi),        intent(out) :: xuo
+    REAL(kind=DBL), DIMENSION(nj),        intent(out) :: yvo
+    real(kind=DBL), dimension(mi),        intent(out) :: deltaxpo
+    real(kind=DBL), dimension(nj),        intent(out) :: deltaypo
+    real(kind=DBL), dimension(mi),        intent(out) :: deltaxuo
+    real(kind=DBL), dimension(nj),        intent(out) :: deltayuo
+    real(kind=DBL), dimension(mi),        intent(out) :: deltaxvo   
+    real(kind=DBL), dimension(nj),        intent(out) :: deltayvo
+    REAL(kind=DBL), DIMENSION(mi),        intent(out) :: fexpo
+    REAL(kind=DBL), DIMENSION(nj),        intent(out) :: feypo
+    REAL(kind=DBL), DIMENSION(mi-1),      intent(out) :: fexuo
+    REAL(kind=DBL), DIMENSION(nj-1),      intent(out) :: feyvo
     !
     ! Dimensiones del dominio, ubicaci\'on de las placas calientes, iteracion inicial
     !

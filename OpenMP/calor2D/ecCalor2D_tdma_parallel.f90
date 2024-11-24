@@ -67,7 +67,7 @@ resulty = 0.0d0
 !
 !! Bucle iterativo
 !
-do kk = 1, 50
+do kk = 1, 500
     !
     !
     !!! Abrimos la región paralela
@@ -166,12 +166,12 @@ end do
     !
     !! Escritura de resultados
     !
-!!$    do ii = 1, mi
-!!$        do jj = 1, nj
-!!$            write(101,*) xx(ii), yy(jj), temper(ii,jj)
-!!$        end do
-!!$            write(101,*)
-!!$    end do
+    do ii = 1, mi
+        do jj = 1, nj
+            write(101,*) xx(ii), yy(jj), temper(ii,jj)
+        end do
+            write(101,*)
+    end do
     !
     ! Obtenemos la diferencia entre la solución analítica y la solución numérica, así como el error porcentual
     !do ii =2, mi-1

@@ -961,30 +961,30 @@ PROGRAM SIMPLE2D
 105  FORMAT(1X,'Res_T=',D23.15,', Res_v=',D23.15)
      !********************************
      !*** Formato de escritura dat ***
-     ! OPEN(unit=2,file='out_n'//njc//'m'//mic//'_R'//Rec//'u.dat')
-     ! WRITE(2,*) placa_min,placa_max,itera_total,ao
-     ! DO j = 1, nj+1
-     !    DO i = 1, mi
-     !       WRITE(2,form24) xu(i),yp(j),u(i,j)
-     !    END DO
-     ! END DO
-     ! CLOSE(unit=2)
-     ! OPEN(unit=3,file='out_n'//njc//'m'//mic//'_R'//Rec//'v.dat')
-     ! WRITE(3,*) placa_min,placa_max,itera_total,ao
-     ! DO j = 1, nj
-     !    DO i = 1, mi+1
-     !       WRITE(3,form24) xp(i),yv(j),v(i,j)
-     !    END DO
-     ! END DO
-     ! CLOSE(unit=3)
-     ! OPEN(unit=4,file='out_n'//njc//'m'//mic//'_R'//Rec//'p.dat')
-     ! WRITE(4,*) placa_min,placa_max,itera_total,ao
-     ! DO j = 1, nj+1
-     !    DO i = 1, mi+1
-     !       WRITE(4,form25) xp(i),yp(j),temp(i,j),pres(i,j)
-     !    END DO
-     ! END DO
-     ! CLOSE(unit=4)
+     OPEN(unit=2,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'u.dat')
+     WRITE(2,*) placa_min,placa_max,itera_total,ao
+     DO jj = 1, nj+1
+        DO ii = 1, mi
+           WRITE(2,form24) xu(ii),yp(jj),u(ii,jj)
+        END DO
+     END DO
+     CLOSE(unit=2)
+     OPEN(unit=3,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'v.dat')
+     WRITE(3,*) placa_min,placa_max,itera_total,ao
+     DO jj = 1, nj
+        DO ii = 1, mi+1
+           WRITE(3,form24) xp(ii),yv(jj),v(ii,jj)
+        END DO
+     END DO
+     CLOSE(unit=3)
+     OPEN(unit=4,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'p.dat')
+     WRITE(4,*) placa_min,placa_max,itera_total,ao
+     DO jj = 1, nj+1
+        DO ii = 1, mi+1
+           WRITE(4,form25) xp(ii),yp(jj),temp(ii,jj),pres(ii,jj)
+        END DO
+     END DO
+     CLOSE(unit=4)
      ! *************************************
      ! *** Formato escritura VTK ***********
      ! sample  = m//ce//de//un//dec

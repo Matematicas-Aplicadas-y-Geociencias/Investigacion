@@ -1,6 +1,16 @@
 subroutine integrador_2D(xpo, ypo, ii, valor_integral)
-    ! TODO
-    ! - Buscar mejores nombres para las variables
+    ! Documentacion
+    ! Esta subrutina calcula la integral en 2D usando la funcion de interpolacion ax^2+by^2+cx+dy+e
+    ! en los puntos x1 a x3 y y1 a y3
+    !
+    ! Variables usadas:
+    ! x1, x2, x3, y1, y2, y3: puntos de la malla
+    ! a, b, c, d, e: coeficientes del interpolador ax^2+by^2+cx+dy+e a calcular
+    ! dx1, dx2, dy1, dy2: diferenciales de los puntos en la malla
+    ! f0,f1,f2,f3,f4: valores de la funcion evaluadas en las diferenciales
+    ! df0,df1,df2,df3,df4: diferenciales de los valores de la funcion
+    ! term_1, term_2, term_3, term_4, term_5: valor de cada integrando de la integral total
+    ! valor_integral: lo que vale la integral definida de ax^2+by^2+cx+dy+e en los puntos de interes
     use mod_constantes
 
     implicit none

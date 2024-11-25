@@ -2,6 +2,9 @@
 ! Programa que implementa el algoritmo SIMPLE para resolver las ecuaciones
 ! de Navier-Stokes y la energ\'ia
 !
+! autor: J.C. Cajas
+!
+!
 PROGRAM SIMPLE2D
   !
   ! Variables de la malla, volumen de control y factores de interpolaci\'on
@@ -64,7 +67,7 @@ PROGRAM SIMPLE2D
   !
   ! Variables para los archivos de la entrada de datos
   !
-  CHARACTER(len=22) :: entrada_u,entrada_v,entrada_tp
+  CHARACTER(len=24) :: entrada_u,entrada_v,entrada_tp
   !*******************************************
   !
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: entropia_calor,entropia_viscosa,entropia,gamma_t
@@ -210,7 +213,7 @@ PROGRAM SIMPLE2D
   WRITE(*,106) lambda_ent,a_ent
   WRITE(*,*)' '
 101 FORMAT(1X,'Re=',F12.3,', Pr=',F8.3', Ri=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
-102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I3,', nj=',I3)
+102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I5,', nj=',I5)
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
   !--------------------------------------------
   !

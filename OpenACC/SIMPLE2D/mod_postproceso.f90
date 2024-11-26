@@ -4,6 +4,7 @@
 ! Este m\'odulo contiene las subrutinas que calculan cantidades 
 ! de salida y archivos de postproceso
 !
+! Autor: J.C. Cajas
 !
 module postproceso
   !
@@ -12,6 +13,7 @@ module postproceso
   implicit none
   !
 contains
+  !
   !*******************************************************************
   !
   ! nusselt_promedio

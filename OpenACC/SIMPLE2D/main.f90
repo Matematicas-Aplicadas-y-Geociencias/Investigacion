@@ -44,6 +44,10 @@ PROGRAM SIMPLE2D
   !
   use ec_energia, only : ensambla_energia
   !
+  ! Rutina que determina viscosidades para fronteras inmersas
+  !
+  use frontera_inmersa, only : definir_cuerpo
+  !
   ! Rutinas de soluci\'on de ecuaciones
   !
   use solucionador, only : tridiagonal
@@ -202,6 +206,11 @@ PROGRAM SIMPLE2D
   maxbo   = 0.0_DBL
   error   = 0.0_DBL
   residuo = 0.0_DBL
+  !
+  ! Construcci\'on de s\'olidos con frontera inmersa 
+  !
+  call definir_cuerpo(gamma_momen, gamma_energ, 'trian')
+  !
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)

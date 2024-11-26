@@ -71,7 +71,7 @@ contains
     !
     ! Variables para los archivos de la entrada de datos
     !
-    CHARACTER(len=22), intent(in):: entrada_uo,entrada_vo,entrada_tpo
+    CHARACTER(len=24), intent(in):: entrada_uo,entrada_vo,entrada_tpo
     !
     ! Variables para las velocidades, temperatura y presion iniciales
     !

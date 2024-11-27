@@ -187,7 +187,7 @@ PROGRAM SIMPLE2D
   ! !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
-  ! u_ant = 1.0_DBL
+  u_ant = 1.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -329,7 +329,7 @@ PROGRAM SIMPLE2D
                  !***********************
                  AC(1,jj) = 1._DBL
                  AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 1._DBL ! *tanh((itera_total-1)*dt/3.0_DBL) 
+                 Rx(1,jj) = 1._DBL !*tanh((itera_total-1)*dt/3.0_DBL) 
                  au(1,jj) = 1.e40_DBL !ACi(1)
                  AC(mi,jj) = 1._DBL
                  AI(mi,jj) =-1._DBL !

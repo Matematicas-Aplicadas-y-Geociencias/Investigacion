@@ -11,6 +11,7 @@ module frontera_inmersa
   !
   use malla, only : mi, nj, DBL     ! dimensiones de la malla y tipo de doble
   use malla, only : xp, yp          ! coordenadas en la malla de la presi\'on
+  use ec_momento, only : u, u_ant   ! provisional para probar frontera inmersa
   !
   implicit none
   !
@@ -73,7 +74,9 @@ contains
                 ! yy = xp(ii)
                 if( en_region_tipo1(yp(jj),xp(ii),yv-hh,yv,recta_mxb1,recta_mxb2) )then
                    ! print*, "DEBUG: dentro", xp(ii), yp(jj)
-                   gamma_momeno(ii,jj) = 10.0e40_DBL
+                   gamma_momeno(ii,jj) = 10.0e6_DBL
+                   u(ii,jj)     = 0.0_DBL
+                   u_ant(ii,jj) = 0.0_DBL
                 end if
              end do
           end if
@@ -135,7 +138,7 @@ contains
     real(kind=DBL)             :: mm, bb
     !
     mm = 1.0_DBL/4.0_DBL
-    bb =-( 0.2_DBL - mm * 5.0_DBL ) / mm
+    bb =-( 0.2_DBL - mm * 6.0_DBL ) / mm
     recta_mxb1 = xx/mm + bb
     !
   end function recta_mxb1
@@ -151,7 +154,7 @@ contains
     real(kind=DBL)             :: mm, bb
     !
     mm =-1.0_DBL/4.0_DBL
-    bb =-( 0.2_DBL - mm * 5.0_DBL ) / mm
+    bb =-( 0.2_DBL - mm * 6.0_DBL ) / mm
     recta_mxb2 = xx/mm + bb
     !
   end function recta_mxb2

@@ -24,6 +24,8 @@ PROGRAM SIMPLE2D
   !
   use ec_momento, only : u, u_ant, du, au, Resu, Ri, Riy, fu
   use ec_momento, only : v, v_ant, dv, av, Resv, fv
+  use ec_momento, only : fuente_con_u, fuente_lin_u
+  use ec_momento, only : fuente_con_v, fuente_lin_v
   use ec_momento, only : pres, corr_pres, dcorr_pres, fcorr_pres
   use ec_momento, only : uf, vf, b_o
   use ec_momento, only : maxbo, conv_u, conv_p, conv_paso, rel_pres, rel_vel
@@ -71,7 +73,7 @@ PROGRAM SIMPLE2D
   !
   ! Variables para los archivos de la entrada de datos
   !
-  CHARACTER(len=24) :: entrada_u,entrada_v,entrada_tp
+  CHARACTER(len=28) :: entrada_u,entrada_v,entrada_tp
   !*******************************************
   !
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: entropia_calor,entropia_viscosa,entropia,gamma_t
@@ -171,8 +173,18 @@ PROGRAM SIMPLE2D
   ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
   ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
   ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  !------------------------------------------
+  !
+  ! Inicializaci\'on de los t\'erminos fuente
+  !
+  fuente_con_u = 0.0_DBL
+  fuente_lin_u = 0.0_DBL
+  !
+  fuente_con_v = 0.0_DBL
+  fuente_lin_v = 0.0_DBL
+  !
   Ri      = Ri_1
-  Riy     = 0._DBL
+  Riy     = 0.0_DBL
   !
   ! Lectura de las mallas escalonadas e inicializaci\'on de arreglos
   !
@@ -187,7 +199,8 @@ PROGRAM SIMPLE2D
   ! !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
-  u_ant = 1.0_DBL
+  itera_total    = itera_inicial
+  ! u_ant = 1.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -252,7 +265,9 @@ PROGRAM SIMPLE2D
      !$acc &        deltaxv(1:mi),deltayv(1:nj),                               &
      !$acc &        fexp(1:mi),feyp(1:nj),fexu(1:mi),feyv(1:nj),               &
      !$acc &        Ri(1:mi,1:nj+1),Riy(1:mi+1,1:nj+1),dt,                     &
-     !$acc &        rel_vel,conv_u,conv_p,                 &
+     !$acc &        fuente_con_u(1:mi,1:nj+1), fuente_lin_u(1:mi,1:nj+1),      &
+     !$acc &        fuente_con_v(1:mi+1,1:nj), fuente_lin_v(1:mi+1,1:nj),      &
+     !$acc &        rel_vel,conv_u,conv_p,                                     &
      !$acc &        rel_ener,conv_t,placa_min,placa_max                        &
      !$acc &        )&
      !$acc & create(AI(1:mi+1,1:nj+1),AC(1:mi+1,1:nj+1),                       &
@@ -305,6 +320,7 @@ PROGRAM SIMPLE2D
                  bucle_direccion_x: do ii = 2, mi-1
                     call ensambla_velu(deltaxu,deltayu,deltaxp,&
                          &deltayv,fexp,feyp,fexu,gamma_momen,&
+                         &fuente_con_u,fuente_lin_u,&
                          &u,u_ant,v,&
                          &temp,pres,Ri,dt,rel_vel,&
                          &AI,AC,AD,Rx,BS,BC,BN,Ry,au,&
@@ -329,7 +345,7 @@ PROGRAM SIMPLE2D
                  !***********************
                  AC(1,jj) = 1._DBL
                  AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 1._DBL !*tanh((itera_total-1)*dt/3.0_DBL) 
+                 Rx(1,jj) = 1._DBL !*tanh((itera_total-1)*dt/1.0_DBL) 
                  au(1,jj) = 1.e40_DBL !ACi(1)
                  AC(mi,jj) = 1._DBL
                  AI(mi,jj) =-1._DBL !
@@ -348,7 +364,7 @@ PROGRAM SIMPLE2D
                  Ry(1,ii)     = 0.0_DBL
                  au(ii,1)     = 1.e40_DBL !ACj(1)
                  BC(nj+1,ii)  = 1._DBL
-                 BS(nj+1,ii)  = 0.0_DBL
+                 BS(nj+1,ii)  =-1.0_DBL
                  Ry(nj+1,ii)  = 0.0_DBL
                  au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
               end do bucle_direccionx
@@ -358,7 +374,7 @@ PROGRAM SIMPLE2D
               ! Soluci\'on del sistema de ecuaciones
               !
               !$acc parallel loop gang async(stream1) !wait(stream2)
-               solucion_momento_ux: do jj = 2, nj
+              solucion_momento_ux: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
                  u(1, jj) = Rx(1,jj)
@@ -431,6 +447,7 @@ PROGRAM SIMPLE2D
                  do ii = 2, mi
                     call ensambla_velv(deltaxv,deltayv,deltaxu,&
                          &deltayp,fexp,feyp,feyv,gamma_momen,&
+                         &fuente_con_v,fuente_lin_v,&
                          &v,v_ant,u,&
                          &temp,pres,Riy,dt,rel_vel,&
                          &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&

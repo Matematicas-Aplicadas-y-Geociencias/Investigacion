@@ -17,8 +17,18 @@ module ec_momento
   ! residuos de las ecuaciones de momento y correcci\'on de la presi\'on
   ! coeficientes de difusi\'on y criterios e convergencia
   !
-  REAL(kind=DBL), DIMENSION(mi,nj+1)   :: u, u_ant, du, au, Resu, Ri, fu
+  REAL(kind=DBL), DIMENSION(mi,nj+1)   :: u, u_ant, du, au, Resu, fu, Ri
   REAL(kind=DBL), DIMENSION(mi+1,nj)   :: v, v_ant, dv, av, Resv, fv
+  !
+  ! Variables para los t\'erminos fuente de la ec de momento
+  ! El t\'ermino lineal fuente_lin debe ser negativo para favorecer
+  ! convergencia y estabilidad
+  !
+  real(kind=DBL), dimension(mi,nj+1)   :: fuente_con_u, fuente_lin_u
+  real(kind=DBL), dimension(mi+1,nj)   :: fuente_con_v, fuente_lin_v
+  !
+  ! Variables para la presi\'on
+  !
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: pres, corr_pres, dcorr_pres, fcorr_pres
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: uf, vf, b_o
   real(kind=DBL), dimension(mi+1,nj+1) :: gamma_momen, Riy
@@ -187,6 +197,7 @@ contains
   !*******************************************************************
   subroutine ensambla_velu(deltaxuo,deltayuo,deltaxpo,&
        &deltayvo,fexpo,feypo,fexuo,gamma_momento,&
+       &fuente_con_uo,fuente_lin_uo,&
        &u_o,u_anto,v_o,&
        &temp_o,pres_o,Ri_o,dt_o,rel_vo,&
        &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,au_o,&
@@ -226,7 +237,10 @@ contains
     !
     ! T\'erminos fuente
     !
+    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_con_uo
+    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_lin_uo    
     real(kind=DBL), dimension(mi,nj+1),   intent(in) :: Ri_o
+    
     !
     ! Incremento de tiempo y coeficiente de relajaci\'on
     !
@@ -331,26 +345,37 @@ contains
     AI_o(ii,jj) =-(gammai*deltay/di*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
          &DMAX1(0.0_DBL,ui*deltay))
+    
     AD_o(ii,jj) =-(gammad*deltay/dd*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
          &DMAX1(0.0_DBL,-ud*deltay))
+
     BS_o(jj,ii) =-(gammas*deltax/ds*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
          &DMAX1(0.0_DBL, vs*deltax))
+
     BN_o(jj,ii) =-(gamman*deltax/dn*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
          &DMAX1(0.0_DBL,-vn*deltax))
-    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)+&
+
+    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii) -&
+         &deltax*deltay*fuente_lin_uo(ii,jj)+&
          &deltax*deltay/dt_o) / rel_vo
+
     Rx_o(ii,jj) =-BS_o(jj,ii)*u_o(ii,jj-1) - BN_o(jj,ii)*u_o(ii,jj+1)-&
          &deltax*deltay*Ri_o(ii,jj)*temp_int+&
+         &deltax*deltay*fuente_con_uo(ii,jj)+&
          &deltax*deltay*u_anto(ii,jj)/dt_o+&
          &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltay+&
          &AC_o(ii,jj)*(1._DBL-rel_vo)*u_o(ii,jj)
+
     au_o(ii,jj) = AC_o(ii,jj) * rel_vo
+
     BC_o(jj,ii) = AC_o(ii,jj)
+
     Ry_o(jj,ii) =-AI_o(ii,jj)*u_o(ii-1,jj)-AD_o(ii,jj)*u_o(ii+1,jj)-&
          &deltax*deltay*Ri_o(ii,jj)*temp_int+&
+         &deltax*deltay*fuente_con_uo(ii,jj)+&
          &deltax*deltay*u_anto(ii,jj)/dt_o+&
          &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltay+&
          &BC_o(jj,ii)*(1._DBL-rel_vo)*u_o(ii,jj)
@@ -370,6 +395,7 @@ contains
   !*******************************************************************
   subroutine ensambla_velv(deltaxvo,deltayvo,deltaxuo,&
        &deltaypo,fexpo,feypo,feyvo,gamma_momento,&
+       &fuente_con_vo,fuente_lin_vo,&
        &v_o,v_anto,u_o,&
        &temp_o,pres_o,Ri_o,dt_o,rel_vo,&
        &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,av_o,&
@@ -410,6 +436,8 @@ contains
     !
     ! T\'erminos fuente
     !
+    real(kind=DBL), dimension(mi+1,nj),   intent(in) :: fuente_con_vo
+    real(kind=DBL), dimension(mi+1,nj),   intent(in) :: fuente_lin_vo 
     real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: Ri_o
     !
     ! Incremento de tiempo y coeficiente de relajaci\'on
@@ -512,26 +540,37 @@ contains
     AI_o(ii,jj) =-(gammai*deltayvo(jj)/di*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
          &DMAX1(0.0_DBL,ui*deltayvo(jj)))
+
     AD_o(ii,jj) =-(gammad*deltayvo(jj)/dd*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
          &DMAX1(0.0_DBL,-ud*deltayvo(jj)))
+
     BS_o(jj,ii) =-(gammas*deltaxvo(ii)/ds*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
          &DMAX1(0.0_DBL, vs*deltaxvo(ii)))
+
     BN_o(jj,ii) =-(gamman*deltaxvo(ii)/dn*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
          &DMAX1(0.0_DBL,-vn*deltaxvo(ii)))
-    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)+&
+
+    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)-&
+         &deltaxvo(ii)*deltayvo(jj)*fuente_lin_vo(ii,jj)+&
          &deltaxvo(ii)*deltayvo(jj)/dt_o) / rel_vo
+
     Rx_o(ii,jj) =-BS_o(jj,ii)*v_o(ii,jj-1) - BN_o(jj,ii)*v_o(ii,jj+1)-&
          &deltaxvo(ii)*deltayvo(jj)*Ri_o(ii,jj)*temp_int+&
+         &deltaxvo(ii)*deltayvo(jj)*fuente_con_vo(ii,jj)+&
          &deltaxvo(ii)*deltayvo(jj)*v_anto(ii,jj)/dt_o+&
          &(pres_o(ii,jj)-pres_o(ii,jj+1))*deltaxvo(ii)+&
          &AC_o(ii,jj)*(1._DBL-rel_vo)*v_o(ii,jj)
+
     av_o(ii,jj) = AC_o(ii,jj) * rel_vo
+
     BC_o(jj,ii) = AC_o(ii,jj)
+
     Ry_o(jj,ii) =-AI_o(ii,jj)*v_o(ii-1,jj)-AD_o(ii,jj)*v_o(ii+1,jj)-&
          &deltaxvo(ii)*deltayvo(jj)*Ri_o(ii,jj)*temp_int+&
+         &deltaxvo(ii)*deltayvo(jj)*fuente_con_vo(ii,jj)+&
          &deltaxvo(ii)*deltayvo(jj)*v_anto(ii,jj)/dt_o+&
          &(pres_o(ii,jj)-pres_o(ii,jj+1))*deltaxvo(ii)+&
          &BC_o(jj,ii)*(1._DBL-rel_vo)*v_o(ii,jj)

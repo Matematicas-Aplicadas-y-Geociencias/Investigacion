@@ -9,9 +9,14 @@
 !
 module frontera_inmersa
   !
-  use malla, only : mi, nj, DBL     ! dimensiones de la malla y tipo de doble
-  use malla, only : xp, yp          ! coordenadas en la malla de la presi\'on
-  use ec_momento, only : u, u_ant   ! provisional para probar frontera inmersa
+  use malla, only : mi, nj, DBL       ! dimensiones de la malla y tipo de doble
+  use malla, only : xp, yp            ! coordenadas en la malla de la presi\'on
+  !
+  ! Variables para fijar las fronteras inmersas
+  !
+  use ec_momento, only : u, u_ant, v, v_ant
+  use ec_momento, only : fuente_con_u, fuente_lin_u
+  use ec_momento, only : fuente_con_v, fuente_lin_v
   !
   implicit none
   !
@@ -60,13 +65,14 @@ contains
     ! Mensaje
     !
     print*, " Se define una frontera inmersa con la opcion: ",opcion
+    !
     if( opcion == 'trian' )then
        !
-       ! Tri\'angulo con v\'ertice en p(xv,yv) y altura h
+       ! Tri\'angulo con v\'ertice en p(xv,yv) y altura hh
        ! definido usando las funciones recta_mxb1 y recta_mxb2
        !
-       yv = 0.2_DBL
-       hh = 0.2_DBL
+       yv = 0.1_DBL
+       hh = 0.1_DBL
        do jj = 1, nj+1
           if( yv-hh <= yp(jj) .and. yp(jj) <= yv )then
              do ii = 1, mi+1
@@ -74,16 +80,53 @@ contains
                 ! yy = xp(ii)
                 if( en_region_tipo1(yp(jj),xp(ii),yv-hh,yv,recta_mxb1,recta_mxb2) )then
                    ! print*, "DEBUG: dentro", xp(ii), yp(jj)
-                   gamma_momeno(ii,jj) = 10.0e6_DBL
-                   u(ii,jj)     = 0.0_DBL
-                   u_ant(ii,jj) = 0.0_DBL
+                   !
+                   fuente_lin_u(ii,jj) =-10.0e50_DBL
+                   fuente_con_u(ii,jj) = 10.0e50_DBL*10.0e-12_DBL
+                   !
+                   fuente_lin_v(ii,jj) =-10.0e50_DBL
+                   fuente_con_v(ii,jj) = 10.0e50_DBL*10.0e-12_DBL 
+                   !
                 end if
              end do
           end if
        end do
        !
-    end if
+    else if( opcion == 'cuadr' )then
        !
+       ! Cuadrado con centro en xv, yv y lado hh
+       !
+       yv = 0.05_DBL
+       xv = 6.0_DBL
+       hh = 0.1_DBL
+       !
+       do jj = 1, nj+1
+          if( yv-hh/2.0_DBL <= yp(jj) .and. yp(jj) <= yv+hh/2.0_DBL )then
+             do ii = 1, mi+1
+                ! xx = yp(jj) Se utiliza como una regi\'on de tipo II
+                ! yy = xp(ii)
+                if( xv-hh/2.0_DBL <= xp(ii) .and. xp(ii) <= xv+hh/2.0_DBL )then
+                   ! gamma_momeno(ii,jj) = 10.0e6_DBL
+                   !
+                   ! u(ii,jj)            = 10.0_DBL
+                   ! v(ii,jj)            = 5.0_DBL
+                   !                   
+                   ! u_ant(ii,jj)        = 10.0_DBL
+                   ! v_ant(ii,jj)        = 5.0_DBL
+                   !
+                   fuente_lin_u(ii,jj) =-10.0e50_DBL
+                   fuente_con_u(ii,jj) = 10.0e50_DBL*10.0e-12_DBL
+                   !
+                   fuente_lin_v(ii,jj) =-10.0e50_DBL
+                   fuente_con_v(ii,jj) = 10.0e50_DBL*10.0e-12_DBL 
+                   !
+                   !print*, "DEBUG: dentro", ii,jj, u(ii,jj)
+                end if
+             end do
+          end if
+       end do
+    end if
+    !
   end subroutine definir_cuerpo
   !
   !
@@ -137,8 +180,8 @@ contains
     real(kind=DBL), intent(in) :: xx
     real(kind=DBL)             :: mm, bb
     !
-    mm = 1.0_DBL/4.0_DBL
-    bb =-( 0.2_DBL - mm * 6.0_DBL ) / mm
+    mm = 1.0_DBL/2.0_DBL
+    bb =-( 0.1_DBL - mm * 6.0_DBL ) / mm
     recta_mxb1 = xx/mm + bb
     !
   end function recta_mxb1
@@ -153,8 +196,8 @@ contains
     real(kind=DBL), intent(in) :: xx
     real(kind=DBL)             :: mm, bb
     !
-    mm =-1.0_DBL/4.0_DBL
-    bb =-( 0.2_DBL - mm * 6.0_DBL ) / mm
+    mm =-1.0_DBL/2.0_DBL
+    bb =-( 0.1_DBL - mm * 6.0_DBL ) / mm
     recta_mxb2 = xx/mm + bb
     !
   end function recta_mxb2

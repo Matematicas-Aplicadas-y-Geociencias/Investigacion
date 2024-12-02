@@ -18,6 +18,9 @@ module frontera_inmersa
   use ec_momento, only : fuente_con_u, fuente_lin_u
   use ec_momento, only : fuente_con_v, fuente_lin_v
   !
+  ! Variables para fijar temperatura de las fronteras inmersas
+  !
+  use ec_energia, only : fuente_con_t, fuente_lin_t
   implicit none
   !
   ! Interfaces para poder usar funciones como argumentos en subrutinas
@@ -122,10 +125,53 @@ contains
                    !
                    !print*, "DEBUG: dentro", ii,jj, u(ii,jj)
                 end if
+                !
              end do
+             !
           end if
+          !
        end do
-    end if
+       !
+    else if( opcion == 'chime' )then
+       !
+       ! varillas inmersas para chimenea solar
+       !
+       yv = 0.5_DBL
+       xv = 8.5_DBL
+       hh = 0.3_DBL
+       !
+       do jj = 1, nj+1
+          if( yv-hh/2.0_DBL <= yp(jj) .and. yp(jj) <= yv+hh/2.0_DBL )then
+             do ii = 1, mi+1
+                ! xx = yp(jj) Se utiliza como una regi\'on de tipo II
+                ! yy = xp(ii)
+                if( xv-hh/2.0_DBL <= xp(ii) .and. xp(ii) <= xv+hh/2.0_DBL )then
+                   ! gamma_momeno(ii,jj) = 10.0e6_DBL
+                   !
+                   ! u(ii,jj)            = 10.0_DBL
+                   ! v(ii,jj)            = 5.0_DBL
+                   !                   
+                   ! u_ant(ii,jj)        = 10.0_DBL
+                   ! v_ant(ii,jj)        = 5.0_DBL
+                   !
+                   fuente_lin_u(ii,jj) =-10.0e50_DBL
+                   fuente_con_u(ii,jj) = 10.0e50_DBL*10.0e-12_DBL
+                   !
+                   fuente_lin_v(ii,jj) =-10.0e50_DBL
+                   fuente_con_v(ii,jj) = 10.0e50_DBL*10.0e-12_DBL 
+                   !
+                   fuente_lin_t(ii,jj) =-10e50_DBL
+                   fuente_con_t(ii,jj) = 10e50_DBL*1.0_DBL
+                   !print*, "DEBUG: dentro", ii,jj, u(ii,jj)
+                end if
+                !
+             end do
+             !
+          end if
+          !
+       end do
+       !       
+    end if ! Selecci\'on del caso del cuerpo inmerso
     !
   end subroutine definir_cuerpo
   !

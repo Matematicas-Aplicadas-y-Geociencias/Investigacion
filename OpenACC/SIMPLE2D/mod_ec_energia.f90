@@ -19,6 +19,11 @@ module ec_energia
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: ftemp, gamma_energ
   REAL(kind=DBL)  :: conv_t,rel_ener
   !
+  ! Variables para los t\'erminos fuente de la ec de energ\'ia.
+  ! El t\'ermino lineal fuente_lin debe ser negativo para favorecer
+  ! convergencia y estabilidad
+  real(kind=DBL), dimension(mi+1,nj+1)   :: fuente_con_t, fuente_lin_t
+  !
 contains
   !
   !*******************************************************************
@@ -31,6 +36,7 @@ contains
   !*******************************************************************
   subroutine ensambla_energia(deltaxpo,deltaypo,&
        &deltaxuo,deltayvo,fexpo,feypo,gamma_ener_o,&
+       &fuente_con_to,fuente_lin_to,&
        &u_o,v_o,&
        &temp_o,temp_anto,dt_o,&
        &rel_ener,placa_mino,placa_maxo,&
@@ -67,6 +73,11 @@ contains
     real(kind=DBL), dimension(mi,nj+1),   intent(in) :: u_o
     real(kind=DBL), dimension(mi+1,nj),   intent(in) :: v_o
     real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: temp_o, temp_anto
+    !
+    ! T\'erminos fuente
+    !
+    real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: fuente_con_to
+    real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: fuente_lin_to 
     !
     ! paso de tiempo y coeficiente de relajaci\'on
     !
@@ -164,13 +175,16 @@ contains
     BN_o(jj,ii) =-(gamman*deltaxpo(ii)/dn*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
          &DMAX1(0.0_DBL,-vn*deltaxpo(ii)))
-    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)+&
+    AC_o(ii,jj) = ( -AI_o(ii,jj) - AD_o(ii,jj) - BS_o(jj,ii) - BN_o(jj,ii)-&
+         &deltaxpo(ii)*deltaypo(jj)*fuente_lin_to(ii,jj) +&
          &deltaxpo(ii)*deltaypo(jj)/dt_o ) / rel_ener
     Rx_o(ii,jj) =-BS_o(jj,ii)*temp_o(ii,jj-1) - BN_o(jj,ii)*temp_o(ii,jj+1)+&
+         &deltaxpo(ii)*deltaypo(jj)*fuente_con_to(ii,jj) +&
          &deltaxpo(ii)*deltaypo(jj)*temp_anto(ii,jj)/dt_o+&
          &AC_o(ii,jj)*(1._DBL-rel_ener)*temp_o(ii,jj)
     BC_o(jj,ii) = AC_o(ii,jj)
     Ry_o(jj,ii) =-AI_o(ii,jj)*temp_o(ii-1,jj) - AD_o(ii,jj)*temp_o(ii+1,jj)+&
+         &deltaxpo(ii)*deltaypo(jj)*fuente_con_to(ii,jj) +&
          &deltaxpo(ii)*deltaypo(jj)*temp_anto(ii,jj)/dt_o+&
          &BC_o(jj,ii)*(1._DBL-rel_ener)*temp_o(ii,jj)
     ! end do bucle_direccion_x

@@ -40,6 +40,7 @@ PROGRAM SIMPLE2D
   ! temperatura, coeficiente de difusi\'on y criterios de convergencia
   !
   use ec_energia, only : temp, temp_ant, dtemp, Restemp
+  use ec_energia, only : fuente_con_t, fuente_lin_t
   use ec_energia, only : ftemp, gamma_energ, conv_t,rel_ener
   ! 
   ! Rutina de ensamblaje de la ec. de energ\'ia
@@ -130,7 +131,7 @@ PROGRAM SIMPLE2D
   !*************************************
   ! Par'ametros para Convecci'on mixta
   OPEN(unit=10,file='parametros.dat')
-  READ (10,*) Ra          ! n'umero de Reynolds
+  READ (10,*) Ra          ! n'umero de Reynolds (Rayleigh en convecci\'on natural)
   READ (10,*) Rec         ! caracter de Re
   READ (10,*) Pr          ! n'umero de Prandtl
   READ (10,*) Ri_1        ! n'umero de Richardson
@@ -165,14 +166,7 @@ PROGRAM SIMPLE2D
   ! ENDIF
   mic = entero_caracter(mi)
   njc = entero_caracter(nj)
-  Rec = entero_caracter(ceiling(Ra))
-  gamma_momen = 1.0_DBL/(Ra)
-  !gamma_s = 10._DBL*(1._DBL/(Re*Pr))
-  gamma_energ = 1.0_DBL/(Ra*Pr)
-  
-  ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
-  ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
-  ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  !
   !------------------------------------------
   !
   ! Inicializaci\'on de los t\'erminos fuente
@@ -183,8 +177,34 @@ PROGRAM SIMPLE2D
   fuente_con_v = 0.0_DBL
   fuente_lin_v = 0.0_DBL
   !
+  fuente_con_t = 0.0_DBL
+  fuente_lin_t = 0.0_DBL
+  !
   Ri      = Ri_1
   Riy     = 0.0_DBL
+  ! --------------------
+  !
+  ! Convecci\'on natural
+  ! 
+  gamma_momen = sqrt(Pr/Ra) 
+  gamma_energ = sqrt(1._DBL/(Pr*Ra))
+  Ri          =-1.0_DBL
+  Riy         = 0.0_DBL
+  Rec         = entero_caracter(ceiling(sqrt(Ra)))
+  ! ------------------
+  !
+  ! Convecci\'on mixta
+  ! 
+  ! gamma_s = 10._DBL*(1._DBL/(Re*Pr))
+  ! gamma_momen = 1.0_DBL/(Ra)    ! n\'umero de Reynolds
+  ! gamma_energ = 1.0_DBL/(Ra*Pr) ! N'umero de P'eclet
+  ! Ri      = Ri_1
+  ! Riy     = 0.0_DBL
+  !
+  ! ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
+  ! ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  ! ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  ! ----------------------------------------------------------------
   !
   ! Lectura de las mallas escalonadas e inicializaci\'on de arreglos
   !
@@ -201,6 +221,7 @@ PROGRAM SIMPLE2D
   tiempo_inicial = itera_inicial*dt
   itera_total    = itera_inicial
   ! u_ant = 1.0_DBL
+  u_ant = 0.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -222,7 +243,7 @@ PROGRAM SIMPLE2D
   !
   ! Construcci\'on de s\'olidos con frontera inmersa 
   !
-  call definir_cuerpo(gamma_momen, gamma_energ, 'trian')
+  call definir_cuerpo(gamma_momen, gamma_energ, 'chime')
   !
   !************************************************
   !escribe las caracter´isticas de las variable DBL
@@ -267,6 +288,7 @@ PROGRAM SIMPLE2D
      !$acc &        Ri(1:mi,1:nj+1),Riy(1:mi+1,1:nj+1),dt,                     &
      !$acc &        fuente_con_u(1:mi,1:nj+1), fuente_lin_u(1:mi,1:nj+1),      &
      !$acc &        fuente_con_v(1:mi+1,1:nj), fuente_lin_v(1:mi+1,1:nj),      &
+     !$acc &        fuente_con_t(1:mi+1,1:nj+1), fuente_lin_t(1:mi+1,1:nj+1),  &
      !$acc &        rel_vel,conv_u,conv_p,                                     &
      !$acc &        rel_ener,conv_t,placa_min,placa_max                        &
      !$acc &        )&
@@ -343,9 +365,9 @@ PROGRAM SIMPLE2D
                  !***********************
                  !Condiciones de frontera
                  !***********************
-                 AC(1,jj) = 1._DBL
-                 AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 1._DBL !*tanh((itera_total-1)*dt/1.0_DBL) 
+                 AC(1,jj) =-1.0_DBL
+                 AD(1,jj) = 1.0_DBL
+                 Rx(1,jj) = 0.0_DBL !1._DBL !*tanh((itera_total-1)*dt/3.0_DBL) 
                  au(1,jj) = 1.e40_DBL !ACi(1)
                  AC(mi,jj) = 1._DBL
                  AI(mi,jj) =-1._DBL !
@@ -364,7 +386,7 @@ PROGRAM SIMPLE2D
                  Ry(1,ii)     = 0.0_DBL
                  au(ii,1)     = 1.e40_DBL !ACj(1)
                  BC(nj+1,ii)  = 1._DBL
-                 BS(nj+1,ii)  =-1.0_DBL
+                 BS(nj+1,ii)  = 0.0_DBL
                  Ry(nj+1,ii)  = 0.0_DBL
                  au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
               end do bucle_direccionx
@@ -768,6 +790,7 @@ PROGRAM SIMPLE2D
                  do ii = 2, mi
                     call ensambla_energia(deltaxp,deltayp,&
                          &deltaxu,deltayv,fexu,feyv,gamma_energ,&
+                         &fuente_con_t,fuente_lin_t,&
                          &u,v,&
                          &temp,temp_ant,dt,&
                          &rel_ener,placa_min,placa_max,&
@@ -850,6 +873,7 @@ PROGRAM SIMPLE2D
            !$acc parallel !async(stream1)
            call residuo_u(deltaxu,deltayu,deltaxp,&
                 &deltayv,fexp,feyp,fexu,gamma_momen,&
+                &fuente_con_u,fuente_lin_u,&
                 &u,u_ant,v,&
                 &temp,pres,Ri,dt,rel_vel,&
                 &Resu&
@@ -1018,7 +1042,7 @@ PROGRAM SIMPLE2D
      ! *** Formato escritura VTK ***********
      ! sample  = m//ce//de//un//dec
      archivo = 'n'//trim(njc)//'m'//trim(mic)//'R'//trim(Rec)//'/t_'//m//ce//de//un//dec//'.vtk'
-     call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Ra)
+     call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Rec)
      CALL postproceso_vtk(xp,yp,uf,vf,pres,temp,b_o,archivo)
      !
      !

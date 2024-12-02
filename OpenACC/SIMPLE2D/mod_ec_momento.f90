@@ -589,6 +589,7 @@ contains
   !*******************************************************************
   subroutine residuo_u(deltaxuo,deltayuo,deltaxpo,&
        &deltayvo,fexpo,feypo,fexuo,gamma_momento,&
+       &fuente_con_uo,fuente_lin_uo,&
        &u_o,u_anto,v_o,&
        &temp_o,pres_o,Ri_o,dt_o,rel_vo,&
        &Rx_o&
@@ -627,6 +628,8 @@ contains
     !
     ! T\'erminos fuente
     !
+    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_con_uo
+    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_lin_uo
     real(kind=DBL), dimension(mi,nj+1),   intent(in) :: Ri_o
     !
     ! Incremento de tiempo y coeficiente de relajaci\'on
@@ -741,11 +744,13 @@ contains
           BN_o = (gamman*deltaxuo(ii)/dn*&
                &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
                &DMAX1(0.0_DBL,-vn*deltaxuo(ii)))
-          AC_o = AI_o + AD_o + BS_o + BN_o+&
+          AC_o = AI_o + AD_o + BS_o + BN_o-&
+               &deltaxuo(ii)*deltayuo(jj)*fuente_lin_uo(ii,jj)+&
                &deltaxuo(ii)*deltayuo(jj)/dt_o
           Rx_o(ii,jj) = AI_o*u_o(ii-1,jj)-AC_o*u_o(ii,jj)+AD_o*u_o(ii+1,jj)+&
                &BS_o*u_o(ii,jj-1)+BN_o*u_o(ii,jj+1)-&
                &deltaxuo(ii)*deltayuo(jj)*Ri_o(ii,jj)*temp_int+&
+               &deltaxuo(ii)*deltayuo(jj)*fuente_con_uo(ii,jj)+&
                &deltaxuo(ii)*deltayuo(jj)*u_anto(ii,jj)/dt_o+&
                &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltayuo(jj)
        end do bucle_direccion_x

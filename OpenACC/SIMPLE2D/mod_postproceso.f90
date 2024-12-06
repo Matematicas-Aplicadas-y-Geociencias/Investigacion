@@ -4,6 +4,7 @@
 ! Este m\'odulo contiene las subrutinas que calculan cantidades 
 ! de salida y archivos de postproceso
 !
+! Autor: J.C. Cajas
 !
 module postproceso
   !
@@ -12,6 +13,7 @@ module postproceso
   implicit none
   !
 contains
+  !
   !*******************************************************************
   !
   ! nusselt_promedio
@@ -232,7 +234,7 @@ contains
   !
   subroutine postproceso_bin(xuo,yvo,xpo,ypo,&
        &uo,vo,presso,tempo,bo, &
-       &Rx                     &
+       &Rxc                    &
        )
     use malla, only : mi, nj, DBL, mic, njc, zkc 
     implicit none
@@ -245,8 +247,8 @@ contains
     real(kind=DBL), DIMENSION(mi+1,nj),   INTENT(in)    :: vo
     real(kind=DBL), DIMENSION(mi+1,nj+1), INTENT(in)    :: tempo,presso
     real(kind=DBL), DIMENSION(mi+1,nj+1), INTENT(in)    :: bo
-    real(kind=DBL),                       intent(in)    :: Rx
-    character(64)                                       :: Rxc=repeat(' ',64)
+    character(6),   intent(in)                          :: Rxc
+    ! character(64)                                       :: Rxc=repeat(' ',64)
     ! character(46),  INTENT(in)                          :: archivoo
     ! character(64)                                       :: mico,njco,zkco
     !
@@ -255,7 +257,7 @@ contains
     ! write(mico,*) mi+1
     ! write(njco,*) nj+1
     ! write(zkco,*) 1
-    Rxc = entero_caracter(ceiling(Rx))
+    ! Rxc = entero_caracter(ceiling(Rx))
     !********************************
     !*** Formato de escritura dat ***
     open(unit=2,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rxc)//'u.bin',access='stream')

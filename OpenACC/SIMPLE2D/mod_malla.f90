@@ -12,7 +12,7 @@ MODULE malla
   !
   ! Dimensiones de la malla
   !
-  INTEGER(4), PARAMETER :: mi=701, nj=301, nsolid = 7
+  INTEGER(4), PARAMETER :: mi=1001, nj=101, nsolid = 7
   !
   ! Tipo de variables reales, definen precici'on y rango
   !
@@ -71,7 +71,7 @@ contains
     !
     ! Variables para los archivos de la entrada de datos
     !
-    CHARACTER(len=22), intent(in):: entrada_uo,entrada_vo,entrada_tpo
+    CHARACTER(len=28), intent(in):: entrada_uo,entrada_vo,entrada_tpo
     !
     ! Variables para las velocidades, temperatura y presion iniciales
     !

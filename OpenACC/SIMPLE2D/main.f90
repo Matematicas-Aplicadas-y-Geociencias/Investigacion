@@ -24,6 +24,8 @@ PROGRAM SIMPLE2D
   !
   use ec_momento, only : u, u_ant, du, au, Resu, Ri, Riy, fu
   use ec_momento, only : v, v_ant, dv, av, Resv, fv
+  use ec_momento, only : fuente_con_u, fuente_lin_u
+  use ec_momento, only : fuente_con_v, fuente_lin_v
   use ec_momento, only : pres, corr_pres, dcorr_pres, fcorr_pres
   use ec_momento, only : uf, vf, b_o
   use ec_momento, only : maxbo, conv_u, conv_p, conv_paso, rel_pres, rel_vel
@@ -38,11 +40,16 @@ PROGRAM SIMPLE2D
   ! temperatura, coeficiente de difusi\'on y criterios de convergencia
   !
   use ec_energia, only : temp, temp_ant, dtemp, Restemp
+  use ec_energia, only : fuente_con_t, fuente_lin_t
   use ec_energia, only : ftemp, gamma_energ, conv_t,rel_ener
   ! 
   ! Rutina de ensamblaje de la ec. de energ\'ia
   !
   use ec_energia, only : ensambla_energia
+  !
+  ! Rutina que determina viscosidades para fronteras inmersas
+  !
+  use frontera_inmersa, only : definir_cuerpo
   !
   ! Rutinas de soluci\'on de ecuaciones
   !
@@ -67,7 +74,7 @@ PROGRAM SIMPLE2D
   !
   ! Variables para los archivos de la entrada de datos
   !
-  CHARACTER(len=24) :: entrada_u,entrada_v,entrada_tp
+  CHARACTER(len=28) :: entrada_u,entrada_v,entrada_tp
   !*******************************************
   !
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: entropia_calor,entropia_viscosa,entropia,gamma_t
@@ -124,7 +131,7 @@ PROGRAM SIMPLE2D
   !*************************************
   ! Par'ametros para Convecci'on mixta
   OPEN(unit=10,file='parametros.dat')
-  READ (10,*) Ra          ! n'umero de Reynolds
+  READ (10,*) Ra          ! n'umero de Reynolds (Rayleigh en convecci\'on natural)
   READ (10,*) Rec         ! caracter de Re
   READ (10,*) Pr          ! n'umero de Prandtl
   READ (10,*) Ri_1        ! n'umero de Richardson
@@ -159,16 +166,45 @@ PROGRAM SIMPLE2D
   ! ENDIF
   mic = entero_caracter(mi)
   njc = entero_caracter(nj)
-  Rec = entero_caracter(ceiling(Ra))
-  gamma_momen = 1.0_DBL/(Ra)
-  !gamma_s = 10._DBL*(1._DBL/(Re*Pr))
-  gamma_energ = 1.0_DBL/(Ra*Pr)
-  
-  ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
-  ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
-  ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  !
+  !------------------------------------------
+  !
+  ! Inicializaci\'on de los t\'erminos fuente
+  !
+  fuente_con_u = 0.0_DBL
+  fuente_lin_u = 0.0_DBL
+  !
+  fuente_con_v = 0.0_DBL
+  fuente_lin_v = 0.0_DBL
+  !
+  fuente_con_t = 0.0_DBL
+  fuente_lin_t = 0.0_DBL
+  !
   Ri      = Ri_1
-  Riy     = 0._DBL
+  Riy     = 0.0_DBL
+  ! --------------------
+  !
+  ! Convecci\'on natural
+  ! 
+  gamma_momen = sqrt(Pr/Ra) 
+  gamma_energ = sqrt(1._DBL/(Pr*Ra))
+  Ri          =-1.0_DBL
+  Riy         = 0.0_DBL
+  Rec         = entero_caracter(ceiling(sqrt(Ra)))
+  ! ------------------
+  !
+  ! Convecci\'on mixta
+  ! 
+  ! gamma_s = 10._DBL*(1._DBL/(Re*Pr))
+  ! gamma_momen = 1.0_DBL/(Ra)    ! n\'umero de Reynolds
+  ! gamma_energ = 1.0_DBL/(Ra*Pr) ! N'umero de P'eclet
+  ! Ri      = Ri_1
+  ! Riy     = 0.0_DBL
+  !
+  ! ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
+  ! ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  ! ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  ! ----------------------------------------------------------------
   !
   ! Lectura de las mallas escalonadas e inicializaci\'on de arreglos
   !
@@ -183,7 +219,9 @@ PROGRAM SIMPLE2D
   ! !*****************
   !valores iniciales
   tiempo_inicial = itera_inicial*dt
+  itera_total    = itera_inicial
   ! u_ant = 1.0_DBL
+  u_ant = 0.0_DBL
   ! v_ant = 0.0_DBL
   ! temp_ant = 0.0_DBL
   u     = u_ant
@@ -202,6 +240,11 @@ PROGRAM SIMPLE2D
   maxbo   = 0.0_DBL
   error   = 0.0_DBL
   residuo = 0.0_DBL
+  !
+  ! Construcci\'on de s\'olidos con frontera inmersa 
+  !
+  call definir_cuerpo(gamma_momen, gamma_energ, 'sincu')
+  !
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -243,7 +286,10 @@ PROGRAM SIMPLE2D
      !$acc &        deltaxv(1:mi),deltayv(1:nj),                               &
      !$acc &        fexp(1:mi),feyp(1:nj),fexu(1:mi),feyv(1:nj),               &
      !$acc &        Ri(1:mi,1:nj+1),Riy(1:mi+1,1:nj+1),dt,                     &
-     !$acc &        rel_vel,conv_u,conv_p,                 &
+     !$acc &        fuente_con_u(1:mi,1:nj+1), fuente_lin_u(1:mi,1:nj+1),      &
+     !$acc &        fuente_con_v(1:mi+1,1:nj), fuente_lin_v(1:mi+1,1:nj),      &
+     !$acc &        fuente_con_t(1:mi+1,1:nj+1), fuente_lin_t(1:mi+1,1:nj+1),  &
+     !$acc &        rel_vel,conv_u,conv_p,                                     &
      !$acc &        rel_ener,conv_t,placa_min,placa_max                        &
      !$acc &        )&
      !$acc & create(AI(1:mi+1,1:nj+1),AC(1:mi+1,1:nj+1),                       &
@@ -296,6 +342,7 @@ PROGRAM SIMPLE2D
                  bucle_direccion_x: do ii = 2, mi-1
                     call ensambla_velu(deltaxu,deltayu,deltaxp,&
                          &deltayv,fexp,feyp,fexu,gamma_momen,&
+                         &fuente_con_u,fuente_lin_u,&
                          &u,u_ant,v,&
                          &temp,pres,Ri,dt,rel_vel,&
                          &AI,AC,AD,Rx,BS,BC,BN,Ry,au,&
@@ -318,9 +365,9 @@ PROGRAM SIMPLE2D
                  !***********************
                  !Condiciones de frontera
                  !***********************
-                 AC(1,jj) = 1._DBL
-                 AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 1._DBL ! *tanh((itera_total-1)*dt/3.0_DBL) 
+                 AC(1,jj) =-1.0_DBL
+                 AD(1,jj) = 1.0_DBL
+                 Rx(1,jj) = 0.0_DBL !1._DBL !*tanh((itera_total-1)*dt/3.0_DBL) 
                  au(1,jj) = 1.e40_DBL !ACi(1)
                  AC(mi,jj) = 1._DBL
                  AI(mi,jj) =-1._DBL !
@@ -349,7 +396,7 @@ PROGRAM SIMPLE2D
               ! Soluci\'on del sistema de ecuaciones
               !
               !$acc parallel loop gang async(stream1) !wait(stream2)
-               solucion_momento_ux: do jj = 2, nj
+              solucion_momento_ux: do jj = 2, nj
                  
                  call tridiagonal(AI(1:mi,jj),AC(1:mi,jj),AD(1:mi,jj),Rx(1:mi,jj),mi)
                  u(1, jj) = Rx(1,jj)
@@ -383,6 +430,22 @@ PROGRAM SIMPLE2D
               !
               ! Se ensambla la velocidad v
               !
+              !$acc parallel loop gang !async(stream2)
+              do jj = 2, nj-1
+                 !$acc loop vector
+                 do ii = 2, mi
+                    call ensambla_velv(deltaxv,deltayv,deltaxu,&
+                         &deltayp,fexp,feyp,feyv,gamma_momen,&
+                         &fuente_con_v,fuente_lin_v,&
+                         &v,v_ant,u,&
+                         &temp,pres,Riy,dt,rel_vel,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
+                         &ii,jj&
+                         &)
+                 end do
+              end do
+              ! $acc end parallel
+              !
               !$acc parallel vector_length(64) !async(stream1)
               !
               ! Condiciones de frontera para la direcci\'on y
@@ -410,27 +473,11 @@ PROGRAM SIMPLE2D
                  !***********************
                  !Condiciones de frontera
                  AC(mi+1,jj) = 1.0_DBL
-                 AI(mi+1,jj) = 0.0_DBL !
+                 AI(mi+1,jj) =-1.0_DBL !
                  Rx(mi+1,jj) = 0.0_DBL
                  av(mi+1,jj) = 1.e40_DBL !ACi(mi)
               end do
               !$acc end parallel
-              !
-              !$acc parallel loop gang !async(stream2)
-              do jj = 2, nj-1
-                 !$acc loop vector
-                 do ii = 2, mi
-                    call ensambla_velv(deltaxv,deltayv,deltaxu,&
-                         &deltayp,fexp,feyp,feyv,gamma_momen,&
-                         &v,v_ant,u,&
-                         &temp,pres,Riy,dt,rel_vel,&
-                         &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
-                         &ii,jj&
-                         &)
-                 end do
-              end do
-              ! $acc end parallel
-              !
               !------------------------------------
               !
               ! Soluci\'on de las ecs. de momento v
@@ -742,6 +789,7 @@ PROGRAM SIMPLE2D
                  do ii = 2, mi
                     call ensambla_energia(deltaxp,deltayp,&
                          &deltaxu,deltayv,fexu,feyv,gamma_energ,&
+                         &fuente_con_t,fuente_lin_t,&
                          &u,v,&
                          &temp,temp_ant,dt,&
                          &rel_ener,placa_min,placa_max,&
@@ -824,6 +872,7 @@ PROGRAM SIMPLE2D
            !$acc parallel !async(stream1)
            call residuo_u(deltaxu,deltayu,deltaxp,&
                 &deltayv,fexp,feyp,fexu,gamma_momen,&
+                &fuente_con_u,fuente_lin_u,&
                 &u,u_ant,v,&
                 &temp,pres,Ri,dt,rel_vel,&
                 &Resu&
@@ -842,7 +891,7 @@ PROGRAM SIMPLE2D
            end do calculo_maximo_residuou
            !
            !$acc wait
-           if ( maxbo<conv_paso .and. residuo<conv_resi)then
+           if ( maxbo<conv_paso ) then !.and. residuo<conv_resi)then
               iter_simple = 0
               write(102,*) 'SIMPLE', maxbo, residuo
               exit
@@ -939,6 +988,8 @@ PROGRAM SIMPLE2D
         DO ii = 2, mi
            uf(ii,jj) = (u(ii,jj)+u(ii-1,jj))/2._DBL
         END DO
+        vf(1,jj)    = v(1,jj)
+        vf(mi+1,jj) = v(mi+1,jj)
      END DO
      DO ii = 2, mi
         DO jj = 2, nj
@@ -992,7 +1043,7 @@ PROGRAM SIMPLE2D
      ! *** Formato escritura VTK ***********
      ! sample  = m//ce//de//un//dec
      archivo = 'n'//trim(njc)//'m'//trim(mic)//'R'//trim(Rec)//'/t_'//m//ce//de//un//dec//'.vtk'
-     call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Ra)
+     call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Rec)
      CALL postproceso_vtk(xp,yp,uf,vf,pres,temp,b_o,archivo)
      !
      !

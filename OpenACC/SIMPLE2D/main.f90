@@ -243,7 +243,7 @@ PROGRAM SIMPLE2D
   !
   ! Construcci\'on de s\'olidos con frontera inmersa 
   !
-  call definir_cuerpo(gamma_momen, gamma_energ, 'chime')
+  call definir_cuerpo(gamma_momen, gamma_energ, 'sincu')
   !
   !************************************************
   !escribe las caracter´isticas de las variable DBL
@@ -430,6 +430,22 @@ PROGRAM SIMPLE2D
               !
               ! Se ensambla la velocidad v
               !
+              !$acc parallel loop gang !async(stream2)
+              do jj = 2, nj-1
+                 !$acc loop vector
+                 do ii = 2, mi
+                    call ensambla_velv(deltaxv,deltayv,deltaxu,&
+                         &deltayp,fexp,feyp,feyv,gamma_momen,&
+                         &fuente_con_v,fuente_lin_v,&
+                         &v,v_ant,u,&
+                         &temp,pres,Riy,dt,rel_vel,&
+                         &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
+                         &ii,jj&
+                         &)
+                 end do
+              end do
+              ! $acc end parallel
+              !
               !$acc parallel vector_length(64) !async(stream1)
               !
               ! Condiciones de frontera para la direcci\'on y
@@ -457,28 +473,11 @@ PROGRAM SIMPLE2D
                  !***********************
                  !Condiciones de frontera
                  AC(mi+1,jj) = 1.0_DBL
-                 AI(mi+1,jj) = 0.0_DBL !
+                 AI(mi+1,jj) =-1.0_DBL !
                  Rx(mi+1,jj) = 0.0_DBL
                  av(mi+1,jj) = 1.e40_DBL !ACi(mi)
               end do
               !$acc end parallel
-              !
-              !$acc parallel loop gang !async(stream2)
-              do jj = 2, nj-1
-                 !$acc loop vector
-                 do ii = 2, mi
-                    call ensambla_velv(deltaxv,deltayv,deltaxu,&
-                         &deltayp,fexp,feyp,feyv,gamma_momen,&
-                         &fuente_con_v,fuente_lin_v,&
-                         &v,v_ant,u,&
-                         &temp,pres,Riy,dt,rel_vel,&
-                         &AI,AC,AD,Rx,BS,BC,BN,Ry,av,&
-                         &ii,jj&
-                         &)
-                 end do
-              end do
-              ! $acc end parallel
-              !
               !------------------------------------
               !
               ! Soluci\'on de las ecs. de momento v
@@ -892,7 +891,7 @@ PROGRAM SIMPLE2D
            end do calculo_maximo_residuou
            !
            !$acc wait
-           if ( maxbo<conv_paso .and. residuo<conv_resi)then
+           if ( maxbo<conv_paso ) then !.and. residuo<conv_resi)then
               iter_simple = 0
               write(102,*) 'SIMPLE', maxbo, residuo
               exit
@@ -989,6 +988,8 @@ PROGRAM SIMPLE2D
         DO ii = 2, mi
            uf(ii,jj) = (u(ii,jj)+u(ii-1,jj))/2._DBL
         END DO
+        vf(1,jj)    = v(1,jj)
+        vf(mi+1,jj) = v(mi+1,jj)
      END DO
      DO ii = 2, mi
         DO jj = 2, nj

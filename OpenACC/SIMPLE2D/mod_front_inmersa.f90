@@ -15,6 +15,7 @@ module frontera_inmersa
   ! Variables para fijar las fronteras inmersas
   !
   use ec_momento, only : u, u_ant, v, v_ant
+  use ec_momento, only : au, av  
   use ec_momento, only : fuente_con_u, fuente_lin_u
   use ec_momento, only : fuente_con_v, fuente_lin_v
   !
@@ -156,9 +157,11 @@ contains
                    !
                    fuente_lin_u(ii,jj) =-10.0e50_DBL
                    fuente_con_u(ii,jj) = 10.0e50_DBL*10.0e-12_DBL
+                   au(ii,jj)           = 10.0e40_DBL
                    !
                    fuente_lin_v(ii,jj) =-10.0e50_DBL
-                   fuente_con_v(ii,jj) = 10.0e50_DBL*10.0e-12_DBL 
+                   fuente_con_v(ii,jj) = 10.0e50_DBL*10.0e-12_DBL
+                   av(ii,jj)           = 10.0e40_DBL
                    !
                    fuente_lin_t(ii,jj) =-10e50_DBL
                    fuente_con_t(ii,jj) = 10e50_DBL*1.0_DBL

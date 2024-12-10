@@ -18,15 +18,9 @@ PROGRAM SIMPLE2D
   use malla, only : form24, form25, form26, form27
   use malla, only : lectura_mallas_escalonadas
   !
-  ! Variables y subrutinas para condiciones de frontera desde entrada de datos
+  ! Subrutina para imponer condiciones de frontera
   !
-  use cond_frontera, only : ai_u,ac_u,ad_u,bs_u,bc_u,bn_u
-  use cond_frontera, only : cond_front_ux, cond_front_uy
-  use cond_frontera, only : ai_v,ac_v,ad_v,bs_v,bc_v,bn_v  
-  use cond_frontera, only : cond_front_vx, cond_front_vy
-  use cond_frontera, only : ai_t,ac_t,ad_t,bs_t,bc_t,bn_t
-  use cond_frontera, only : cond_front_tx, cond_front_ty
-  use cond_frontera, only : lectura_cond_frontera 
+  use cond_frontera, only : impone_cond_frontera_x
   !
   ! Componentes de velocidad, presi\'on
   ! residuos de las ecuaciones de momento y correcci\'on de la presi\'on
@@ -45,6 +39,11 @@ PROGRAM SIMPLE2D
   !
   use ec_momento, only : ensambla_velu, ensambla_velv, ensambla_corr_pres
   use ec_momento, only : residuo_u
+  use ec_momento, only : ini_frontera_uv
+  use ec_momento, only : cond_front_ua, cond_front_ub  
+  use ec_momento, only : cond_front_uc, cond_front_ud
+  use ec_momento, only : cond_front_va, cond_front_vb  
+  use ec_momento, only : cond_front_vc, cond_front_vd  
   !
   ! Variables para la ecuaci\'on de la energ\'ia
   ! temperatura, coeficiente de difusi\'on y criterios de convergencia
@@ -52,6 +51,9 @@ PROGRAM SIMPLE2D
   use ec_energia, only : temp, temp_ant, dtemp, Restemp
   use ec_energia, only : fuente_con_t, fuente_lin_t
   use ec_energia, only : ftemp, gamma_energ, conv_t,rel_ener
+  use ec_energia, only : ini_frontera_t
+  use ec_energia, only : cond_front_ta, cond_front_tb  
+  use ec_energia, only : cond_front_tc, cond_front_td
   ! 
   ! Rutina de ensamblaje de la ec. de energ\'ia
   !
@@ -78,7 +80,7 @@ PROGRAM SIMPLE2D
   integer :: iter_ecuaci, iter_ecuaci_max
   integer :: iter_simple, iter_simple_max
   INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
-  integer :: ii, jj, kk, ll, iter, auxiliar
+  integer :: ii, jj, kk, ll, iter, auxiliar, ldiv
   integer :: stream1 = 1, stream2 = 2, stream3 = 3
   ! ------------------------------------------------------------
   !
@@ -250,6 +252,12 @@ PROGRAM SIMPLE2D
   maxbo   = 0.0_DBL
   error   = 0.0_DBL
   residuo = 0.0_DBL
+  ! --------------------------------------
+  !
+  ! Lectura de las condiciones de frontera
+  !
+  call ini_frontera_uv()
+  call ini_frontera_t()
   !
   ! Construcci\'on de s\'olidos con frontera inmersa 
   !
@@ -259,14 +267,21 @@ PROGRAM SIMPLE2D
   !
   ! Prueba de lectura de condiciones de frontera
   !
-  call lectura_cond_frontera('cond_fronterat.dat',&
-       &xp,yp,&
-       &mi+1,nj+1,&
-       &cond_front_tx,&
-       &cond_front_ty,&
-       &ai_t,ac_t,ad_t,&
-       &bs_t,bc_t,bn_t &
-       &)
+  ! call inicializa_cond_front(cond_front_ta)
+  ! call inicializa_cond_front(cond_front_tb)
+  ! call inicializa_cond_front(cond_front_tc)
+  ! call inicializa_cond_front(cond_front_td)
+  ! call lectura_cond_frontera('cond_fronterat.dat',&
+  !      & cond_front_ta, &
+  !      & cond_front_tb, &
+  !      & cond_front_tc, &
+  !      & cond_front_td, &
+  !      & xp, yp,        &
+  !      & mi+1,nj+1      &
+  !      & )
+  ! print*, "DEBUG: indices_cond ", cond_front_tb % indice_div(:)
+  ! print*, "DEBUG: tipo_condi ", cond_front_tb % tipo_condi(:)
+  ! print*, "DEBUG: xp ", xp(cond_front_tb % indice_div(1))
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -312,7 +327,10 @@ PROGRAM SIMPLE2D
      !$acc &        fuente_con_v(1:mi+1,1:nj), fuente_lin_v(1:mi+1,1:nj),      &
      !$acc &        fuente_con_t(1:mi+1,1:nj+1), fuente_lin_t(1:mi+1,1:nj+1),  &
      !$acc &        rel_vel,conv_u,conv_p,                                     &
-     !$acc &        rel_ener,conv_t,placa_min,placa_max                        &
+     !$acc &        rel_ener,conv_t,placa_min,placa_max,                       &
+     !$acc &        cond_front_ua,cond_front_ub,cond_front_uc, cond_front_ud,  &
+     !$acc &        cond_front_va,cond_front_vb,cond_front_vc, cond_front_vd,  &
+     !$acc &        cond_front_ta,cond_front_tb,cond_front_tc, cond_front_td   &
      !$acc &        )&
      !$acc & create(AI(1:mi+1,1:nj+1),AC(1:mi+1,1:nj+1),                       &
      !$acc &        AD(1:mi+1,1:nj+1),Rx(1:mi+1,1:nj+1),                       &
@@ -373,29 +391,27 @@ PROGRAM SIMPLE2D
                     ! $acc end parallel
                  end do bucle_direccion_x
               end do bucle_direccion_y
-              ! !***********************
-              ! !Condiciones de frontera
-              ! AC(mi,jj) = 1._DBL
-              ! AI(mi,jj) =-1._DBL !
-              ! Rx(mi,jj) = 0.0_DBL
-              ! au(mi,jj) = 1.e40_DBL !ACi(mi)
               !
-              ! Condiciones de frontera para la direcci\'on y
+              ! Condiciones de frontera para u en direcci'on x
               !
-              !$acc parallel loop vector !async(stream1)
-              bucle_direccionx1: do jj = 2, nj
-                 !***********************
-                 !Condiciones de frontera
-                 !***********************
-                 AC(1,jj) =-1.0_DBL
-                 AD(1,jj) = 1.0_DBL
-                 Rx(1,jj) = 0.0_DBL !1._DBL !*tanh((itera_total-1)*dt/3.0_DBL) 
-                 au(1,jj) = 1.e40_DBL !ACi(1)
-                 AC(mi,jj) = 1._DBL
-                 AI(mi,jj) =-1._DBL !
-                 Rx(mi,jj) = 0.0_DBL
-                 au(mi,jj) = 1.e40_DBL !ACi(mi)      
-              end do bucle_direccionx1
+              !-----------------------------------------------
+              !
+              ! lado a
+              !
+              !$acc parallel
+              call impone_cond_frontera_x(cond_front_ua,&
+                   & AI,AC,AD,Rx, &
+                   & au,          &
+                   & mi,nj+1)
+              !
+              ! lado c
+              !
+              call impone_cond_frontera_x(cond_front_uc,&
+                   & AI,AC,AD,Rx, &
+                   & au,          &
+                   & mi,nj+1)             
+
+              !$acc end parallel 
               !
               ! Condiciones de frontera para la direcci\'on y
               !

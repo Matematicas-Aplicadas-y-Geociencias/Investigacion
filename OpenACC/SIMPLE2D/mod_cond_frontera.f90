@@ -8,39 +8,8 @@
 MODULE cond_frontera
   !
   use malla, only : mi, nj, DBL
-  use malla, only : 
   !
   implicit none
-  !
-  ! Arreglos  para imponer las condiciones en las matrices
-  !
-  real(kind=DBL), dimension(nj+1,2) :: ai_u,ac_u,ad_u
-  real(kind=DBL), dimension(mi,2)   :: bs_u,bc_u,bn_u
-  !
-  ! Arreglos para la condici\'on de frontera de u
-  !
-  real(kind=DBL), dimension(2,nj+1) :: cond_front_ux
-  real(kind=DBL), dimension(2,mi)   :: cond_front_uy
-  !
-  ! Arreglos  para imponer las condiciones en las matrices
-  !
-  real(kind=DBL), dimension(nj,2)   :: ai_v,ac_v,ad_v
-  real(kind=DBL), dimension(mi+1,2) :: bs_v,bc_v,bn_v
-  !
-  ! Arreglos para la condici\'on de frontera de v
-  !
-  real(kind=DBL), dimension(2,nj)   :: cond_front_vx
-  real(kind=DBL), dimension(2,mi+1) :: cond_front_vy
-  !
-  ! Arreglos  para imponer las condiciones en las matrices
-  !
-  real(kind=DBL), dimension(nj+1,2) :: ai_t,ac_t,ad_t
-  real(kind=DBL), dimension(mi+1,2) :: bs_t,bc_t,bn_t
-  !
-  ! Arreglos para la condici\'on de frontera de temp
-  !
-  real(kind=DBL), dimension(2,nj+1) :: cond_front_tx
-  real(kind=DBL), dimension(2,mi+1) :: cond_front_ty
   !
   ! Nombres de los archivos para condiciones de frontera
   !
@@ -48,34 +17,72 @@ MODULE cond_frontera
   character(len=18) :: entrada_front_v
   character(len=18) :: entrada_front_t
   !
+  type tipo_cond_front
+     !
+     ! Estructura de datos para determinar condiciones de frontera mediante archivos
+     ! Se hace una estructura r\'igida capaz de manejar 15 divisiones por lado. Si se
+     ! requieren m\'as es posible aumentar las dimensiones de los arreglos o crear
+     ! un puntero asignable (allocatable)
+     ! 
+     character(len=1)                :: lado_front  ! Se usan 4 lados en 2D: a,b,c,d
+     integer                         :: ndivis      ! n'umero de divisiones
+     character(len=4), dimension(15) :: tipo_condi  ! tipo de condici\'on de frontera
+     real(kind=DBL), dimension(15)   :: valor_cond  ! valor de la condici\'on de frontera
+     integer, dimension(14)          :: indice_div  ! indices iniciales de las divisiones
+     !
+  end type tipo_cond_front
+  !
 contains
   !
   !-----------------------------------------------------------------------------
+  !
+  ! inicializa_cond_front
+  !
+  ! Esta subrutina inicializa la estructura de condiciones de frontera
+  !
+  subroutine inicializa_cond_front(cond_front_uu)
+    !
+    implicit none
+    !
+    class( tipo_cond_front), intent(inout) :: cond_front_uu
+    !
+    cond_front_uu % lado_front = 'z'
+    cond_front_uu % ndivis     =  0
+    cond_front_uu % tipo_condi = 'desc'
+    cond_front_uu % valor_cond =  0.0_DBL
+    cond_front_uu % indice_div = -14
+    !
+  end subroutine inicializa_cond_front
+  !
+  !-----------------------------------------------------------------------------
+  !
+  ! lectura_cond_frontera
   !
   ! Esta subrutina abre los archivos para leer las condiciones de frontera
   ! y crea los arreglos necesarios para imponerlas durante la construcci\'on
   ! de las matrices
   !
   subroutine lectura_cond_frontera(entrada_front_uuo,&
+       &cond_front_uua,&
+       &cond_front_uub,&
+       &cond_front_uuc,&
+       &cond_front_uud,&
        &xx,yy,&
-       &mm,nn,&
-       &cond_front_uux,&
-       &cond_front_uuy,&
-       &ai,ac,ad,&
-       &bs,bc,bn &
+       &mm,nn &
        &)
     !
     implicit none
     !
-    character(len=18), intent(in)                :: entrada_front_uuo
-    integer, intent(in)                          :: mm,nn
+    character(len=18), intent(in) :: entrada_front_uuo ! archivo de entrada
     !
-    real(kind=DBL), dimension(mm),   intent(in)  :: xx
-    real(kind=DBL), dimension(nn),   intent(in)  :: yy
-    real(kind=DBL), dimension(nn,2), intent(out) :: cond_front_uux
-    real(kind=DBL), dimension(mm,2), intent(out) :: cond_front_uuy
-    real(kind=DBL), dimension(nn,2), intent(out) :: ai,ac,ad
-    real(kind=DBL), dimension(mm,2), intent(out) :: bs,bc,bn
+    class(tipo_cond_front), intent(inout) :: cond_front_uua    ! condici'on lado a
+    class(tipo_cond_front), intent(inout) :: cond_front_uub    ! condici'on lado b
+    class(tipo_cond_front), intent(inout) :: cond_front_uuc    ! condici'on lado c
+    class(tipo_cond_front), intent(inout) :: cond_front_uud    ! condici'on lado d
+    !
+    real(kind=DBL), dimension(mm), intent(in) :: xx
+    real(kind=DBL), dimension(nn), intent(in) :: yy
+    integer, intent(in)                       :: mm,nn
     !
     character(len=1) :: lado
     character(len=4) :: variable
@@ -87,150 +94,349 @@ contains
     integer          :: indice
     integer          :: ii, jj, kk
     !
-    !***************************************************************
-    !
-    ! Inicializaci\'on de los arreglos para condiciones de frontera
-    !
-    cond_front_uux = 0.0_DBL
-    cond_front_uuy = 0.0_DBL
-    !
-    ! Inicializaci\'on de las variables para recorrer segmentos
-    !
-    jj = 1
-    indice = 1 ! Distingue entre los lados a y c, o b y d
+    ! *********************************************************
     !
     ! Apertura de los archivos y lectura de los arreglos
     !
     open(unit=111,file=entrada_front_uuo)
     !
-    ! Se esperan 4 lados en el rect\'angulo
+    ! Se esperan 4 lados en el rect\'angulo en el archivo
+    ! de condiciones de frontera
     !
-    do kk = 1, 4
+    lectura: do ii = 1, 4
        !
        read(111,*) variable, lado, divisiones
        !
        write(*,*) "SIMPLE2D: Condiciones de frontera para ", variable, &
             &" con ", divisiones," divisiones en lado ", lado
        !
-       lado: if( lado == 'a' .or. lado == 'c' )then
+       lado: select case( lado )
           !
-          if( lado == 'c' ) indice = 2
+       case( 'a' )
           !
-          divisiones_x: do ii = 1, divisiones
+          cond_front_uua % indice_div(1) = 2 ! indice inicial para bucles de frontera
+          !
+          divisiones_xa: do jj = 1, divisiones
              !
              read(111,*) x0, x1, tipo_condicion, valor
              !
              write(*,*) "SIMPLE 2D: condici\'on tipo ", tipo_condicion, &
                   &" entre ", x0, " y ", x1," en lado ", lado
              !
-             tipo_condicion_x: select case( tipo_condicion )
-                !
-             case( 'diri' )
-                !
-                do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                   ai(jj,indice) = 0.0_DBL
-                   ac(jj,indice) = 1.0_DBL
-                   ad(jj,indice) = 0.0_DBL
-                   cond_front_uux(jj,indice) = valor
-                   jj = jj + 1
-                end do
-                !
-             case ( 'neum' )
-                !
-                if( lado == 'a' )then
-                   !
-                   do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                      ai(jj,indice) = 0.0_DBL
-                      ac(jj,indice) =-1.0_DBL
-                      ad(jj,indice) = 1.0_DBL
-                      cond_front_uux(jj,indice) = valor
-                      jj = jj + 1
-                   end do
-                   !
-                else
-                   !
-                   do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                      ai(jj,indice) =-1.0_DBL
-                      ac(jj,indice) = 1.0_DBL
-                      ad(jj,indice) = 0.0_DBL
-                      cond_front_uux(jj,indice) = valor
-                      jj = jj + 1
-                   end do
-                   !
-                end if
-                !
-             end select tipo_condicion_x
+             cond_front_uua % lado_front     = 'a'
+             cond_front_uua % ndivis         = divisiones
+             cond_front_uua % tipo_condi(jj) = tipo_condicion
+             cond_front_uua % valor_cond(jj) = valor
              !
-             ! Se devuelve el valor de 1 al indice para
-             ! la condici\'on en la otra direcci\'on
+             indices_conda: do kk = 1, nn
+                !
+                if( yy(kk) > x1 ) exit indices_conda
+                !
+             end do indices_conda
              !
-             indice = 1
+             cond_front_uua % indice_div(jj+1) = kk
              !
-          end do divisiones_x
+          end do divisiones_xa
           !
-       else if( lado == 'b' .or. lado == 'd' )then
+          cond_front_uua % indice_div(divisiones+1) = nn-1 ! indice final para bucles de frontera
           !
-          if( lado == 'd' ) indice = 2
+       case( 'b' )
           !
-          divisiones_y: do ii = 1, divisiones
+          cond_front_uub % indice_div(1) = 2 ! indice inicial para bucles de frontera
+          !
+          divisiones_yb: do jj = 1, divisiones
              !
              read(111,*) x0, x1, tipo_condicion, valor
+             !
              write(*,*) "SIMPLE 2D: condici\'on tipo ", tipo_condicion, &
                   &" entre ", x0, " y ", x1," en lado ", lado
              !
-             tipo_condicion_y: select case( tipo_condicion )
-                !
-             case( 'diri' )
-                !
-                do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                   !
-                   bs(jj,indice) = 0.0_DBL
-                   bc(jj,indice) = 1.0_DBL
-                   bn(jj,indice) = 0.0_DBL
-                   cond_front_uuy(jj,indice) = valor
-                   jj = jj + 1
-                   !
-                end do
-                !
-             case ( 'neum' )
-                !
-                if( lado == 'b' )then
-                   !
-                   do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                      bs(jj,indice) = 0.0_DBL
-                      bc(jj,indice) =-1.0_DBL
-                      bn(jj,indice) = 1.0_DBL
-                      cond_front_uuy(jj,indice) = valor
-                      jj = jj + 1
-                   end do
-                   !
-                else
-                   !
-                   do while( x0 <= xx(jj) .and. xx(jj) <= x1 )
-                      bs(jj,indice) =-1.0_DBL
-                      bc(jj,indice) = 1.0_DBL
-                      bn(jj,indice) = 0.0_DBL
-                      cond_front_uuy(jj,indice) = valor
-                      jj = jj + 1
-                   end do
-                   !                  
-                end if
-                !
-             end select tipo_condicion_y
+             cond_front_uub % lado_front     = 'b'
+             cond_front_uub % ndivis         = divisiones
+             cond_front_uub % tipo_condi(jj) = tipo_condicion
+             cond_front_uub % valor_cond(jj) = valor
              !
-             ! Se devuelve el valor de 1 al indice para
-             ! la condici\'on en la otra direcci\'on
+             indices_condb: do kk = 1, mm
+                !
+                if( xx(kk) > x1 ) exit indices_condb
+                !
+             end do indices_condb
              !
-             indice = 1
+             cond_front_uub % indice_div(jj+1) = kk
              !
-          end do divisiones_y
+          end do divisiones_yb
           !
-       end if lado
-       !
-    end do
+          cond_front_uub % indice_div(divisiones) = mm-1 ! indice final para bucles de frontera
+          !
+       case( 'c' )
+          !
+          cond_front_uuc % indice_div(1) = 2 ! indice inicial para bucles de frontera
+          !
+          divisiones_xc: do jj = 1, divisiones
+             !
+             read(111,*) x0, x1, tipo_condicion, valor
+             !
+             write(*,*) "SIMPLE 2D: condici\'on tipo ", tipo_condicion, &
+                  &" entre ", x0, " y ", x1," en lado ", lado
+             !
+             cond_front_uuc % lado_front     = 'c'
+             cond_front_uuc % ndivis         = divisiones
+             cond_front_uuc % tipo_condi(jj) = tipo_condicion
+             cond_front_uuc % valor_cond(jj) = valor
+             !
+             indices_condc: do kk = 1, nn
+                !
+                if( yy(kk) > x1 ) exit indices_condc
+                !
+             end do indices_condc
+             !
+             cond_front_uuc % indice_div(jj+1) = kk
+             !
+          end do divisiones_xc
+          !
+          cond_front_uuc % indice_div(divisiones+1) = nn-1 ! indice final para bucles de frontera
+          !
+       case( 'd' )
+          !
+          cond_front_uud % indice_div(1) = 2 ! indice inicial para bucles de frontera
+          !
+          !
+          divisiones_yd: do jj = 1, divisiones
+             !
+             read(111,*) x0, x1, tipo_condicion, valor
+             !
+             write(*,*) "SIMPLE 2D: condici\'on tipo ", tipo_condicion, &
+                  &" entre ", x0, " y ", x1," en lado ", lado
+             !
+             cond_front_uud % lado_front     = 'd'
+             cond_front_uud % ndivis         = divisiones
+             cond_front_uud % tipo_condi(jj) = tipo_condicion
+             cond_front_uud % valor_cond(jj) = valor
+             !
+             indices_condd: do kk = 1, mm
+                !
+                if( xx(kk) > x1 ) exit indices_condd
+                !
+             end do indices_condd
+             !
+             cond_front_uud % indice_div(jj+1) = kk
+             !
+          end do divisiones_yd
+          !
+          cond_front_uud % indice_div(divisiones) = mm-1 ! indice final para bucles de frontera
+          !
+       end select lado
+          !
+    end do lectura
     !
     close(unit=111)
     !
   end subroutine lectura_cond_frontera
   !
+  !***************************************************************************
+  !
+  ! impone_cond_frontera
+  !
+  ! Esta subrutina recibe estructuras con condiciones de frontera y las impone
+  ! en los coeficientes de las matrices para la direcci\'on x
+  !
+  subroutine impone_cond_frontera_x(cond_front_uu,&
+       & AI_o,AC_o,AD_o,Rx_o, &
+       & au_o,                &
+       & mm,nn)
+    !
+    !$acc routine seq
+    !
+    implicit none
+    !
+    class( tipo_cond_front ), intent(in)              :: cond_front_uu
+    !
+    real(kind=DBL), dimension(mi+1,nj+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
+    real(kind=DBL), dimension(mm,nn),     intent(out) :: au_o
+    !
+    integer, intent(in)                               :: mm, nn
+    !
+    integer :: ldiv, ii, jj
+    !
+    !-------------------------------
+    lado: select case( cond_front_uu % lado_front )
+       !
+       ! lado a
+       !
+    case( 'a' )
+       !
+       bucle_segmento_au: do ldiv = 1, cond_front_uu % ndivis
+          !
+          if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(1,jj) = 0.0_DBL
+                AC_o(1,jj) = 1.0_DBL
+                AD_o(1,jj) = 0.0_DBL
+                Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(1,jj) = 1.e40_DBL
+                ! print*, "DEBUG: Dirichlet en a"
+             end do
+             !
+          else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+             !
+             ! print*, "DEBUG: ", cond_front_uu % valor_cond(ldiv)
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(1,jj) = 0.0_DBL
+                AC_o(1,jj) =-1.0_DBL
+                AD_o(1,jj) = 1.0_DBL
+                Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(1,jj) = 1.e40_DBL
+                ! print*, "DEBUG: neumann en a"
+             end do
+             !
+          end if
+          !
+       end do bucle_segmento_au
+       !
+       !-------------------------------
+       !
+       ! lado c
+       !
+    case( 'c' )
+       ! 
+       ! $acc parallel loop vector
+       bucle_segmento_cu: do ldiv = 1, cond_front_uu % ndivis
+          if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(mm,jj) = 0.0_DBL
+                AC_o(mm,jj) = 1.0_DBL
+                AD_o(mm,jj) = 0.0_DBL
+                Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(mm,jj) = 1.e40_DBL
+                ! print*, "DEBUG: Dirichlet en a"
+             end do
+             !
+          else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(mm,jj) =-1.0_DBL
+                AC_o(mm,jj) = 1.0_DBL
+                AD_o(mm,jj) = 0.0_DBL
+                Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(mm,jj) = 1.e40_DBL
+                ! print*, "DEBUG: neumann en a"
+             end do
+             !
+          end if
+          !
+       end do bucle_segmento_cu
+       !
+    end select lado
+    !
+  end subroutine impone_cond_frontera_x
+  !
+  ! !***************************************************************************
+  ! !
+  ! ! impone_cond_frontera_y
+  ! !
+  ! ! Esta subrutina recibe estructuras con condiciones de frontera y las impone
+  ! ! en los coeficientes de las matrices para la direcci\'on y
+  ! !
+  ! subroutine impone_cond_frontera_y(cond_front_uu,&
+  !      & BS_o,BC_o,BN_o,Ry_o, &
+  !      & au_o,                &
+  !      & mm,nn)
+  !   !
+  !   !$acc routine seq
+  !   !
+  !   implicit none
+  !   !
+  !   class( tipo_cond_front ), intent(in)              :: cond_front_uu
+  !   !
+  !   real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
+  !   real(kind=DBL), dimension(mm,nn),     intent(out) :: au_o
+  !   !
+  !   integer, intent(in)                               :: mm, nn
+  !   !
+  !   integer :: ldiv, ii, jj
+  !   !
+  !   !-------------------------------
+  !   lado: select case( cond_front_uu % lado_front )
+  !      !
+  !      ! lado b
+  !      !
+  !   case( 'b' )
+  !      !
+  !      bucle_segmento_bu: do ldiv = 1, cond_front_uu % ndivis
+  !         !
+  !         if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+  !            !
+  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+  !               !
+  !               BS_o(1,jj) = 0.0_DBL
+  !               BC_o(1,jj) = 1.0_DBL
+  !               BN_o(1,jj) = 0.0_DBL
+  !               Ry_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+  !               au_o(1,jj) = 1.e40_DBL
+  !               ! print*, "DEBUG: Dirichlet en a"
+  !            end do
+  !            !
+  !         else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+  !            !
+  !            ! print*, "DEBUG: ", cond_front_uu % valor_cond(ldiv)
+  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+  !               !
+  !               AI_o(1,jj) = 0.0_DBL
+  !               AC_o(1,jj) =-1.0_DBL
+  !               AD_o(1,jj) = 1.0_DBL
+  !               Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+  !               au_o(1,jj) = 1.e40_DBL
+  !               ! print*, "DEBUG: neumann en a"
+  !            end do
+  !            !
+  !         end if
+  !         !
+  !      end do bucle_segmento_au
+  !      !
+  !      !-------------------------------
+  !      !
+  !      ! lado c
+  !      !
+  !   case( 'c' )
+  !      ! 
+  !      ! $acc parallel loop vector
+  !      bucle_segmento_cu: do ldiv = 1, cond_front_uu % ndivis
+  !         if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+  !            !
+  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+  !               !
+  !               AI_o(mm,jj) = 0.0_DBL
+  !               AC_o(mm,jj) = 1.0_DBL
+  !               AD_o(mm,jj) = 0.0_DBL
+  !               Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
+  !               au_o(mm,jj) = 1.e40_DBL
+  !               ! print*, "DEBUG: Dirichlet en a"
+  !            end do
+  !            !
+  !         else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+  !            !
+  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+  !               !
+  !               AI_o(mm,jj) =-1.0_DBL
+  !               AC_o(mm,jj) = 1.0_DBL
+  !               AD_o(mm,jj) = 0.0_DBL
+  !               Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
+  !               au_o(mm,jj) = 1.e40_DBL
+  !               ! print*, "DEBUG: neumann en a"
+  !            end do
+  !            !
+  !         end if
+  !         !
+  !      end do bucle_segmento_cu
+  !      !
+  !   end select lado
+  !   !
+  ! end subroutine impone_cond_frontera_y
+  !  
 end MODULE cond_frontera

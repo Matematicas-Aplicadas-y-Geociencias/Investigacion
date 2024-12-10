@@ -18,6 +18,16 @@ PROGRAM SIMPLE2D
   use malla, only : form24, form25, form26, form27
   use malla, only : lectura_mallas_escalonadas
   !
+  ! Variables y subrutinas para condiciones de frontera desde entrada de datos
+  !
+  use cond_frontera, only : ai_u,ac_u,ad_u,bs_u,bc_u,bn_u
+  use cond_frontera, only : cond_front_ux, cond_front_uy
+  use cond_frontera, only : ai_v,ac_v,ad_v,bs_v,bc_v,bn_v  
+  use cond_frontera, only : cond_front_vx, cond_front_vy
+  use cond_frontera, only : ai_t,ac_t,ad_t,bs_t,bc_t,bn_t
+  use cond_frontera, only : cond_front_tx, cond_front_ty
+  use cond_frontera, only : lectura_cond_frontera 
+  !
   ! Componentes de velocidad, presi\'on
   ! residuos de las ecuaciones de momento y correcci\'on de la presi\'on
   ! coeficientes de difusi\'on y criterios e convergencia
@@ -245,6 +255,18 @@ PROGRAM SIMPLE2D
   !
   call definir_cuerpo(gamma_momen, gamma_energ, 'sincu')
   !
+  !----------------------------------------------
+  !
+  ! Prueba de lectura de condiciones de frontera
+  !
+  call lectura_cond_frontera('cond_fronterat.dat',&
+       &xp,yp,&
+       &mi+1,nj+1,&
+       &cond_front_tx,&
+       &cond_front_ty,&
+       &ai_t,ac_t,ad_t,&
+       &bs_t,bc_t,bn_t &
+       &)
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)

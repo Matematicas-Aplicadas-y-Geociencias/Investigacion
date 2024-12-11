@@ -166,7 +166,7 @@ contains
              !
           end do divisiones_yb
           !
-          cond_front_uub % indice_div(divisiones) = mm-1 ! indice final para bucles de frontera
+          cond_front_uub % indice_div(divisiones+1) = mm-1 ! indice final para bucles de frontera
           !
        case( 'c' )
           !
@@ -223,7 +223,7 @@ contains
              !
           end do divisiones_yd
           !
-          cond_front_uud % indice_div(divisiones) = mm-1 ! indice final para bucles de frontera
+          cond_front_uud % indice_div(divisiones+1) = mm-1 ! indice final para bucles de frontera
           !
        end select lado
           !
@@ -242,19 +242,20 @@ contains
   !
   subroutine impone_cond_frontera_x(cond_front_uu,&
        & AI_o,AC_o,AD_o,Rx_o, &
+       & mm,nn,               &
        & au_o,                &
-       & mm,nn)
+       & kk,ll)
     !
     !$acc routine seq
     !
     implicit none
     !
-    class( tipo_cond_front ), intent(in)              :: cond_front_uu
+    class( tipo_cond_front ), intent(in)          :: cond_front_uu
     !
-    real(kind=DBL), dimension(mi+1,nj+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-    real(kind=DBL), dimension(mm,nn),     intent(out) :: au_o
+    real(kind=DBL), dimension(mm,nn), intent(out) :: AI_o, AC_o, AD_o, Rx_o
+    real(kind=DBL), dimension(kk,ll), intent(out) :: au_o
     !
-    integer, intent(in)                               :: mm, nn
+    integer, intent(in)                           :: mm, nn, kk, ll
     !
     integer :: ldiv, ii, jj
     !
@@ -296,6 +297,41 @@ contains
           !
        end do bucle_segmento_au
        !
+       ! lado b
+       !
+    case( 'b' )
+       !
+       bucle_segmento_bu: do ldiv = 1, cond_front_uu % ndivis
+          !
+          if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(1,jj) = 0.0_DBL
+                AC_o(1,jj) = 1.0_DBL
+                AD_o(1,jj) = 0.0_DBL
+                Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(jj,1) = 1.e40_DBL
+                ! print*, "DEBUG: Dirichlet en a"
+             end do
+             !
+          else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+             !
+             ! print*, "DEBUG: ", cond_front_uu % valor_cond(ldiv)
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(1,jj) = 0.0_DBL
+                AC_o(1,jj) =-1.0_DBL
+                AD_o(1,jj) = 1.0_DBL
+                Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(jj,1) = 1.e40_DBL
+                ! print*, "DEBUG: neumann en a"
+             end do
+             !
+          end if
+          !
+       end do bucle_segmento_bu
+       !
        !-------------------------------
        !
        ! lado c
@@ -308,11 +344,11 @@ contains
              !
              do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
                 !
-                AI_o(mm,jj) = 0.0_DBL
-                AC_o(mm,jj) = 1.0_DBL
-                AD_o(mm,jj) = 0.0_DBL
-                Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(mm,jj) = 1.e40_DBL
+                AI_o(kk,jj) = 0.0_DBL
+                AC_o(kk,jj) = 1.0_DBL
+                AD_o(kk,jj) = 0.0_DBL
+                Rx_o(kk,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(kk,jj) = 1.e40_DBL
                 ! print*, "DEBUG: Dirichlet en a"
              end do
              !
@@ -320,17 +356,53 @@ contains
              !
              do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
                 !
-                AI_o(mm,jj) =-1.0_DBL
-                AC_o(mm,jj) = 1.0_DBL
-                AD_o(mm,jj) = 0.0_DBL
-                Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(mm,jj) = 1.e40_DBL
+                AI_o(kk,jj) =-1.0_DBL
+                AC_o(kk,jj) = 1.0_DBL
+                AD_o(kk,jj) = 0.0_DBL
+                Rx_o(kk,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(kk,jj) = 1.e40_DBL
                 ! print*, "DEBUG: neumann en a"
              end do
              !
           end if
           !
        end do bucle_segmento_cu
+       !
+       !-------------------------------
+       !
+       ! lado d
+       !
+    case( 'd' )
+       ! 
+       ! $acc parallel loop vector
+       bucle_segmento_du: do ldiv = 1, cond_front_uu % ndivis
+          if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(ll,jj) = 0.0_DBL
+                AC_o(ll,jj) = 1.0_DBL
+                AD_o(ll,jj) = 0.0_DBL
+                Rx_o(ll,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(jj,ll) = 1.e40_DBL
+                ! print*, "DEBUG: Dirichlet en a"
+             end do
+             !
+          else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
+             !
+             do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
+                !
+                AI_o(ll,jj) =-1.0_DBL
+                AC_o(ll,jj) = 1.0_DBL
+                AD_o(ll,jj) = 0.0_DBL
+                Rx_o(ll,jj) = cond_front_uu % valor_cond(ldiv)
+                au_o(jj,ll) = 1.e40_DBL
+                ! print*, "DEBUG: neumann en a"
+             end do
+             !
+          end if
+          !
+       end do bucle_segmento_du
        !
     end select lado
     !

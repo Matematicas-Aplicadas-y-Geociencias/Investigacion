@@ -401,33 +401,53 @@ PROGRAM SIMPLE2D
               !$acc parallel
               call impone_cond_frontera_x(cond_front_ua,&
                    & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
                    & au,          &
                    & mi,nj+1)
+              !-----------------------------------------------
+              !
+              ! lado b
+              !
+              call impone_cond_frontera_x(cond_front_ub,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & au,          &
+                   & mi,nj+1) 
+              !-----------------------------------------------
               !
               ! lado c
               !
               call impone_cond_frontera_x(cond_front_uc,&
                    & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
                    & au,          &
                    & mi,nj+1)             
-
+              !-----------------------------------------------
+              !
+              ! lado d
+              !
+              call impone_cond_frontera_x(cond_front_ud,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & au,          &
+                   & mi,nj+1)
               !$acc end parallel 
-              !
-              ! Condiciones de frontera para la direcci\'on y
-              !
-              !$acc parallel loop vector !async(stream1)
-              bucle_direccionx: do ii = 2, mi-1
-                 !***********************
-                 !Condiciones de frontera
-                 BC(1,ii)     = 1._DBL
-                 BN(1,ii)     = 0.0_DBL
-                 Ry(1,ii)     = 0.0_DBL
-                 au(ii,1)     = 1.e40_DBL !ACj(1)
-                 BC(nj+1,ii)  = 1._DBL
-                 BS(nj+1,ii)  = 0.0_DBL
-                 Ry(nj+1,ii)  = 0.0_DBL
-                 au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
-              end do bucle_direccionx
+              ! !
+              ! ! Condiciones de frontera para la direcci\'on y
+              ! !
+              ! !$acc parallel loop vector !async(stream1)
+              ! bucle_direccionx: do ii = 2, mi-1
+              !    !***********************
+              !    !Condiciones de frontera
+              !    BC(1,ii)     = 1._DBL
+              !    BN(1,ii)     = 0.0_DBL
+              !    Ry(1,ii)     = 0.0_DBL
+              !    au(ii,1)     = 1.e40_DBL !ACj(1)
+              !    BC(nj+1,ii)  = 1._DBL
+              !    BS(nj+1,ii)  = 0.0_DBL
+              !    Ry(nj+1,ii)  = 0.0_DBL
+              !    au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
+              ! end do bucle_direccionx
               !
               !-------------------------------------
               !

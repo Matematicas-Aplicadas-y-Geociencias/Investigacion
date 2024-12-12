@@ -20,7 +20,7 @@ PROGRAM SIMPLE2D
   !
   ! Subrutina para imponer condiciones de frontera
   !
-  use cond_frontera, only : impone_cond_frontera_x
+  use cond_frontera, only : impone_cond_frontera
   !
   ! Componentes de velocidad, presi\'on
   ! residuos de las ecuaciones de momento y correcci\'on de la presi\'on
@@ -265,23 +265,6 @@ PROGRAM SIMPLE2D
   !
   !----------------------------------------------
   !
-  ! Prueba de lectura de condiciones de frontera
-  !
-  ! call inicializa_cond_front(cond_front_ta)
-  ! call inicializa_cond_front(cond_front_tb)
-  ! call inicializa_cond_front(cond_front_tc)
-  ! call inicializa_cond_front(cond_front_td)
-  ! call lectura_cond_frontera('cond_fronterat.dat',&
-  !      & cond_front_ta, &
-  !      & cond_front_tb, &
-  !      & cond_front_tc, &
-  !      & cond_front_td, &
-  !      & xp, yp,        &
-  !      & mi+1,nj+1      &
-  !      & )
-  ! print*, "DEBUG: indices_cond ", cond_front_tb % indice_div(:)
-  ! print*, "DEBUG: tipo_condi ", cond_front_tb % tipo_condi(:)
-  ! print*, "DEBUG: xp ", xp(cond_front_tb % indice_div(1))
   !************************************************
   !escribe las caracter´isticas de las variable DBL
   WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -392,62 +375,46 @@ PROGRAM SIMPLE2D
                  end do bucle_direccion_x
               end do bucle_direccion_y
               !
-              ! Condiciones de frontera para u en direcci'on x
+              ! Condiciones de frontera para u 
               !
               !-----------------------------------------------
               !
               ! lado a
               !
               !$acc parallel
-              call impone_cond_frontera_x(cond_front_ua,&
+              call impone_cond_frontera(cond_front_ua,&
                    & AI,AC,AD,Rx, &
                    & mi+1,nj+1,   &
-                   & au,          &
-                   & mi,nj+1)
+                   & mi,nj+1,     &
+                   & au )
               !-----------------------------------------------
               !
               ! lado b
               !
-              call impone_cond_frontera_x(cond_front_ub,&
+              call impone_cond_frontera(cond_front_ub,&
                    & BS,BC,BN,Ry, &
                    & nj+1,mi+1,   &
-                   & au,          &
-                   & mi,nj+1) 
+                   & mi,nj+1,     &
+                   & au )          
               !-----------------------------------------------
               !
               ! lado c
               !
-              call impone_cond_frontera_x(cond_front_uc,&
+              call impone_cond_frontera(cond_front_uc,&
                    & AI,AC,AD,Rx, &
                    & mi+1,nj+1,   &
-                   & au,          &
-                   & mi,nj+1)             
+                   & mi,nj+1,     &
+                   & au )                   
               !-----------------------------------------------
               !
               ! lado d
               !
-              call impone_cond_frontera_x(cond_front_ud,&
+              call impone_cond_frontera(cond_front_ud,&
                    & BS,BC,BN,Ry, &
                    & nj+1,mi+1,   &
-                   & au,          &
-                   & mi,nj+1)
-              !$acc end parallel 
-              ! !
-              ! ! Condiciones de frontera para la direcci\'on y
-              ! !
-              ! !$acc parallel loop vector !async(stream1)
-              ! bucle_direccionx: do ii = 2, mi-1
-              !    !***********************
-              !    !Condiciones de frontera
-              !    BC(1,ii)     = 1._DBL
-              !    BN(1,ii)     = 0.0_DBL
-              !    Ry(1,ii)     = 0.0_DBL
-              !    au(ii,1)     = 1.e40_DBL !ACj(1)
-              !    BC(nj+1,ii)  = 1._DBL
-              !    BS(nj+1,ii)  = 0.0_DBL
-              !    Ry(nj+1,ii)  = 0.0_DBL
-              !    au(ii,nj+1)  = 1.e40_DBL !ACj(nj+1)       
-              ! end do bucle_direccionx
+                   & mi,nj+1,     &
+                   & au )
+              !$acc end parallel
               !
               !-------------------------------------
               !
@@ -504,38 +471,48 @@ PROGRAM SIMPLE2D
               end do
               ! $acc end parallel
               !
-              !$acc parallel vector_length(64) !async(stream1)
               !
-              ! Condiciones de frontera para la direcci\'on y
+              ! Condiciones de frontera para v
               !
-              !$acc loop vector
-              bucle_direccionxv: do ii = 2, mi
-                 !***********************
-                 !Condiciones de frontera
-                 BC(1,ii)     = 1._DBL
-                 BN(1,ii)     = 0.0_DBL
-                 Ry(1,ii)     = 0.0_DBL
-                 av(ii,1)     = 1.e40_DBL !ACj(1)
-                 BC(nj,ii)    = 1._DBL
-                 BS(nj,ii)    = 0.0_DBL
-                 Ry(nj,ii)    = 0.0_DBL
-                 av(ii,nj)    = 1.e40_DBL !ACj(nj+1)       
-              end do bucle_direccionxv
-              !$acc loop vector
-              do jj = 2, nj-1
-                 !Condiciones de frontera
-                 AC(1,jj) = 1._DBL
-                 AD(1,jj) = 0._DBL
-                 Rx(1,jj) = 0._DBL 
-                 av(1,jj) = 1.e40_DBL !ACi(1)
-                 !***********************
-                 !Condiciones de frontera
-                 AC(mi+1,jj) = 1.0_DBL
-                 AI(mi+1,jj) =-1.0_DBL !
-                 Rx(mi+1,jj) = 0.0_DBL
-                 av(mi+1,jj) = 1.e40_DBL !ACi(mi)
-              end do
-              !$acc end parallel
+              !-----------------------------------------------
+              !
+              ! lado a
+              !
+              !$acc parallel
+              call impone_cond_frontera(cond_front_va,&
+                   & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
+                   & mi+1,nj,     &
+                   & av )
+              !-----------------------------------------------
+              !
+              ! lado b
+              !
+              call impone_cond_frontera(cond_front_vb,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & mi+1,nj,     &
+                   & av )         
+              !-----------------------------------------------
+              !
+              ! lado c
+              !
+              call impone_cond_frontera(cond_front_vc,&
+                   & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
+                   & mi+1,nj,     &
+                   & av )            
+              !-----------------------------------------------
+              !
+              ! lado d
+              !
+              call impone_cond_frontera(cond_front_vd,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & mi+1,nj,     &
+                   & av )         
+              !$acc end parallel 
+              !
               !------------------------------------
               !
               ! Soluci\'on de las ecs. de momento v
@@ -793,50 +770,45 @@ PROGRAM SIMPLE2D
                     ftemp(ii,jj) = temp(ii,jj)
                  end do
               end do inicializacion_ftemp
-              !
-              !-------------------------
+              !-----------------------------------------------
               !
               ! Condiciones de frontera
               !
-              !$acc parallel loop vector !async(stream1)
-              bucle_direccionxp: do ii = 2, mi
-                 !***********************
-                 !Condiciones de frontera
-                 if (ii>=placa_min .and. ii<=placa_max) then
-                    BC(1,ii) = 1.0_DBL
-                    BN(1,ii) = 0.0_DBL
-                    Ry(1,ii) = 1.0_DBL
-                 else
-                    BC(1,ii) =-1.0_DBL
-                    BN(1,ii) = 1.0_DBL
-                    Ry(1,ii) = 0.0_DBL
-                 end if
-                 !-----------------
-                 if (ii>=placa_min .and. ii<=placa_max) then
-                    BC(nj+1,ii) = 1.0_DBL
-                    BN(nj+1,ii) = 0.0_DBL
-                    Ry(nj+1,ii) = 1.0_DBL
-                 else
-                    BC(nj+1,ii)  = 1.0_DBL
-                    BS(nj+1,ii)  =-1.0_DBL
-                    Ry(nj+1,ii)  = 0.0_DBL
-                 end if
-                 ! ------------------
-              end do bucle_direccionxp
+              !------------
               !
-              !$acc parallel loop vector !async(stream1)
-              do jj = 2, nj
-                 !------------------------
-                 ! Condiciones de frontera
-                 AC(1,jj) =-1._DBL
-                 AD(1,jj) = 1._DBL
-                 Rx(1,jj) = 0._DBL
-                 !
-                 AI(mi+1,jj) =-1._DBL 
-                 AC(mi+1,jj) = 1._DBL
-                 Rx(mi+1,jj) = 0.0_DBL
-                 !
-              end do
+              ! lado a
+              !
+              !$acc parallel
+              call impone_cond_frontera(cond_front_ta,&
+                   & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
+                   & mi+1,nj+1)
+              !-----------------------------------------------
+              !
+              ! lado b
+              !
+              call impone_cond_frontera(cond_front_tb,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & mi+1,nj+1) 
+              !-----------------------------------------------
+              !
+              ! lado c
+              !
+              call impone_cond_frontera(cond_front_tc,&
+                   & AI,AC,AD,Rx, &
+                   & mi+1,nj+1,   &
+                   & mi+1,nj+1)             
+              !-----------------------------------------------
+              !
+              ! lado d
+              !
+              call impone_cond_frontera(cond_front_td,&
+                   & BS,BC,BN,Ry, &
+                   & nj+1,mi+1,   &
+                   & mi+1,nj+1)
+              !$acc end parallel
+              !
               !------------------------------------------
               !
               ! Se ensambla la ecuaci\'on de la energ\'ia

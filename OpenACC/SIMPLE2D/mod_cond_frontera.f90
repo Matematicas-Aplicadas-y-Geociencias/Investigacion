@@ -240,11 +240,11 @@ contains
   ! Esta subrutina recibe estructuras con condiciones de frontera y las impone
   ! en los coeficientes de las matrices para la direcci\'on x
   !
-  subroutine impone_cond_frontera_x(cond_front_uu,&
+  subroutine impone_cond_frontera(cond_front_uu,&
        & AI_o,AC_o,AD_o,Rx_o, &
        & mm,nn,               &
-       & au_o,                &
-       & kk,ll)
+       & kk,ll,               &
+       & au_o )
     !
     !$acc routine seq
     !
@@ -253,7 +253,7 @@ contains
     class( tipo_cond_front ), intent(in)          :: cond_front_uu
     !
     real(kind=DBL), dimension(mm,nn), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-    real(kind=DBL), dimension(kk,ll), intent(out) :: au_o
+    real(kind=DBL), dimension(kk,ll), intent(out), optional :: au_o
     !
     integer, intent(in)                           :: mm, nn, kk, ll
     !
@@ -276,7 +276,7 @@ contains
                 AC_o(1,jj) = 1.0_DBL
                 AD_o(1,jj) = 0.0_DBL
                 Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(1,jj) = 1.e40_DBL
+                if ( present(au_o) ) au_o(1,jj) = 1.e40_DBL
                 ! print*, "DEBUG: Dirichlet en a"
              end do
              !
@@ -289,7 +289,7 @@ contains
                 AC_o(1,jj) =-1.0_DBL
                 AD_o(1,jj) = 1.0_DBL
                 Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(1,jj) = 1.e40_DBL
+                if ( present(au_o) ) au_o(1,jj) = 1.e40_DBL
                 ! print*, "DEBUG: neumann en a"
              end do
              !
@@ -311,7 +311,7 @@ contains
                 AC_o(1,jj) = 1.0_DBL
                 AD_o(1,jj) = 0.0_DBL
                 Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(jj,1) = 1.e40_DBL
+                if ( present(au_o) ) au_o(jj,1) = 1.e40_DBL
                 ! print*, "DEBUG: Dirichlet en a"
              end do
              !
@@ -324,7 +324,7 @@ contains
                 AC_o(1,jj) =-1.0_DBL
                 AD_o(1,jj) = 1.0_DBL
                 Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(jj,1) = 1.e40_DBL
+                if ( present(au_o) ) au_o(jj,1) = 1.e40_DBL
                 ! print*, "DEBUG: neumann en a"
              end do
              !
@@ -348,7 +348,7 @@ contains
                 AC_o(kk,jj) = 1.0_DBL
                 AD_o(kk,jj) = 0.0_DBL
                 Rx_o(kk,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(kk,jj) = 1.e40_DBL
+                if ( present(au_o) ) au_o(kk,jj) = 1.e40_DBL
                 ! print*, "DEBUG: Dirichlet en a"
              end do
              !
@@ -360,7 +360,7 @@ contains
                 AC_o(kk,jj) = 1.0_DBL
                 AD_o(kk,jj) = 0.0_DBL
                 Rx_o(kk,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(kk,jj) = 1.e40_DBL
+                if ( present(au_o) ) au_o(kk,jj) = 1.e40_DBL
                 ! print*, "DEBUG: neumann en a"
              end do
              !
@@ -384,7 +384,7 @@ contains
                 AC_o(ll,jj) = 1.0_DBL
                 AD_o(ll,jj) = 0.0_DBL
                 Rx_o(ll,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(jj,ll) = 1.e40_DBL
+                if ( present(au_o) ) au_o(jj,ll) = 1.e40_DBL
                 ! print*, "DEBUG: Dirichlet en a"
              end do
              !
@@ -396,7 +396,7 @@ contains
                 AC_o(ll,jj) = 1.0_DBL
                 AD_o(ll,jj) = 0.0_DBL
                 Rx_o(ll,jj) = cond_front_uu % valor_cond(ldiv)
-                au_o(jj,ll) = 1.e40_DBL
+                if ( present(au_o) ) au_o(jj,ll) = 1.e40_DBL
                 ! print*, "DEBUG: neumann en a"
              end do
              !
@@ -406,109 +406,6 @@ contains
        !
     end select lado
     !
-  end subroutine impone_cond_frontera_x
-  !
-  ! !***************************************************************************
-  ! !
-  ! ! impone_cond_frontera_y
-  ! !
-  ! ! Esta subrutina recibe estructuras con condiciones de frontera y las impone
-  ! ! en los coeficientes de las matrices para la direcci\'on y
-  ! !
-  ! subroutine impone_cond_frontera_y(cond_front_uu,&
-  !      & BS_o,BC_o,BN_o,Ry_o, &
-  !      & au_o,                &
-  !      & mm,nn)
-  !   !
-  !   !$acc routine seq
-  !   !
-  !   implicit none
-  !   !
-  !   class( tipo_cond_front ), intent(in)              :: cond_front_uu
-  !   !
-  !   real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
-  !   real(kind=DBL), dimension(mm,nn),     intent(out) :: au_o
-  !   !
-  !   integer, intent(in)                               :: mm, nn
-  !   !
-  !   integer :: ldiv, ii, jj
-  !   !
-  !   !-------------------------------
-  !   lado: select case( cond_front_uu % lado_front )
-  !      !
-  !      ! lado b
-  !      !
-  !   case( 'b' )
-  !      !
-  !      bucle_segmento_bu: do ldiv = 1, cond_front_uu % ndivis
-  !         !
-  !         if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
-  !            !
-  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
-  !               !
-  !               BS_o(1,jj) = 0.0_DBL
-  !               BC_o(1,jj) = 1.0_DBL
-  !               BN_o(1,jj) = 0.0_DBL
-  !               Ry_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-  !               au_o(1,jj) = 1.e40_DBL
-  !               ! print*, "DEBUG: Dirichlet en a"
-  !            end do
-  !            !
-  !         else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
-  !            !
-  !            ! print*, "DEBUG: ", cond_front_uu % valor_cond(ldiv)
-  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
-  !               !
-  !               AI_o(1,jj) = 0.0_DBL
-  !               AC_o(1,jj) =-1.0_DBL
-  !               AD_o(1,jj) = 1.0_DBL
-  !               Rx_o(1,jj) = cond_front_uu % valor_cond(ldiv)
-  !               au_o(1,jj) = 1.e40_DBL
-  !               ! print*, "DEBUG: neumann en a"
-  !            end do
-  !            !
-  !         end if
-  !         !
-  !      end do bucle_segmento_au
-  !      !
-  !      !-------------------------------
-  !      !
-  !      ! lado c
-  !      !
-  !   case( 'c' )
-  !      ! 
-  !      ! $acc parallel loop vector
-  !      bucle_segmento_cu: do ldiv = 1, cond_front_uu % ndivis
-  !         if( cond_front_uu % tipo_condi(ldiv) == 'diri' )then
-  !            !
-  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
-  !               !
-  !               AI_o(mm,jj) = 0.0_DBL
-  !               AC_o(mm,jj) = 1.0_DBL
-  !               AD_o(mm,jj) = 0.0_DBL
-  !               Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
-  !               au_o(mm,jj) = 1.e40_DBL
-  !               ! print*, "DEBUG: Dirichlet en a"
-  !            end do
-  !            !
-  !         else if( cond_front_uu % tipo_condi(ldiv) == 'neum' )then
-  !            !
-  !            do jj = cond_front_uu % indice_div(ldiv), cond_front_uu % indice_div(ldiv+1)
-  !               !
-  !               AI_o(mm,jj) =-1.0_DBL
-  !               AC_o(mm,jj) = 1.0_DBL
-  !               AD_o(mm,jj) = 0.0_DBL
-  !               Rx_o(mm,jj) = cond_front_uu % valor_cond(ldiv)
-  !               au_o(mm,jj) = 1.e40_DBL
-  !               ! print*, "DEBUG: neumann en a"
-  !            end do
-  !            !
-  !         end if
-  !         !
-  !      end do bucle_segmento_cu
-  !      !
-  !   end select lado
-  !   !
-  ! end subroutine impone_cond_frontera_y
+  end subroutine impone_cond_frontera
   !  
 end MODULE cond_frontera

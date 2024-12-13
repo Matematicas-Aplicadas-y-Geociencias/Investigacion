@@ -9,6 +9,11 @@
 module ec_energia
   !
   use malla, only : mi, nj, DBL
+  use malla, only : xp, yp
+  !
+  use cond_frontera, only : tipo_cond_front
+  use cond_frontera, only : inicializa_cond_front
+  use cond_frontera, only : lectura_cond_frontera
   !
   implicit none
   !
@@ -24,7 +29,40 @@ module ec_energia
   ! convergencia y estabilidad
   real(kind=DBL), dimension(mi+1,nj+1)   :: fuente_con_t, fuente_lin_t
   !
+  ! Estructuras para guardar la informaci\'on de las condiciones de frontera
+  !
+  type( tipo_cond_front ) :: cond_front_ta, cond_front_tb, cond_front_tc, cond_front_td
+  !
 contains
+  !
+  !*******************************************************************
+  !
+  ! ini_frontera_t
+  !
+  ! Subrutina que inicializa los arreglos para las condiciones
+  ! de frontera de t, lee las condiciones de los archivos
+  ! de entrada cond_fronterat.dat
+  !
+  !*******************************************************************  
+  subroutine ini_frontera_t()
+    !
+    implicit none
+    !
+    ! arreglos de u
+    !
+    call inicializa_cond_front(cond_front_ta)
+    call inicializa_cond_front(cond_front_tb)
+    call inicializa_cond_front(cond_front_tc)
+    call inicializa_cond_front(cond_front_td)
+    call lectura_cond_frontera('cond_fronterat.dat',&
+         & cond_front_ta, &
+         & cond_front_tb, &
+         & cond_front_tc, &
+         & cond_front_td, &
+         & xp, yp,        &
+         & mi+1, nj+1     &
+         & )
+  end subroutine ini_frontera_t
   !
   !*******************************************************************
   !

@@ -6,10 +6,17 @@
 !
 ! - Las variables de la ecuaci\'on de momento
 ! - Las subrutinas que calculan los coeficientes de las ecuaciones discretizadas
+! - Las subrutinas que sirven para leer e imponer condiciones de frontera
 !
 module ec_momento
   !
-  use malla, only : mi, nj, DBL
+  use malla,      only : mi, nj, DBL
+  use malla,      only : xu, yv, xp, yp
+  !
+  use cond_frontera, only : tipo_cond_front
+  !
+  use cond_frontera, only : inicializa_cond_front
+  use cond_frontera, only : lectura_cond_frontera
   !
   implicit none
   !
@@ -34,7 +41,58 @@ module ec_momento
   real(kind=DBL), dimension(mi+1,nj+1) :: gamma_momen, Riy
   REAL(kind=DBL) :: maxbo, conv_u, conv_p, conv_paso, rel_pres, rel_vel
   !
+  ! Estructuras para guardar la informaci\'on de las condiciones de frontera
+  !
+  type( tipo_cond_front ) :: cond_front_ua, cond_front_ub, cond_front_uc, cond_front_ud
+  type( tipo_cond_front ) :: cond_front_va, cond_front_vb, cond_front_vc, cond_front_vd
+  !
 contains
+  !
+  !*******************************************************************
+  !
+  ! ini_frontera_uv
+  !
+  ! Subrutina que inicializa los arreglos para las condiciones
+  ! de frontera de u y de v, y lee las condiciones de los archivos
+  ! de entrada cond_fronterau.dat y cond_fronterav.dat
+  !
+  !*******************************************************************  
+  subroutine ini_frontera_uv()
+    !
+    implicit none
+    !
+    ! arreglos de u
+    !
+    call inicializa_cond_front(cond_front_ua)
+    call inicializa_cond_front(cond_front_ub)
+    call inicializa_cond_front(cond_front_uc)
+    call inicializa_cond_front(cond_front_ud)
+    call lectura_cond_frontera('cond_fronterau.dat',&
+         & cond_front_ua, &
+         & cond_front_ub, &
+         & cond_front_uc, &
+         & cond_front_ud, &
+         & xu, yp,        &
+         & mi, nj+1       &
+         & )
+    !
+    ! arreglos de v
+    !
+    call inicializa_cond_front(cond_front_va)
+    call inicializa_cond_front(cond_front_vb)
+    call inicializa_cond_front(cond_front_vc)
+    call inicializa_cond_front(cond_front_vd)
+    !
+    call lectura_cond_frontera('cond_fronterav.dat',&
+         & cond_front_va, &
+         & cond_front_vb, &
+         & cond_front_vc, &
+         & cond_front_vd, &
+         & xp, yv,        &
+         & mi+1, nj       &
+         & )
+    !
+  end subroutine ini_frontera_uv
   !
   !*******************************************************************
   !

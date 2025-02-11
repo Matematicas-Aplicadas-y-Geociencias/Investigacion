@@ -24,7 +24,7 @@ contains
         real(kind=DBL), intent(in) :: valor_esperado, valor_obtenido
         real(kind=DBL) :: abs_value_a, abs_value_b, diff, eps
 
-        eps = 1.0E-5
+        eps = 1.0E-5 ! epsilon(valor_obtenido)
 
         abs_value_a = abs(valor_esperado)
         abs_value_b = abs(valor_obtenido)

@@ -1,4 +1,4 @@
-subroutine integrador_2D(xpo, ypo, ii, valor_integral)
+subroutine integrador_2D(fun, xpo, ypo, ii, valor_integral)
     ! Documentacion
     ! Esta subrutina calcula la integral en 2D usando la funcion de interpolacion ax^2+by^2+cx+dy+e
     ! en los puntos x1 a x3 y y1 a y3
@@ -85,11 +85,11 @@ subroutine integrador_2D(xpo, ypo, ii, valor_integral)
 
     e = df0
 
-    print *, 'Coef a:', a
-    print *, 'Coef b:', b
-    print *, 'Coef c:', c
-    print *, 'Coef d:', d
-    print *, 'Coef e:', e
+    ! print *, 'Coef a:', a
+    ! print *, 'Coef b:', b
+    ! print *, 'Coef c:', c
+    ! print *, 'Coef d:', d
+    ! print *, 'Coef e:', e
     ! -------------------------------------------------------------------------------
     ! Calcular el valor de la integral -------------------------------------------------------------
     ! -------------------------------------------------------------------------------

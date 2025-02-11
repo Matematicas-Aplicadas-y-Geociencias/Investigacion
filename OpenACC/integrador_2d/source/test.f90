@@ -1,4 +1,4 @@
-program main
+program test
 
   use mod_constantes
   use asserts
@@ -8,8 +8,6 @@ program main
   integer :: ii
   real(kind=DBL) :: valor_integral
   real(kind=DBL), dimension(3) :: xpo, ypo
-  character(len=20) :: resultTest
-  logical :: assertCheck
 
   ii = 1
 
@@ -18,6 +16,5 @@ program main
 
   call integrador_2D(xpo, ypo, ii, valor_integral)
 
-  print *, "El valor de la integral es: ", valor_integral
   call assertFloat(2.13935_DBL, valor_integral)
-end program main
+end program test

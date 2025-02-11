@@ -44,12 +44,14 @@ subroutine integrador_2D(xpo, ypo, ii, valor_integral)
     dx1 = x3 - x2
     dy2 = y2 - y1
     dy1 = y3 - y2
+    ! print*, "DEBUG: dx1, dx2, dy1, dy2 = ", dx1, dx2, dy1, dy2
 
     f1 = fun(dx1, 0.0_DBL)
     f2 = fun(-dx2, 0.0_DBL)
     f0 = fun(0.0_DBL, 0.0_DBL)
     f3 = fun(0.0_DBL, dy1)
     f4 = fun(0.0_DBL, -dy2)
+    ! print*, "DEBUG: f1, f2, f0, f3, f4 = ", f1, f2, f0, f3, f4
 
     df1 = f1 - f0
     df2 = f2 - f0
@@ -65,12 +67,11 @@ subroutine integrador_2D(xpo, ypo, ii, valor_integral)
     denominador = dx1 * dx2 * (dx1 + dx2)
     a = numerador / denominador
 
-    ! print*, "DEBUG: num den a = ", numerador, denominador, a
-
     ! Coeficiente c
     numerador = a * dx2 * dx2 - df2
     denominador = dx2
     c = numerador / denominador
+    ! print*, "DEBUG: num den c = ", numerador, denominador, c
 
     ! Coeficiente b
     numerador = dy2 * df3 + dy1 * df4

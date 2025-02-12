@@ -12,13 +12,15 @@ program test
 
   ii = 1
 
-  xpo = [0.0_DBL, 0.05_DBL, 0.1_DBL]
-  ypo = [0.0_DBL, 0.05_DBL, 0.1_DBL]
+  xpo = [-0.05_DBL, 0.00_DBL, 0.05_DBL]
+  ypo = [-0.05_DBL, 0.00_DBL, 0.05_DBL]
 
   call integrador_2D(funA, xpo, ypo, ii, valor_integral)
+  print *, valor_integral
   call assertFloat(0.00025_DBL, valor_integral)
 
   call integrador_2D(funB, xpo, ypo, ii, valor_integral)
+  print *, valor_integral
   call assertFloat(0.00993333_DBL, valor_integral)
 
   call integrador_2D(funC, xpo, ypo, ii, valor_integral)
@@ -26,5 +28,10 @@ program test
   call assertFloat(-0.0195008_DBL, valor_integral)
 
   call integrador_2D(funD, xpo, ypo, ii, valor_integral)
-  call assertFloat(0.00025_DBL, valor_integral)
+  print *, valor_integral
+  call assertFloat(0.009999_DBL, valor_integral)
+
+  call integrador_2D(funE, xpo, ypo, ii, valor_integral)
+  print *, valor_integral
+  call assertFloat(0.009999_DBL, valor_integral)
 end program test

@@ -36,7 +36,7 @@ contains
         implicit none
         real(kind=DBL), intent(in) :: x, y
 
-        funE = x*y*exp(x+y) ! No pasó el test
+            funE = (0.5+x)*(0.5+y)*exp(x+y) ! No pasó el test
     end function funE
 
     real(kind=DBL) function funF(x,y)

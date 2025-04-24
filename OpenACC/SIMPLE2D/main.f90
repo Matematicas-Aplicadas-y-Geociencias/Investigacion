@@ -87,6 +87,7 @@ PROGRAM SIMPLE2D
   ! Variables para los archivos de la entrada de datos
   !
   CHARACTER(len=28) :: entrada_u,entrada_v,entrada_tp
+  character(len=7)  :: adimen
   !*******************************************
   !
   REAL(kind=DBL), DIMENSION(mi+1,nj+1) :: entropia_calor,entropia_viscosa,entropia,gamma_t
@@ -113,7 +114,7 @@ PROGRAM SIMPLE2D
   CHARACTER(len=5) :: sample
 
   CHARACTER(len=46):: archivo=repeat(' ',46)
-  LOGICAL          :: res_fluido_u
+  LOGICAL          :: res_fluido_u, postprocesar
   !****************************************
   !Variables de caracterizaci'on del fluido
   REAL(kind=DBL) :: temp_ref,visc_cin,dif_term,cond_ter,cons_gra,coef_exp,long_ref,dens_ref
@@ -121,61 +122,53 @@ PROGRAM SIMPLE2D
   !declaraci´on de variable DBL
   REAL(kind=DBL) :: var2=0.0_DBL
   !*******************************************
-      !
-    ! Auxiliares de interpolaci\'on
-    !
-    real(kind=DBL) :: ui, ud, vs, vn
-    real(kind=DBL) :: di, dd, ds, dn
-    real(kind=DBL) :: gammai, gammad
-    real(kind=DBL) :: gammas, gamman
-    real(kind=DBL) :: deltax, deltay
-    ! real(kind=DBL) :: temp_int
-  !Se muestra cu'antos procesadores hay en uso
-  !$OMP PARALLEL private(id)
-!!$  id = omp_get_thread_num()
-!!$  WRITE(*,*) 'Este es el thread no. ', id
-!!$  !$OMP BARRIER
-!!$  IF(id == 0)THEN
-!!$     nthreads = omp_get_num_threads()
-!!$     WRITE(*,*) 'Se usan ', nthreads, ' threads'
-!!$  END IF
-  !$OMP END PARALLEL
-  !*************************************
-  ! Par'ametros para Convecci'on mixta
+  !
+  ! Auxiliares de interpolaci\'on
+  !
+  real(kind=DBL) :: ui, ud, vs, vn
+  real(kind=DBL) :: di, dd, ds, dn
+  real(kind=DBL) :: gammai, gammad
+  real(kind=DBL) :: gammas, gamman
+  real(kind=DBL) :: deltax, deltay
+  ! real(kind=DBL) :: temp_int
+  !
+  !***********************************************************
+  !
+  ! Valor por defecto de la variable de control de postproceso
+  !
+  postprocesar = .false.
+  !
+  ! Par'ametros para la simulaci'on
+  !
   OPEN(unit=10,file='parametros.dat')
-  READ (10,*) Ra          ! n'umero de Reynolds (Rayleigh en convecci\'on natural)
-  READ (10,*) Rec         ! caracter de Re
-  READ (10,*) Pr          ! n'umero de Prandtl
-  READ (10,*) Ri_1        ! n'umero de Richardson
-  READ (10,*) dt          ! incremento de tiempo
-  READ (10,*) paq_itera   ! paquete de iteraciones
-  read (10,*) itermax     ! iteraciones totales de la ejecuci\'on
-  READ (10,*) rel_pres    ! relajaci'on de la presi'on
-  READ (10,*) rel_vel     ! relajaci'on de la velocidad
-  READ (10,*) rel_ener    ! relajaci'on de la temperatura
-  READ (10,*) conv_u      ! convergencia de la velocidad
-  READ (10,*) conv_t      ! convergencia de la temperatura
-  READ (10,*) conv_p      ! convergencia de la presi'on
-  READ (10,*) conv_resi   ! convergencia del residuo
-  READ (10,*) conv_paso   ! convergencia del paso de tiempo
+  read (10,*) adimen          ! Tipo de adimensionalizaci\'on (tipo de convecci\'on)
+  READ (10,*) Ra              ! n'umero de Reynolds (Rayleigh en convecci\'on natural)
+  READ (10,*) Rec             ! caracter de Re
+  READ (10,*) Pr              ! n'umero de Prandtl
+  READ (10,*) Ri_1            ! n'umero de Richardson
+  READ (10,*) dt              ! incremento de tiempo
+  READ (10,*) paq_itera       ! paquete de iteraciones
+  read (10,*) itermax         ! iteraciones totales de la ejecuci\'on
+  READ (10,*) rel_pres        ! relajaci'on de la presi'on
+  READ (10,*) rel_vel         ! relajaci'on de la velocidad
+  READ (10,*) rel_ener        ! relajaci'on de la temperatura
+  READ (10,*) conv_u          ! convergencia de la velocidad
+  READ (10,*) conv_t          ! convergencia de la temperatura
+  READ (10,*) conv_p          ! convergencia de la presi'on
+  READ (10,*) conv_resi       ! convergencia del residuo
+  READ (10,*) conv_paso       ! convergencia del paso de tiempo
   read (10,*) iter_ecuaci_max ! iter m\'aximas para las ecuaciones
   read (10,*) iter_simple_max ! iter m\'aximas algoritmo SIMPLE
-  READ (10,*) entrada_u   ! archivo de entrada para u
-  READ (10,*) entrada_v   ! archivo de entrada para v
-  READ (10,*) entrada_tp  ! archivo de entrada para t y p
+  READ (10,*) entrada_u       ! archivo de entrada para u
+  READ (10,*) entrada_v       ! archivo de entrada para v
+  READ (10,*) entrada_tp      ! archivo de entrada para t y p
+  read (10,*) postprocesar    ! variable booleana que indica si hay postproceso
   CLOSE(unit=10)
-  ! IF(nj < 100)THEN
-  !    WRITE(njc,170) int(nj);170 format(I2)
-  !    njc = '0'//njc
-  ! ELSE
-  !    WRITE(njc,160) int(nj);160 format(I3)
-  ! ENDIF
-  ! IF(mi < 100)THEN
-  !    WRITE(mic,170) int(mi)
-  !    mic = '0'//mic
-  ! ELSE
-  !    WRITE(mic,160) int(mi)
-  ! ENDIF
+  !
+  !--------------------------------------------------------------
+  !
+  ! Definici'on de caracteres para nombres de archivos y mensajes
+  !
   mic = entero_caracter(mi)
   njc = entero_caracter(nj)
   !
@@ -192,30 +185,38 @@ PROGRAM SIMPLE2D
   fuente_con_t = 0.0_DBL
   fuente_lin_t = 0.0_DBL
   !
-  Ri      = Ri_1
-  Riy     = 0.0_DBL
-  ! --------------------
+  Ri           = Ri_1
+  Riy          = 0.0_DBL
   !
-  ! Convecci\'on natural
-  ! 
-  gamma_momen = sqrt(Pr/Ra) 
-  gamma_energ = sqrt(1._DBL/(Pr*Ra))
-  Ri          =-1.0_DBL
-  Riy         = 0.0_DBL
-  Rec         = entero_caracter(ceiling(sqrt(Ra)))
-  ! ------------------
+  !----------------------------------------
   !
-  ! Convecci\'on mixta
-  ! 
-  ! gamma_s = 10._DBL*(1._DBL/(Re*Pr))
-  ! gamma_momen = 1.0_DBL/(Ra)    ! n\'umero de Reynolds
-  ! gamma_energ = 1.0_DBL/(Ra*Pr) ! N'umero de P'eclet
-  ! Ri      = Ri_1
-  ! Riy     = 0.0_DBL
+  !Selecci\'on de la adimensionalizaci\'on
   !
-  ! ! gamma_t = 1._DBL/(Ra*Pr) !sqrt(1._DBL/(Pr*Ra))
-  ! ! gamma_u = 1._DBL/(Ra)    !sqrt(Pr/Ra)
-  ! ! gamma_v = 1._DBL/(Ra)    !sqrt(Pr/Ra)
+  if( trim(adimen) == 'natural' )then
+     ! --------------------
+     !
+     ! Convecci\'on natural
+     ! 
+     gamma_momen = sqrt(Pr/Ra) 
+     gamma_energ = sqrt(1._DBL/(Pr*Ra))
+     Ri          =-1.0_DBL
+     Riy         = 0.0_DBL
+     Rec         = entero_caracter(ceiling(sqrt(Ra)))
+     !
+  else if( trim(adimen) == 'mixta' )then
+     ! ------------------
+     !
+     ! Convecci\'on mixta
+     ! 
+     ! gamma_s     = 10._DBL*(1._DBL/(Ra*Pr))
+     gamma_momen = 1.0_DBL/(Ra)    ! n\'umero de Reynolds
+     gamma_energ = 1.0_DBL/(Ra*Pr) ! N'umero de P'eclet
+     Ri          = Ri_1
+     Riy         = 0.0_DBL
+     Rec         = entero_caracter(ceiling(Ra))
+     !
+  end if
+  !
   ! ----------------------------------------------------------------
   !
   ! Lectura de las mallas escalonadas e inicializaci\'on de arreglos
@@ -267,15 +268,15 @@ PROGRAM SIMPLE2D
   !
   !************************************************
   !escribe las caracter´isticas de las variable DBL
-  WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
+  WRITE(*,100) 'SIMPLE2D: Doble ',KIND(var2),PRECISION(var2),RANGE(var2)
 100 FORMAT(1X,A,': kind= ',I2,', Precision= ',I2,' Rango= ',I3)
   WRITE(*,*)' '
   !escribe informaci'on de los parametros usados
-  WRITE(*,101) Ra,Pr,Ri_1,rel_pres,rel_vel
+  WRITE(*,101) Rec,Pr,Ri_1,rel_pres,rel_vel
   WRITE(*,102) itera_inicial,mi,nj
   WRITE(*,106) lambda_ent,a_ent
   WRITE(*,*)' '
-101 FORMAT(1X,'Re=',F12.3,', Pr=',F8.3', Ri=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
+101 FORMAT(1X,'Re=',A,', Pr=',F8.3', Ri=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
 102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I5,', nj=',I5)
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
   !--------------------------------------------
@@ -1045,37 +1046,44 @@ PROGRAM SIMPLE2D
 105  FORMAT(1X,'Res_T=',D23.15,', Res_v=',D23.15)
      !********************************
      !*** Formato de escritura dat ***
-     OPEN(unit=2,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'u.dat')
-     WRITE(2,*) placa_min,placa_max,itera_total,ao
-     DO jj = 1, nj+1
-        DO ii = 1, mi
-           WRITE(2,form24) xu(ii),yp(jj),u(ii,jj)
+     !--------------------------------
+     if( postprocesar )then
+        !
+        OPEN(unit=2,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'u.dat')
+        WRITE(2,*) placa_min,placa_max,itera_total,ao
+        DO jj = 1, nj+1
+           DO ii = 1, mi
+              WRITE(2,form24) xu(ii),yp(jj),u(ii,jj)
+           END DO
         END DO
-     END DO
-     CLOSE(unit=2)
-     OPEN(unit=3,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'v.dat')
-     WRITE(3,*) placa_min,placa_max,itera_total,ao
-     DO jj = 1, nj
-        DO ii = 1, mi+1
-           WRITE(3,form24) xp(ii),yv(jj),v(ii,jj)
+        CLOSE(unit=2)
+        !
+        OPEN(unit=3,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'v.dat')
+        WRITE(3,*) placa_min,placa_max,itera_total,ao
+        DO jj = 1, nj
+           DO ii = 1, mi+1
+              WRITE(3,form24) xp(ii),yv(jj),v(ii,jj)
+           END DO
         END DO
-     END DO
-     CLOSE(unit=3)
-     OPEN(unit=4,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'p.dat')
-     WRITE(4,*) placa_min,placa_max,itera_total,ao
-     DO jj = 1, nj+1
-        DO ii = 1, mi+1
-           WRITE(4,form25) xp(ii),yp(jj),temp(ii,jj),pres(ii,jj)
+        CLOSE(unit=3)
+        !
+        OPEN(unit=4,file='out_n'//trim(njc)//'m'//trim(mic)//'_R'//trim(Rec)//'p.dat')
+        WRITE(4,*) placa_min,placa_max,itera_total,ao
+        DO jj = 1, nj+1
+           DO ii = 1, mi+1
+              WRITE(4,form25) xp(ii),yp(jj),temp(ii,jj),pres(ii,jj)
+           END DO
         END DO
-     END DO
-     CLOSE(unit=4)
-     ! *************************************
-     ! *** Formato escritura VTK ***********
-     ! sample  = m//ce//de//un//dec
-     archivo = 'n'//trim(njc)//'m'//trim(mic)//'R'//trim(Rec)//'/t_'//m//ce//de//un//dec//'.vtk'
-     call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Rec)
-     CALL postproceso_vtk(xp,yp,uf,vf,pres,temp,b_o,archivo)
-     !
+        CLOSE(unit=4)
+        !
+        ! *************************************
+        ! *** Formato escritura VTK ***********
+        ! sample  = m//ce//de//un//dec
+        archivo = 'n'//trim(njc)//'m'//trim(mic)//'R'//trim(Rec)//'/t_'//m//ce//de//un//dec//'.vtk'
+        call postproceso_bin(xu,yv,xp,yp,u,v,pres,temp,b_o,Rec)
+        CALL postproceso_vtk(xp,yp,uf,vf,pres,temp,b_o,archivo)
+        !
+     end if ! Postprocesar
      !
   end do !*********** final del repetidor principal
   !

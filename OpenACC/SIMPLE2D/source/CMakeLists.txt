@@ -5,15 +5,23 @@ cmake_minimum_required(VERSION 3.22)
 project(SIMPLE2D LANGUAGES Fortran)
 
 # Configuracion para usar gpu
-option(ENABLE_GPU "Valor por defecto" OFF)
+option(ENABLE_GPU "Enable GPU use" OFF)
 
 if(ENABLE_GPU)
+    message(STATUS "Using OpenAcc GPU")
+
+    # Arquitectura de GPU a utilizar
+    set(CUDA_ARCHITECTURE ${COMPUTE_CAPABILITY})
+    message(STATUS "CUDA Architecture: ${CUDA_ARCHITECTURE}")
+
     # Definir el nombre del ejecutable
     set(EXEC_NAME SIMPLE2D-gpu)
 
     # Banderas para utilizar OpenAcc con GPU
-    set(ACC_GPU "-fast -acc=gpu -gpu=cc86 -Minfo=accel")
+    set(ACC_GPU "-fast -acc=gpu -gpu=${CUDA_ARCHITECTURE} -Minfo=accel")
 else()
+    message(STATUS "Using OpenAcc MULTICORE")
+
     # Definir el nombre del ejecutable
     set(EXEC_NAME SIMPLE2D-multicore)
 
@@ -30,7 +38,6 @@ if(ENABLE_GPU)
 else()
     set(CMAKE_Fortran_FLAGS ${ACC_MULTICORE})
 endif()
-
 
 # Variable para listar los archivos fuentes
 set(SOURCE_FILES

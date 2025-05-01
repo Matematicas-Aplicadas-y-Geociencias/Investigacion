@@ -1,0 +1,7 @@
+tubo   ! tipo de mallado x
+1.0    ! longitud x
+0.85    ! Punto central x
+centro ! tipo de mallado y
+12.0    ! longitud y
+1.5    ! Punto central y
+

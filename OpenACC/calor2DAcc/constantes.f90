@@ -1,9 +1,86 @@
 module constantes
-  integer, parameter :: mi = 1024, nj=512, nn = 1200000
+  integer, parameter :: mi = 256, nj=256, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
 contains
-    
+
+    subroutine ensambla_tdmax_1D(aio,aco,ado,rxo,deltaxo,deltayo,t_anto,cond_tero,temp_inio,temp_fino,jjo)
+      !$acc routine vector
+      implicit none
+      double precision, intent(in)                    :: deltaxo,deltayo,cond_tero
+      double precision, intent(in)                    :: temp_inio,temp_fino
+      double precision, dimension(mi*nj), intent(in)  :: t_anto
+      
+      double precision, dimension(mi*nj), intent(out) :: aio,ado
+      double precision, dimension(mi*nj), intent(out) :: aco
+      double precision, dimension(mi*nj), intent(out) :: rxo
+
+      integer, intent(in) :: jjo
+      integer             :: iin
+
+      !
+      ! Se definen las condiciones de frontera
+      !
+      aco((jjo-1)*mi+1)  = 1.0d0
+      ado((jjo-1)*mi+1)  = 0.0d0
+      rxo((jjo-1)*mi+1)  = temp_inio
+      !
+      aio((jjo-1)*mi+mi) = 0.0d0
+      aco((jjo-1)*mi+mi) = 1.0d0
+      rxo((jjo-1)*mi+mi) = temp_fino
+      !
+      ! Ensamblado de la matriz tridiagonal
+      ! y del vector de resultados
+      !
+      !$acc loop vector
+      do iin=2, mi-1
+         aio((jjo-1)*mi+iin) =-1.0d0*cond_tero/(deltaxo*deltaxo)
+         aco((jjo-1)*mi+iin) = 2.0d0*cond_tero*(1.d0/(deltaxo*deltaxo)+1.d0/(deltayo*deltayo))
+         ado((jjo-1)*mi+iin) =-1.0d0*cond_tero/(deltaxo*deltaxo)
+         rxo((jjo-1)*mi+iin) = cond_tero/(deltayo*deltayo)*t_anto((jjo)*mi+iin)+&
+              &cond_tero/(deltayo*deltayo)*t_anto((jjo-2)*mi+iin)
+      end do
+      
+    end subroutine ensambla_tdmax_1D
+        !
+    ! ---------------------------
+    !
+    subroutine ensambla_tdmay_1D(bio,bco,bdo,ryo,deltaxo,deltayo,tempero,cond_tero,flux_abao,flux_arro,iio)
+      !$acc routine vector
+      implicit none
+      double precision, intent(in)                      :: deltaxo,deltayo,cond_tero
+      double precision, intent(in)                      :: flux_arro,flux_abao
+      double precision, dimension(nj*mi), intent(in)    :: tempero
+      
+      double precision, dimension(nj*mi), intent(out)   :: bio,bdo
+      double precision, dimension(nj*mi), intent(out)   :: bco
+      double precision, dimension(nj*mi), intent(out)   :: ryo
+      integer :: iio,jjn
+      !
+      ! Se definen las condiciones de frontera
+      !
+      bco((iio-1)*nj+1)  =-1.0d0/deltayo ! 1.d0 
+      bdo((iio-1)*nj+1)  = 1.0d0/deltayo ! 0.d0/deltayo 
+      ryo((iio-1)*nj+1)  = flux_abao ! 308.d0 
+      bio((iio-1)*nj+nj) =-1.d0/deltayo ! 0.d0   
+      bco((iio-1)*nj+nj) = 1.0d0/deltayo ! 1.d0   
+      ryo((iio-1)*nj+nj) = flux_arro ! 308.d0  !(temp_fin+temp_ini)/2.d0
+      !
+      ! Ensamblado de la matriz tridiagonal
+      ! y del vector de resultados
+      !
+      !$acc loop vector
+      do jjn=2, nj-1
+         bio((iio-1)*nj+jjn) =-1.0d0*cond_tero/(deltayo*deltayo)
+         bco((iio-1)*nj+jjn) = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))
+         bdo((iio-1)*nj+jjn) =-1.0d0*cond_tero/(deltayo*deltayo)
+         ryo((iio-1)*nj+jjn) = cond_tero/(deltaxo*deltaxo)*tempero((iio-1+1)*nj+jjn)+&
+              &cond_tero/(deltaxo*deltaxo)*tempero((iio-1-1)*nj+jjn)
+      end do
+    end subroutine ensambla_tdmay_1D
+    !
+    ! -------------------------------
+    !
     subroutine ensambla_tdmax(AIo,ACo,ADo,resultxo,deltaxo,deltayo,temp_anto,cond_tero,temp_inio,temp_fino,jjo)
       !$acc routine vector
       implicit none
@@ -40,7 +117,9 @@ contains
       end do
       
     end subroutine ensambla_tdmax
-
+    !
+    ! ---------------------------
+    !
     subroutine ensambla_tdmay(BIo,BCo,BDo,resultyo,deltaxo,deltayo,tempero,cond_tero,flux_abao,flux_arro,iio)
       !$acc routine vector
       implicit none
@@ -55,12 +134,12 @@ contains
       !
       ! Se definen las condiciones de frontera
       !
-      BCo(1,iio)       = 1.d0   !-1.0d0/deltayo
-      BDo(1,iio)       = 0.d0   !1.0d0/deltayo
-      resultyo(1,iio)  = 308.d0 !flux_abao
-      BIo(nj,iio)      = 0.d0   !-1.d0/deltayo
-      BCo(nj,iio)      = 1.d0   !1.0d0/deltayo
-      resultyo(nj,iio) = 308.d0 !flux_arro !(temp_fin+temp_ini)/2.d0
+      BCo(1,iio)       =-1.0d0/deltayo
+      BDo(1,iio)       = 1.0d0/deltayo
+      resultyo(1,iio)  = flux_abao
+      BIo(nj,iio)      =-1.d0/deltayo
+      BCo(nj,iio)      = 1.0d0/deltayo
+      resultyo(nj,iio) = flux_arro !(temp_fin+temp_ini)/2.d0
       !
       ! Ensamblado de la matriz tridiagonal
       ! y del vector de resultados
@@ -74,7 +153,9 @@ contains
               &cond_tero/(deltaxo*deltaxo)*tempero(iio-1,jjn)
       end do
     end subroutine ensambla_tdmay
-    
+    !
+    ! ---------------------------
+    !    
     subroutine tri(a,b,c,r,n)
       !$acc routine
       implicit none

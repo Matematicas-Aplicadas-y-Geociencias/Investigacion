@@ -44,8 +44,8 @@ deltay = 1.d0/dfloat(nj-1)
 cond_ter = 100.d0
 temp_ini = 308.d0
 temp_fin = 298.d0
-flux_aba = 5.0d0
-flux_arr = 5.0d0
+flux_aba = 0.0d0
+flux_arr = 0.0d0
 alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Inicialización de los arreglos a utilizar
@@ -73,7 +73,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Bucle de pseudotiempo
  ! 
- do kk = 1, 3000
+ do kk = 1, 50000
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x
@@ -145,8 +145,8 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  !! Escritura de resultados
  !
- do ii = 1, mi
-    do jj = 1, nj
+ do jj = 1, nj
+    do ii = 1, mi
        write(101,*) xx(ii), yy(jj), temper(ii,jj)
     end do
     write(101,*)

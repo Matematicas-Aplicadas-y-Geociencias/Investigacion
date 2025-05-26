@@ -74,7 +74,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Bucle de pseudotiempo
  ! 
- do kk = 1, 5000
+ do kk = 1, 50000
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x
@@ -102,12 +102,13 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     !
     ! Se reordena el arreglo tempx para resolver en direcci\'on y
     !
-    !$acc parallel loop
-    REORDEN: do ii = 1, mi
-       do jj = 2, nj-1
-          tempy((ii-1)*nj+jj)=tempx((jj-1)*mi+ii)
-       end do
-    end do REORDEN
+    ! !$acc parallel loop gang
+    ! REORDEN: do ii = 1, mi
+    !    do jj = 2, nj-1
+    !       tempy((ii-1)*nj+jj)=tempx((jj-1)*mi+ii)
+    !    end do
+    ! end do REORDEN
+    !
     ! Inicia el ciclo que recorre la coordenada x resolviendo
     ! problemas 1D en la dirección de y
     !
@@ -117,7 +118,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
        !
        ! Ensamblamos matrices tridiagonales en direcci\'on y
        !
-       call ensambla_tdmay_1D(ay,by,cy,ry,deltax,deltay,tempy,cond_ter,flux_aba,flux_arr,ii)
+       call ensambla_tdmay_1D(ay,by,cy,ry,deltax,deltay,tempx,cond_ter,flux_aba,flux_arr,ii)
     end do TDMAY
     !$acc parallel loop gang
     ! gang vector_length(128)
@@ -128,7 +129,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
        call tri(ay((ii-1)*nj+1:(ii-1)*nj+nj),by((ii-1)*nj+1:(ii-1)*nj+nj),&
             &cy((ii-1)*nj+1:(ii-1)*nj+nj),ry((ii-1)*nj+1:(ii-1)*nj+nj),nj)
        do jj =1, nj
-          tempy((ii-1)*nj+jj) = ry((ii-1)*nj+jj)
+          tempx((jj-1)*mi+ii) = ry((ii-1)*nj+jj)
        end do
     end do SOLY
     !
@@ -138,10 +139,10 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     !
     ! se actualiza la temperatura de la iteraci\'on anterior
     !
-    !$acc parallel loop gang
-    ACTUALIZACION: do ii = 2, mi-1
-       do jj = 1, nj
-          t_ant((jj-1)*mi+ii) = tempy((ii-1)*nj+jj)
+    !$acc parallel loop collapse(2)
+    ACTUALIZACION: do jj = 1, nj
+       do ii = 1, mi-1
+          t_ant((jj-1)*mi+ii) = tempx((jj-1)*mi+ii)
        end do
     end do ACTUALIZACION
     !
@@ -156,9 +157,9 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  !! Escritura de resultados
  !
- do ii = 1, mi
-    do jj = 1, nj
-       write(101,*) xx(ii), yy(jj), tempy((ii-1)*nj+jj)
+ do jj = 1, nj
+    do ii = 1, mi
+       write(101,*) xx(ii), yy(jj), tempx((jj-1)*mi+ii)
     end do
     write(101,*)
  end do

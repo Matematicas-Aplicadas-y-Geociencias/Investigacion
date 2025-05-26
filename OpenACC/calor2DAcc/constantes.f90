@@ -1,5 +1,5 @@
 module constantes
-  integer, parameter :: mi = 256, nj=256, nn = 1200000
+  integer, parameter :: mi = 1024, nj=512, nn = 1200000
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
 contains
@@ -50,7 +50,7 @@ contains
       implicit none
       double precision, intent(in)                      :: deltaxo,deltayo,cond_tero
       double precision, intent(in)                      :: flux_arro,flux_abao
-      double precision, dimension(nj*mi), intent(in)    :: tempero
+      double precision, dimension(mi*nj), intent(in)    :: tempero
       
       double precision, dimension(nj*mi), intent(out)   :: bio,bdo
       double precision, dimension(nj*mi), intent(out)   :: bco
@@ -74,8 +74,8 @@ contains
          bio((iio-1)*nj+jjn) =-1.0d0*cond_tero/(deltayo*deltayo)
          bco((iio-1)*nj+jjn) = 2.0d0*cond_tero*(1.d0/(deltayo*deltayo)+1.d0/(deltaxo*deltaxo))
          bdo((iio-1)*nj+jjn) =-1.0d0*cond_tero/(deltayo*deltayo)
-         ryo((iio-1)*nj+jjn) = cond_tero/(deltaxo*deltaxo)*tempero((iio-1+1)*nj+jjn)+&
-              &cond_tero/(deltaxo*deltaxo)*tempero((iio-1-1)*nj+jjn)
+         ryo((iio-1)*nj+jjn) = cond_tero/(deltaxo*deltaxo)*tempero((jjn-1)*mi+iio+1)+&
+              &cond_tero/(deltaxo*deltaxo)*tempero((jjn-1)*mi+iio-1)
       end do
     end subroutine ensambla_tdmay_1D
     !

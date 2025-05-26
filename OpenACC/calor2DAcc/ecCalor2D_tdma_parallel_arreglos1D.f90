@@ -74,7 +74,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Bucle de pseudotiempo
  ! 
- do kk = 1, 50000
+ do kk = 1, 5000
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x
@@ -90,7 +90,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     !
     ! Llamamos al resolvedor
     !
-    !$acc parallel loop gang
+    !$acc parallel loop gang num_gangs(64) vector_length(8)
     ! gang vector_length(128) 
     SOLX: do jj = 2, nj-1
        call tri(ax((jj-1)*mi+1:(jj-1)*mi+mi),bx((jj-1)*mi+1:(jj-1)*mi+mi),&
@@ -113,14 +113,13 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
     ! problemas 1D en la dirección de y
     !
     !$acc parallel loop gang
-    ! gang vector_length(128)
     TDMAY: do ii = 2, mi-1
        !
        ! Ensamblamos matrices tridiagonales en direcci\'on y
        !
        call ensambla_tdmay_1D(ay,by,cy,ry,deltax,deltay,tempx,cond_ter,flux_aba,flux_arr,ii)
     end do TDMAY
-    !$acc parallel loop gang
+    !$acc parallel loop gang num_gangs(128) vector_length(8)
     ! gang vector_length(128)
     SOLY: do ii=2, mi-1
        !

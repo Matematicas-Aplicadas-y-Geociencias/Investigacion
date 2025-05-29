@@ -58,6 +58,23 @@ def promedio_tiempos_ejecucion(tiempos_ejecucion: list[float]) -> tuple[float, f
     desviacion_estandar = serie.std()
     return promedio, desviacion_estandar
 
+def datos_medicion(tiempos_ejecucion: list[float], parametros: str, numero_puntos: str) -> None:
+    tiempo_medido, desviacion_estandar = promedio_tiempos_ejecucion(
+        tiempos_ejecucion
+    )
+    nombre_archivo = f"tiempos_medidos_{numero_puntos}.csv"
+
+    if os.path.exists(nombre_archivo):
+        df = pd.read_csv(nombre_archivo)
+    else:
+        df = pd.DataFrame(
+            columns=["Parametros", "Tiempo Medido", "Desviacion Estandar"]
+        )
+
+    df.loc[len(df)] = [parametros, tiempo_medido, desviacion_estandar]
+
+    df.to_csv(nombre_archivo, index=False)
+
 
 def main() -> None:
     # Valores iniciales
@@ -65,51 +82,54 @@ def main() -> None:
     val2 = 32
     val3 = 32
     val4 = 32
+    mi = 128
+    nj = 64
+    var5 = "mi"
+    var6 = "nj"
 
-    for i in range(6):
+    for i in range(3):
         if i != 0:
             ch = 2
         else:
             ch = 1
 
-        var1 = "NUM_GANGSA"
-        val1 = val1 * ch
-        var2 = "VEC_LENGHTA"
-        val2 = val2 // ch
-        var3 = "NUM_GANGSB"
-        val3 = val3 * ch
-        var4 = "VEC_LENGHTB"
-        val4 = val4 // ch
+        mi = mi * ch
+        nj = nj * ch
 
-        cambiar_valor(var1, val1)
-        cambiar_valor(var2, val2)
-        cambiar_valor(var3, val3)
-        cambiar_valor(var4, val4)
+        cambiar_valor(var5, mi)
+        cambiar_valor(var6, nj)
 
-        compilar_programa()
-        # tiempo_medido = medir_tiempo_ejecucion()
 
-        tiempos_ejecucion = []
-        for i in range(10):
-            muestra = medir_tiempo_ejecucion()
-            tiempos_ejecucion.append(muestra)
+        for i in range(6):
+            if i != 0:
+                ch = 2
+            else:
+                ch = 1
 
-        tiempo_medido, desviacion_estandar = promedio_tiempos_ejecucion(
-            tiempos_ejecucion
-        )
+            var1 = "NUM_GANGSA"
+            val1 = val1 * ch
+            var2 = "VEC_LENGHTA"
+            val2 = val2 // ch
+            var3 = "NUM_GANGSB"
+            val3 = val3 * ch
+            var4 = "VEC_LENGHTB"
+            val4 = val4 // ch
 
-        if os.path.exists("tiempos_medidos.csv"):
-            df = pd.read_csv("tiempos_medidos.csv")
-        else:
-            df = pd.DataFrame(
-                columns=["Parametros", "Tiempo Medido", "Desviacion Estandar"]
-            )
+            cambiar_valor(var1, val1)
+            cambiar_valor(var2, val2)
+            cambiar_valor(var3, val3)
+            cambiar_valor(var4, val4)
 
-        parametros = f"[{var1}={val1},{var2}={val2}],[{var3}={val3},{var4}={val4}]"
-        df.loc[len(df)] = [parametros, tiempo_medido, desviacion_estandar]
+            compilar_programa()
 
-        df.to_csv("tiempos_medidos.csv", index=False)
+            tiempos_ejecucion = []
+            for i in range(10):
+                muestra = medir_tiempo_ejecucion()
+                tiempos_ejecucion.append(muestra)
 
+            parametros = f"[{var1}={val1},{var2}={val2}],[{var3}={val3},{var4}={val4}]"
+            numero_puntos = f"{mi}x{nj}"
+            datos_medicion(tiempos_ejecucion, parametros, numero_puntos)
 
 if __name__ == "__main__":
     main()

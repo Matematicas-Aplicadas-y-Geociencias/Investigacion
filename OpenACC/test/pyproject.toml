@@ -5,10 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fortls>=3.2.2",
     "matplotlib>=3.10.3",
     "mypy>=1.15.0",
     "numpy>=2.2.6",
     "pandas>=2.2.3",
+    "pandas-stubs>=2.2.3.250527",
     "ruff>=0.11.11",
     "seaborn>=0.13.2",
 ]

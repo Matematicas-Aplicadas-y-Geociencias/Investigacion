@@ -12,7 +12,7 @@ def cambiar_valor(variable: str, valor: int) -> bool:
 
     def remplazo(match) -> str:
         return f"{match.group(1)}{valor}"
-    
+
     contenido_modificado, numero_sustituciones = re.subn(patron, remplazo, contenido)
 
     if numero_sustituciones == 0:
@@ -27,7 +27,7 @@ def cambiar_valor(variable: str, valor: int) -> bool:
 
 def compilar_programa() -> None:
     print()
-    print(f"=====Compilando el Programa=====")
+    print("=====Compilando el Programa=====")
     resultado = subprocess.run(
             ["make -C ../build"],
             shell=True, capture_output=True,
@@ -45,22 +45,29 @@ def medir_tiempo_ejecucion() -> float:
 
     tiempo_ejecucion = end - start
 
-    print(f"=====Tiempo de ejecución=====")
+    print("=====Tiempo de ejecución=====")
     print(f"Tiempo: {tiempo_ejecucion:.4f} segundos")
 
     return tiempo_ejecucion
 
+def promedio_tiempos_ejecucion(tiempos_ejecucion: list[float]) -> float:
+    serie = pd.Series(tiempos_ejecucion)
+    promedio = serie.mean()
+    desviacion_estandar = serie.std()
+    return promedio
+
 def main() -> None:
+    # Valores iniciales
     val1=16
     val2=32
     val3=32
     val4=32
 
     for i in range(6):
-        if i == 0:
-            ch = 1
-        else:
+        if i != 0:
             ch = 2
+        else:
+            ch = 1
 
         var1 = "NUM_GANGSA"
         val1 = val1 * ch
@@ -77,8 +84,15 @@ def main() -> None:
         cambiar_valor(var4, val4)
 
         compilar_programa()
-        tiempo_medido = medir_tiempo_ejecucion()
-        
+        # tiempo_medido = medir_tiempo_ejecucion()
+
+        tiempos_ejecucion = []
+        for i in range(3):
+            muestra = medir_tiempo_ejecucion()
+            tiempos_ejecucion.append(muestra)
+
+        tiempo_medido = promedio_tiempos_ejecucion(tiempos_ejecucion)
+
         if os.path.exists("tiempos_medidos.csv"):
             df = pd.read_csv("tiempos_medidos.csv")
         else:

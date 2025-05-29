@@ -4,11 +4,12 @@ import re
 import os
 import pandas as pd
 
+
 def cambiar_valor(variable: str, valor: int) -> bool:
-    with open('../source/constantes.f90', 'r') as archivo:
+    with open("../source/constantes.f90", "r") as archivo:
         contenido = archivo.read()
 
-    patron: str = rf"({re.escape(variable)}\s*=\s*)\d+"
+    patron = rf"({re.escape(variable)}\s*=\s*)\d+"
 
     def remplazo(match) -> str:
         return f"{match.group(1)}{valor}"
@@ -19,28 +20,28 @@ def cambiar_valor(variable: str, valor: int) -> bool:
         print(f"No se encontró el parámetro {variable} en el archivo.")
         return False
 
-    with open("../source/constantes.f90", 'w') as archivo:
+    with open("../source/constantes.f90", "w") as archivo:
         archivo.write(contenido_modificado)
 
     print(f"Parámetro {variable} modificado a {valor} exitosamente.")
     return True
 
+
 def compilar_programa() -> None:
     print()
     print("=====Compilando el Programa=====")
     resultado = subprocess.run(
-            ["make -C ../build"],
-            shell=True, capture_output=True,
-            text=True)
+        ["make -C ../build"], shell=True, capture_output=True, text=True
+    )
     print(f"{resultado.stdout}")
     print(f"{resultado.stderr}")
+
 
 def medir_tiempo_ejecucion() -> float:
     start = time.perf_counter()
     resultado = subprocess.run(
-            ["./../build/CALOR2DACC_ARR1D-gpu"],
-            shell=True, capture_output=True,
-            text=True)
+        ["./../build/CALOR2DACC_ARR1D-gpu"], shell=True, capture_output=True, text=True
+    )
     end = time.perf_counter()
 
     tiempo_ejecucion = end - start
@@ -50,18 +51,20 @@ def medir_tiempo_ejecucion() -> float:
 
     return tiempo_ejecucion
 
-def promedio_tiempos_ejecucion(tiempos_ejecucion: list[float]) -> float:
+
+def promedio_tiempos_ejecucion(tiempos_ejecucion: list[float]) -> tuple[float, float]:
     serie = pd.Series(tiempos_ejecucion)
     promedio = serie.mean()
     desviacion_estandar = serie.std()
-    return promedio
+    return promedio, desviacion_estandar
+
 
 def main() -> None:
     # Valores iniciales
-    val1=16
-    val2=32
-    val3=32
-    val4=32
+    val1 = 16
+    val2 = 32
+    val3 = 32
+    val4 = 32
 
     for i in range(6):
         if i != 0:
@@ -87,21 +90,26 @@ def main() -> None:
         # tiempo_medido = medir_tiempo_ejecucion()
 
         tiempos_ejecucion = []
-        for i in range(3):
+        for i in range(10):
             muestra = medir_tiempo_ejecucion()
             tiempos_ejecucion.append(muestra)
 
-        tiempo_medido = promedio_tiempos_ejecucion(tiempos_ejecucion)
+        tiempo_medido, desviacion_estandar = promedio_tiempos_ejecucion(
+            tiempos_ejecucion
+        )
 
         if os.path.exists("tiempos_medidos.csv"):
             df = pd.read_csv("tiempos_medidos.csv")
         else:
-            df = pd.DataFrame(columns=["Parametros", "Tiempo Medido"])
+            df = pd.DataFrame(
+                columns=["Parametros", "Tiempo Medido", "Desviacion Estandar"]
+            )
 
         parametros = f"[{var1}={val1},{var2}={val2}],[{var3}={val3},{var4}={val4}]"
-        df.loc[len(df)] = [parametros, tiempo_medido]
+        df.loc[len(df)] = [parametros, tiempo_medido, desviacion_estandar]
 
         df.to_csv("tiempos_medidos.csv", index=False)
+
 
 if __name__ == "__main__":
     main()

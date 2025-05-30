@@ -58,10 +58,11 @@ def promedio_tiempos_ejecucion(tiempos_ejecucion: list[float]) -> tuple[float, f
     desviacion_estandar = serie.std()
     return promedio, desviacion_estandar
 
-def datos_medicion(tiempos_ejecucion: list[float], parametros: str, numero_puntos: str) -> None:
-    tiempo_medido, desviacion_estandar = promedio_tiempos_ejecucion(
-        tiempos_ejecucion
-    )
+
+def datos_medicion(
+    tiempos_ejecucion: list[float], parametros: str, numero_puntos: str
+) -> None:
+    tiempo_medido, desviacion_estandar = promedio_tiempos_ejecucion(tiempos_ejecucion)
     nombre_archivo = f"tiempos_medidos_{numero_puntos}.csv"
 
     if os.path.exists(nombre_archivo):
@@ -78,47 +79,42 @@ def datos_medicion(tiempos_ejecucion: list[float], parametros: str, numero_punto
 
 def main() -> None:
     # Valores iniciales
-    val1 = 16
-    val2 = 32
-    val3 = 32
-    val4 = 32
-    mi = 128
-    nj = 64
-    var5 = "mi"
-    var6 = "nj"
+    NUM_GANGSA = "NUM_GANGSA"
+    VEC_LENGHTA = "VEC_LENGHTA"
+    NUM_GANGSB = "NUM_GANGSB"
+    VEC_LENGHTB = "VEC_LENGHTB"
+    MI = "mi"
+    NJ = "nj"
 
-    for i in range(3):
-        if i != 0:
-            ch = 2
-        else:
-            ch = 1
+    val1 = 128
+    val2 = 64
 
-        mi = mi * ch
-        nj = nj * ch
+    for i in range(6):
+        ch = 2 if i != 0 else 1
 
-        cambiar_valor(var5, mi)
-        cambiar_valor(var6, nj)
+        val1 = val1 * ch
+        val2 = val2 * ch
 
+        cambiar_valor(MI, val1)
+        cambiar_valor(NJ, val2)
 
-        for i in range(6):
-            if i != 0:
-                ch = 2
-            else:
-                ch = 1
+        val3 = 16
+        val4 = 32
+        val5 = 32
+        val6 = 32
 
-            var1 = "NUM_GANGSA"
-            val1 = val1 * ch
-            var2 = "VEC_LENGHTA"
-            val2 = val2 // ch
-            var3 = "NUM_GANGSB"
+        for j in range(5):
+            ch = 2 if j != 0 else 1
+
             val3 = val3 * ch
-            var4 = "VEC_LENGHTB"
             val4 = val4 // ch
+            val5 = val5 * ch
+            val6 = val6 // ch
 
-            cambiar_valor(var1, val1)
-            cambiar_valor(var2, val2)
-            cambiar_valor(var3, val3)
-            cambiar_valor(var4, val4)
+            cambiar_valor(NUM_GANGSA, val3)
+            cambiar_valor(VEC_LENGHTA, val4)
+            cambiar_valor(NUM_GANGSB, val5)
+            cambiar_valor(VEC_LENGHTB, val6)
 
             compilar_programa()
 
@@ -127,9 +123,10 @@ def main() -> None:
                 muestra = medir_tiempo_ejecucion()
                 tiempos_ejecucion.append(muestra)
 
-            parametros = f"[{var1}={val1},{var2}={val2}],[{var3}={val3},{var4}={val4}]"
-            numero_puntos = f"{mi}x{nj}"
+            parametros = f"[{NUM_GANGSA}={val3},{VEC_LENGHTA}={val4}],[{NUM_GANGSB}={val5},{VEC_LENGHTB}={val6}]"
+            numero_puntos = f"{val1}x{val2}"
             datos_medicion(tiempos_ejecucion, parametros, numero_puntos)
+
 
 if __name__ == "__main__":
     main()

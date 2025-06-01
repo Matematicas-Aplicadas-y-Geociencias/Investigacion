@@ -3,6 +3,16 @@ USE constantes
 ! USE mkl95_LAPACK
 IMPLICIT NONE
 INCLUDE 'omp_lib.h'
+!
+! Variables de modularizaci\'on
+!
+!
+! Coeficientes para las matrices 
+!
+real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: AA, BB, CC, RR
+!
+! --------------------------------------------------------------------------------
+!
 INTEGER :: i,j,k,tt,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 !*******************************************

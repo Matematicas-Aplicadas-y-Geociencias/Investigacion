@@ -239,14 +239,15 @@ DO j = 2, nj
     !***********************
     !Condiciones de frontera
     APk(1)      = 1._DBL !* AB(1)
-    AT(1)       = cero
-    Rzk(1)      = (fw(i,j,3)*(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2*zwo(1)-zwo(2)-zwo(3)))+&
-                  &fw(i,j,2)*(1._DBL-(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2._DBL*zwo(1)-zwo(2)-zwo(3))))) !*AB(1) !cero * AB(1)
+    AT(1)       = 0._DBL !cero
+    Rzk(1)      = 0._DBL
+    ! (fw(i,j,3)*(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2*zwo(1)-zwo(2)-zwo(3)))+&
+    !              &fw(i,j,2)*(1._DBL-(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2._DBL*zwo(1)-zwo(2)-zwo(3))))) !*AB(1) !cero * AB(1)
     aw_o(i,j,1) = APk(1)
     !*******************************
     APk(lk)      = 1._DBL !* AT(lk-1)
-    AB(lk-1)     = cero
-    Rzk(lk)      =-1._DBL
+    AB(lk-1)     = 0._DBL !cero
+    Rzk(lk)      = 0._DBL !-1._DBL
 !                    (fw(i,j,lk-1)*((zwo(lk)-zwo(lk-2))*(zwo(lk)-zwo(lk-1))/((zwo(lk-1)-zwo(lk-2))*(2*zwo(lk)-zwo(lk-2)-zwo(lk-1)))+&
 !                    (zwo(lk)-zwo(lk-2))/(2*zwo(lk)-zwo(lk-2)-zwo(lk-1)))-fw(i,j,lk-2)*((zwo(lk)-zwo(lk-1))*(zwo(lk)-zwo(lk-1))/&
 !                    ((zwo(lk-1)-zwo(lk-2))*(2._DBL*zwo(lk)-zwo(lk-2)-zwo(lk-1))))) !* AT(lk-1)

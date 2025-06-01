@@ -236,7 +236,7 @@ DO j = 2, nj
     !Condiciones de frontera
     APk(1)      = 1._DBL !* AB(1)
     AT(1)       = cero
-    Rzk(1)      = cero !* AB(1)
+    Rzk(1)      = 1.0_DBL !* AB(1)
     au_o(i,j,1) = APk(1)
     !*******************************
     APk(lk+1)      = 1._DBL !* AT(lk)

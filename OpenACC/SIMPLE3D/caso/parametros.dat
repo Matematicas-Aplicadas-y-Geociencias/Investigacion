@@ -1,0 +1,30 @@
+1.d2   !Re
+1d2    !Rec
+7.01d0 !Pr
+1.d-2  !dt
+100   !paq_itera
+0.d0   !Richardson
+0.60d0 !relajaci'on_presi'on
+0.50d0 !relajaci'on velocidad
+0.50d0 !relajaci'on temperatura
+1.d-3  !convergencia velocidad
+1.d-3  !convergencia temperatura
+5.d-2  !convergencia presi'on
+1.d-8  !convergencia del residuo
+1.d-8  !convergencia paso
+'./out_n050m050k050_Rxxxu.dat'   !archivo de entrada de u
+'./out_n050m050k050_Rxxxv.dat'   !archivo de entrada de u
+'./out_n050m050k050_Rxxxw.dat'   !archivo de entrada de v
+'./out_n050m050k050_Rxxxp.dat'   !archivo de entrada de w
+
+! '../malla/out_n050m050k050_Rxxxu.dat'   !archivo de entrada de p
+! '../malla/out_n050m050k050_Rxxxv.dat'   !archivo de entrada de v
+! '../malla/out_n050m050k050_Rxxxw.dat'   !archivo de entrada de w
+! '../malla/out_n050m050k050_Rxxxp.dat'   !archivo de entrada de p
+
+! 'out_n100m100k100_R1d2u.txt'   !archivo de entrada de u
+! 'out_n100m100k100_R1d2v.txt'   !archivo de entrada de v
+! 'out_n100m100k100_R1d2w.txt'   !archivo de entrada de w
+! 'out_n100m100k100_R1d2p.txt'   !archivo de entrada de t y p
+
+

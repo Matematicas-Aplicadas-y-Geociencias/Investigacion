@@ -1,6 +1,28 @@
 PROGRAM SIMPLE
-USE constantes
+USE constantes, only : itermax, cero
 ! USE mkl95_LAPACK
+!
+! Variables de la malla, volumen de control y factores de interpolaci\'on
+!
+use malla, only : mi, nj, lk, DBL
+use malla, only : mic, njc, lkc
+use malla, only : xu, yv, zw, xp, yp, zp
+use malla, only : deltaxp, deltayp, deltazp
+use malla, only : deltaxu, deltaxv, deltaxw
+use malla, only : deltayu, deltayv, deltayw
+use malla, only : deltazu, deltazv, deltazw
+use malla, only : fexp, feyp, fezp
+use malla, only : fexu, feyv, fezw
+use malla, only : form21, form26
+use malla, only : lectura_mallas_escalonadas
+!
+use ec_continuidad, only : pres, corr_pres
+use ec_continuidad, only : dcorr_pres, fcorr_pres
+use ec_continuidad, only : b_o
+use ec_continuidad, only : ensambla_corr_pres_x
+!
+use solucionador, only : tridiagonal
+!
 IMPLICIT NONE
 INCLUDE 'omp_lib.h'
 !
@@ -10,9 +32,11 @@ INCLUDE 'omp_lib.h'
 ! Coeficientes para las matrices 
 !
 real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: AA, BB, CC, RR
+real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)) :: a1, b1, c1, r1
 !
 ! --------------------------------------------------------------------------------
 !
+integer :: ii, jj, kk
 INTEGER :: i,j,k,tt,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 !*******************************************
@@ -20,19 +44,20 @@ INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 REAL(kind=DBL), DIMENSION(mi,nj+1,lk+1)   :: u,u_ant,du,au,Resu,gamma_u
 REAL(kind=DBL), DIMENSION(mi+1,nj,lk+1)   :: v,v_ant,dv,av,Resv,gamma_v
 REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk)   :: w,w_ant,dw,aw,Resw,gamma_w,Ri
-REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: temp,temp_ant,dtemp,Restemp,gamma_t,pres,corr_pres,dcorr_pres
-REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: entropia_calor,entropia_viscosa,entropia,uf,vf,wf,b_o
+REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: temp,temp_ant,dtemp,Restemp,gamma_t
+!,pres,corr_pres,dcorr_pres
+REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: entropia_calor,entropia_viscosa,entropia,uf,vf,wf
 REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
 REAL(kind=DBL) :: conv_u,conv_p,conv_t,conv_resi,conv_paso,rel_pres,rel_vel,rel_tem
 !********************************************
 !Variables de la malla, volumen de control, incremento de tiempo y nums Reynolds, Peclet
 !Rayleigh, Richardson, Prandtl, valores de las constantes de difusividad
-REAL(kind=DBL), DIMENSION(mi)   :: xu
-REAL(kind=DBL), DIMENSION(nj)   :: yv
-REAL(kind=DBL), DIMENSION(lk)   :: zw
-REAL(kind=DBL), DIMENSION(mi+1) :: x,fexu
-REAL(kind=DBL), DIMENSION(nj+1) :: y,feyv
-REAL(kind=DBL), DIMENSION(lk+1) :: z,fezw
+! REAL(kind=DBL), DIMENSION(mi)   :: xu
+! REAL(kind=DBL), DIMENSION(nj)   :: yv
+! REAL(kind=DBL), DIMENSION(lk)   :: zw
+! REAL(kind=DBL), DIMENSION(mi+1) :: x,fexu
+! REAL(kind=DBL), DIMENSION(nj+1) :: y,feyv
+! REAL(kind=DBL), DIMENSION(lk+1) :: z,fezw
 REAL(kind=DBL), DIMENSION(mi-1) :: d_xu,d2_xu
 REAL(kind=DBL), DIMENSION(nj-1) :: d_yv,d2_yv
 REAL(kind=DBL), DIMENSION(lk-1) :: d_zw,d2_zw
@@ -40,8 +65,10 @@ REAL(kind=DBL)   :: ao
 REAL(kind=DBL)   :: tiempo,tiempo_inicial,dt,Pe,Re,Ra,Pr,Rin
 REAL(kind=DBL)   :: a_ent,lambda_ent
 CHARACTER(len=1) :: dec,un,de,ce,m
-CHARACTER(len=3) :: mic,njc,lkc,Rac
-CHARACTER(len=40):: entrada_u,entrada_v,entrada_w,entrada_tp,archivo=repeat(' ',40)
+! CHARACTER(len=3) :: mic,njc,lkc,
+character(len=3) :: Rac
+CHARACTER(len=32):: entrada_u,entrada_v,entrada_w,entrada_tp,entrada_xyz
+character(len=40):: archivo=repeat(' ',40)
 LOGICAL          :: res_fluido_u
 !****************************************
 !declaraci´on de variable DBL
@@ -109,7 +136,7 @@ READ(11,*)i_o,i_1,itera_inicial,ao
 DO k = 1, lk+1
   DO j = 1, nj+1
     DO i = 1, mi
-      READ(11,24) xu(i),y(j),z(k),u_ant(i,j,k)
+      READ(11,24) xu(i),yp(j),zp(k),u_ant(i,j,k)
     END DO
   END DO
 END DO
@@ -120,7 +147,7 @@ READ(12,*)j_o,j_1,itera_inicial,ao
 DO k =1, lk+1
   DO j = 1, nj
     DO i = 1, mi+1
-      READ(12,24) x(i),yv(j),z(k),v_ant(i,j,k)
+      READ(12,24) xp(i),yv(j),zp(k),v_ant(i,j,k)
     END DO
   END DO
 END DO
@@ -131,7 +158,7 @@ READ(13,*)i_o,i_1,itera_inicial,ao
 DO k =1, lk
   DO j = 1, nj+1
     DO i = 1, mi+1
-      READ(13,24) x(i),y(j),zw(k),w_ant(i,j,k)
+      READ(13,24) xp(i),yp(j),zw(k),w_ant(i,j,k)
     END DO
   END DO
 END DO
@@ -142,7 +169,7 @@ READ(14,*)i_o,i_1,itera_inicial,ao
 DO k = 1, lk+1
   DO j = 1, nj+1
     DO i = 1, mi+1
-      READ(14,25) x(i),y(j),z(k),temp_ant(i,j,k),pres(i,j,k)
+      READ(14,25) xp(i),yp(j),zp(k),temp_ant(i,j,k),pres(i,j,k)
     END DO
   END DO
 END DO
@@ -228,18 +255,35 @@ DO k = 2, lk-1
   d_zw(k)  = zw(k+1)-zw(k)
   d2_zw(k) = zw(k+1)-zw(k-1)
 END DO
-fexu(1)    = 0_DBL
-DO i = 2, mi+1
-  fexu(i)  = (x(i) - xu(i-1)) / (x(i) - x(i-1))
+! fexu(1)    = 0_DBL
+DO i = 1, mi-1
+  fexu(i)  = (xu(i+1) - xp(i+1)) / (xu(i+1) - xu(i))
 END DO
-feyv(1)    = 0_DBL
-DO j = 2, nj+1
-  feyv(j)  = (y(j) - yv(j-1)) / (y(j) - y(j-1))
+! feyv(1)    = 0_DBL
+DO j = 1, nj-1
+  feyv(j)  = (yv(j+1) - yp(j+1)) / (yv(j+1) - yv(j))
 END DO
-fezw(1)    = 0_DBL
-DO k = 2, lk+1
-  fezw(k)  = (z(k) - zw(k-1)) / (z(k) - z(k-1))
+! fezw(1)    = 0_DBL
+DO k = 1, lk-1
+  fezw(k)  = (zw(k+1) - zp(k+1)) / (zw(k+1) - zw(k))
 END DO
+!------------------------------------------------
+!
+! Lectura de mallas escalonadas
+!
+write(*,*) "Inicia lectura de mallas"
+call lectura_mallas_escalonadas(entrada_u,entrada_v,entrada_w,&
+     &entrada_tp,entrada_xyz,&
+     &u_ant,v_ant,w_ant,pres,temp_ant,&
+     &xp,yp,zp,xu,yv,zw,&
+     &deltaxp,deltayp,deltazp,&
+     &deltaxu,deltayu,deltazu,&
+     &deltaxv,deltayv,deltazv,&
+     &deltaxw,deltayw,deltazw,&
+     &fexp,feyp,fezp,fexu,feyv,fezw,&
+     &ao,itera_inicial)
+write(*,*) "Finaliza lectura de mallas"
+write(*,*) "--------------------------"
 !*****************
 !valores iniciales
 ! DO k= 1, lk+1
@@ -276,25 +320,208 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
 DO kl=1,paq_itera          !inicio del paquete iteraciones
 ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
     DO tt= 1, 3
-      CALL vel_u(xu,y,z,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,v,w,pres,gamma_u,dt,du,au,rel_vel)
-      CALL vel_v(x,yv,z,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,w,pres,gamma_v,dt,dv,av,rel_vel)
-      CALL vel_w(x,y,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
+       CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
+            &v,w,pres,gamma_u,dt,du,au,rel_vel)
+       CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
+            &w,pres,gamma_v,dt,dv,av,rel_vel)
+       CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
+            &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
       !****************************************
       !Criterio de convergencia de la velocidad
-      IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.MAXVAL(DABS(dw))<conv_u)EXIT
+       IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
+            &MAXVAL(DABS(dw))<conv_u)EXIT
       ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(du)), MAXVAL(DABS(dv)), MAXVAL(DABS(dw))
     END DO
     !****************************************
     !se calcula la correcci'on de la presi'on
-    corr_pres = cero
-    DO tt= 1, 3
-      CALL corrector_presion(corr_pres,x,y,z,d_xu,d_yv,d_zw,u,v,w,temp,b_o,au,av,aw,conv_p)
-      !****************************************************
-      !critero de convergencia del corrector de la presi'on
-      IF(MAXVAL(DABS(dcorr_pres))<conv_p)EXIT
-      ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres))
-    END DO
-    corr_pres = rel_pres*corr_pres
+    !
+    ! corr_pres = cero
+    ! DO tt= 1, 3
+    !
+    !-----------------------------------------
+    !-----------------------------------------
+    !
+    ! Se calcula la correcci'on de la presi'on
+    !
+    !-----------------------------------------
+    !-----------------------------------------
+    !
+    !$acc parallel loop gang collapse(2) !async(stream2)
+    inicializa_corrector_presion: do kk=1, lk+1
+       do jj = 1, nj+1
+          do ii = 1, mi+1
+             corr_pres(ii,jj,kk) = 0.0_DBL
+             fcorr_pres(ii,jj,kk)= 0.0_DBL
+          end do
+       end do
+    end do inicializa_corrector_presion
+    !
+    correccion_presion: do tt = 1, 3
+       !
+       !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
+       inicializa_fcorr_press: do kk=2, lk
+          do jj=2, nj
+             do ii = 2, mi
+                fcorr_pres(ii,jj,kk) = corr_pres(ii,jj,kk)
+             end do
+          end do
+       end do inicializa_fcorr_press
+       !
+       !-------------------------
+       !
+       ! Condiciones de frontera
+       !
+       !$acc parallel loop vector !async(stream1)
+       bucle_direccionxe: do kk = 2, lk
+          do jj = 2, nj
+             !***********************
+             !Condiciones de frontera
+             a1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 0.0_DBL
+             b1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 1.0_DBL
+             c1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 0.0_DBL
+             !
+             a1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 0.0_DBL
+             b1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 1.0_DBL
+             c1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 0.0_DBL
+             !
+             BB(1,jj,kk)  = 1._DBL
+             CC(1,jj,kk)  = 0.0_DBL
+             RR(1,jj,kk)  = 0.0_DBL
+             !
+             BB(mi+1,jj,kk)  = 1._DBL
+             CC(mi+1,jj,kk)  = 0.0_DBL
+             RR(mi+1,jj,kk)  = 0.0_DBL                
+             !
+          end do
+       end do bucle_direccionxe
+       !
+       !------------------------------------------
+       !
+       ! Se ensambla la ecuaci\'on de correcci\'on
+       ! de la presi\'on en direcci\'on x
+       !
+       !$acc parallel loop gang !async(stream2)
+       do kk = 2, lk
+          do jj = 2, nj
+             !$acc loop vector
+             do ii = 2, mi
+                call ensambla_corr_pres_x(&
+                     &deltaxp,&
+                     &deltayp,&
+                     &deltazp,&
+                     &deltaxu,&
+                     &deltayv,&
+                     &deltazw,&
+                     &u,v,w,&
+                     &corr_pres,&
+                     &rel_pres,&
+                     &a1,b1,c1,r1,&
+                     &au,av,aw,&
+                     &ii,jj,kk)
+             end do
+          end do
+       end do
+       !
+       !----------------------------------------------
+       !
+       ! Soluci\'on de la correcci\'on de la presi\'on
+       !
+       !$acc parallel loop gang async(stream1) wait(stream2)
+       solucion_presion_x: do kk = 2, lk
+          do jj = 2,nj
+             !
+!             call tridiagonal(AA(1:mi+1,jj,kk),BB(1:mi+1,jj,kk),&
+             call tridiagonal(&
+                  &a1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
+                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
+                  &b1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
+                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
+                  &c1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
+                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
+                  &r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
+                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
+                  &mi+1)
+             corr_pres(1,jj,kk)    = r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1)
+             corr_pres(mi+1,jj,kk) = r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1)
+             !
+          end do
+       end do solucion_presion_x
+       !    !
+       !    !$acc parallel loop gang async(stream2)
+       !    solucion_presion_y: do ii = 2, mi
+             
+       !       call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
+       !       corr_pres(ii,1)    = Ry(1,ii)
+       !       corr_pres(ii,nj+1) = Ry(nj+1,ii)
+             
+       !    end do solucion_presion_y
+       !    !$acc wait
+       !    !
+       !    ! Actualizaci\'on del corrector de la presi\'on
+       !    !
+       !    !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
+       !    do jj = 2, nj
+       !       do ii = 2, mi
+       !          corr_pres(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
+       !       end do
+       !    end do
+       !    !$acc wait
+       !    !
+       !    ! C\'alculo de diferencias y criterio de convergencia
+       !    !
+       !    error = 0.0_DBL
+       !    maxbo = 0.0_DBL
+       !    !
+       !    !$acc parallel loop gang reduction(+:error) !async(stream1)
+       !    calculo_dif_corr_pres: do jj=2, nj
+       !       do ii=2, mi
+       !          ! error = max(error,abs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
+       !          error = error + (corr_pres(ii,jj)-fcorr_pres(ii,jj))*&
+       !               (corr_pres(ii,jj)-fcorr_pres(ii,jj))
+       !          ! maxbo = max(maxbo,abs(b_o(ii,jj)))
+       !       end do
+       !    end do calculo_dif_corr_pres
+       !    error=sqrt(error)
+       !    !
+       ! !$acc parallel loop gang reduction(+:maxbo) !async(stream2)
+       !    calculo_dif_maxbo: do jj=2, nj
+       !       do ii=2, mi
+       !          ! error = max(error,abs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
+       !          ! maxbo = max(maxbo,abs(b_o(ii,jj)))
+       !          maxbo = maxbo+b_o(ii,jj)*b_o(ii,jj)
+       !       end do
+       !    end do calculo_dif_maxbo
+       !    maxbo = sqrt(maxbo)
+       !    !-----------------------------------------------------
+       !    !
+       !    ! Critero de convergencia del corrector de la presi'on
+       !    !
+       !    ! $acc wait
+       !    if( error<conv_p )then
+       !       ! write(*,*) "PRES: convergencia ", error, " con ", iter_ecuaci," iteraciones"
+       !       iter_ecuaci = 0
+       !       exit
+       !    else if (iter_ecuaci > iter_ecuaci_max) then
+       !       iter_ecuaci = 0
+       !       write(*,*) "ADVER. PRES: convergencia no alcanzada ", error
+       !       exit
+       !    else
+       !       iter_ecuaci = iter_ecuaci+1
+       !       ! write(*,*) 'corrector presion ', MAXVAL(ABS(dcorr_pres)), MAXVAL(ABS(b_o))
+       !    end if
+       ! end do correccion_presion
+       ! !$acc wait
+       !
+       ! ---------------------------------------------------------
+       !
+       CALL corrector_presion(corr_pres,xp,yp,zp,d_xu,d_yv,d_zw,u,v,w,&
+            &temp,b_o,au,av,aw,conv_p)
+       corr_pres = rel_pres*corr_pres
+       !****************************************************
+       !critero de convergencia del corrector de la presi'on
+       IF(MAXVAL(DABS(dcorr_pres))<conv_p)EXIT
+       ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(dcorr_pres))
+    END DO correccion_presion
     !*********************
     !se corrige la presion
     !$OMP PARALLEL DO
@@ -338,7 +565,7 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
     !*************************
     !se calcula la temperatura
     DO tt = 1, 3
-      CALL temperatura(x,y,z,fexu,feyv,fezw,d_xu,d_yv,d_zw,u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
+      CALL temperatura(xp,yp,zp,fexu,feyv,fezw,d_xu,d_yv,d_zw,u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
       !************************************
       !Criterio de convergencia temperatura
       IF(MAXVAL(DABS(dtemp))<conv_t)EXIT
@@ -458,7 +685,7 @@ WRITE(1,*) i_o,i_1,itera_total,ao
 DO k=1,lk+1
   DO j=1,nj+1
     DO i=1,mi
-      WRITE(1,24) xu(i),y(j),z(k),u(i,j,k)
+      WRITE(1,24) xu(i),yp(j),zp(k),u(i,j,k)
     END DO
   END DO
 END DO
@@ -470,7 +697,7 @@ WRITE(2,*) j_o,j_1,itera_total,ao
 DO k=1,lk+1
   DO j=1,nj
     DO i=1,mi+1
-      WRITE(2,24) x(i),yv(j),z(k),v(i,j,k)
+      WRITE(2,24) xp(i),yv(j),zp(k),v(i,j,k)
     END DO
   END DO
 END DO
@@ -482,7 +709,7 @@ WRITE(3,*) i_o,i_1,itera_total,ao
 DO k=1,lk
   DO j=1,nj+1
     DO i=1,mi+1
-      WRITE(3,24) x(i),y(j),zw(k),w(i,j,k)
+      WRITE(3,24) xp(i),yp(j),zw(k),w(i,j,k)
     END DO
   END DO
 END DO
@@ -494,7 +721,7 @@ WRITE(4,*) i_o,i_1,itera_total,ao
 DO k=1,lk+1
   DO j=1,nj+1
     DO i=1,mi+1
-      WRITE(4,25) x(i),y(j),z(k),temp(i,j,k),pres(i,j,k)
+      WRITE(4,25) xp(i),yp(j),zp(k),temp(i,j,k),pres(i,j,k)
     END DO
   END DO
 END DO
@@ -502,7 +729,7 @@ CLOSE(unit=4)
 !********************************
 !*** Formato de escritura VTK ***
 archivo = 'n'//njc//'m'//mic//'k'//lkc//'R'//Rac//'/t_'//m//ce//de//un//dec//'.vtk'
-CALL postprocess_vtk(x,y,z,uf,vf,wf,pres,temp,b_o,trim(archivo))
+CALL postprocess_vtk(xp,yp,zp,uf,vf,wf,pres,temp,b_o,trim(archivo))
 ! !************************************
 ! !*** Formato de escritura Tecplot ***
 ! OPEN(unit=1,file='n'//njc//'m'//mic//'R'//Rac//'/t'//m//ce//de//un//dec//'.plt')

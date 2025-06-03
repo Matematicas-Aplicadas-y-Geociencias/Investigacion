@@ -12,7 +12,7 @@ MODULE malla
   !
   ! Dimensiones de la malla
   !
-  INTEGER(4), PARAMETER :: mi=127, nj=127, lk=127, nsolid = 7
+  INTEGER(4), PARAMETER :: mi=50, nj=50, lk=50, nsolid = 7
   !
   ! Tipo de variables reales, definen precici'on y rango
   !
@@ -22,7 +22,9 @@ MODULE malla
   ! formatos de escritura
   !
   character(len=9), parameter :: form21="(1D23.15)",form22="(2D23.15)"
-  character(len=9), parameter :: form26="(6D23.15)",form27="(10e15.7)"
+  character(len=9), parameter :: form23="(3D23.15)",form24="(4D23.15)"
+  character(len=9), parameter :: form25="(5D23.15)",form26="(6D23.15)"
+  character(len=9), parameter :: form27="(10e15.7)"
   !
   ! viscosidad para frontera inmersa
   !
@@ -30,7 +32,7 @@ MODULE malla
   !
   ! caracteres para los nombres de archivos de salida
   !
-  character(20) :: mic, njc, zkc
+  character(3) :: mic, njc, lkc
   !
   ! Variables de la malla, volumen de control y factores de interpolaci\'on
   !
@@ -55,9 +57,9 @@ MODULE malla
   REAL(kind=DBL), DIMENSION(mi)   ::  fexp
   REAL(kind=DBL), DIMENSION(nj)   ::  feyp
   real(kind=DBL), dimension(lk)   ::  fezp
-  REAL(kind=DBL), DIMENSION(mi)   ::  fexu
-  REAL(kind=DBL), DIMENSION(nj)   ::  feyv
-  real(kind=DBL), dimension(lk)   ::  fezw
+  REAL(kind=DBL), DIMENSION(mi-1) ::  fexu
+  REAL(kind=DBL), DIMENSION(nj-1) ::  feyv
+  real(kind=DBL), dimension(lk-1) ::  fezw
   !
 contains
   !
@@ -69,19 +71,23 @@ contains
   ! geom\'etricas y los devuelve como variables de salida. Tambi\'en lee los
   ! valores iniciales de las variables f\'isicas u,v,p,T.
   !
-  subroutine lectura_mallas_escalonadas(entrada_uo,entrada_vo,entrada_wo,entrada_tpo,&
+  subroutine lectura_mallas_escalonadas(entrada_uo,entrada_vo,entrada_wo,&
+       &entrada_tpo,entrada_xyzo,&
        &u_anto,v_anto,w_anto,presso,temp_anto,&
        &xpo,ypo,zpo,xuo,yvo,zwo,&
        &deltaxpo,deltaypo,deltazpo,&
        &deltaxuo,deltayuo,deltazuo,&
        &deltaxvo,deltayvo,deltazvo,&
+       &deltaxwo,deltaywo,deltazwo,&
        &fexpo,feypo,fezpo,fexuo,feyvo,fezwo,&
        &ao,iter_inio)
     ! ------------------------------------------------------------
     !
     ! Variables para los archivos de la entrada de datos
     !
-    CHARACTER(len=28), intent(in):: entrada_uo,entrada_vo,entrada_wo,entrada_tpo
+    character(len=28), intent(in) :: entrada_uo,entrada_vo
+    character(len=32), intent(in) :: entrada_wo,entrada_tpo
+    character(len=32), intent(in) :: entrada_xyzo
     !
     ! Variables para las velocidades, temperatura y presion iniciales
     !
@@ -160,79 +166,79 @@ contains
     !
     u_anto    =  0.0_DBL
     v_anto    =  0.0_DBL
-    z_anto    =  0.0_DBL
+    w_anto    =  0.0_DBL
     temp_anto =  0.0_DBL
     presso    =  0.0_DBL
     !
     ! Apertura de los archivos y lectura de los arreglos
     !
     open(unit=11,file=entrada_uo)
-    ! read(11,*)i_0,i_1,iter_inio,ao
+    read(11,*)i_0,i_1,iter_inio,ao
     do kk = 1, lk+1
        do jj = 1, nj+1
           do ii = 1, mi
-             read(11,form21) u_anto(ii,jj,kk)
+             read(11,form24) xuo(ii), ypo(jj), zpo(kk), u_anto(ii,jj,kk)
           end do
        end do
     end do
     close(unit=11)
     !***************************
     Open(unit=12,file=entrada_vo)
-    ! READ(12,*)i_0,i_1,iter_inio,ao
+    READ(12,*)i_0,i_1,iter_inio,ao
     do kk = 1, lk+1
        do jj = 1, nj
           do ii = 1, mi+1
-             read(12,form21) v_anto(ii,jj,kk)
+             read(12,form24) xpo(ii), yvo(jj), zpo(kk), v_anto(ii,jj,kk)
           end do
        end do
     end do
     close(unit=12)
     !****************************
     open(unit=13,file=entrada_wo)
-    ! READ(13,*)i_0,i_1,iter_inio,ao
+    READ(13,*)i_0,i_1,iter_inio,ao
     do kk = 1, lk
        do jj = 1, nj+1
           do ii = 1, mi+1
-             read(13,form21) w_anto(ii,jj,kk)
+             read(13,form24) xpo(ii), ypo(jj), zwo(kk),w_anto(ii,jj,kk)
           end do
        end do
     end do
     close(unit=13)
     !****************************
     open(unit=14,file=entrada_tpo)
-    ! READ(13,*)i_0,i_1,iter_inio,ao
+    READ(14,*)i_0,i_1,iter_inio,ao
     do kk = 1, lk+1
        do jj = 1, nj+1
           do ii = 1, mi+1
-             read(14,form22) temp_anto(ii,jj,kk), preso(ii,jj,kk)
+             read(14,form25) xpo(ii),ypo(jj),zpo(kk),temp_anto(ii,jj,kk),presso(ii,jj,kk)
           end do
        end do
     end do
     close(unit=14)
-    !**********************************
-    !
-    ! Lectura de los arreglos de malla
-    !
-    open(unit=15,file=entrada_xyz)
-    do ii = 1, mi
-       read(15,form21) xuo
-    end do
-    do ii = 1, mi+1
-       read(15,form21) xpo
-    end do
-    do jj = 1, nj
-       read(15,form21) yvo
-    end do
-    do jj = 1, nj+1
-       read(15,form21) ypo
-    end do
-    do kk = 1, lk
-       read(15,form21) zwo
-    end do
-    do ii = 1, lk+1
-       read(15,form21) zpo
-    end do
-    close(unit=15)
+    ! !**********************************
+    ! !
+    ! ! Lectura de los arreglos de malla
+    ! !
+    ! open(unit=15,file=entrada_xyzo)
+    ! do ii = 1, mi
+    !    read(15,form21) xuo
+    ! end do
+    ! do ii = 1, mi+1
+    !    read(15,form21) xpo
+    ! end do
+    ! do jj = 1, nj
+    !    read(15,form21) yvo
+    ! end do
+    ! do jj = 1, nj+1
+    !    read(15,form21) ypo
+    ! end do
+    ! do kk = 1, lk
+    !    read(15,form21) zwo
+    ! end do
+    ! do ii = 1, lk+1
+    !    read(15,form21) zpo
+    ! end do
+    ! close(unit=15)
     !
     ! C\'alculo de los tamanios de los vol\'umenes de control
     ! malla de la presi\'on y la temperatura
@@ -280,7 +286,7 @@ contains
        deltaxwo(ii) = xuo(ii)-xuo(ii-1)
     end do
     do jj = 2, nj
-       deltaywo(jj) = yvo(jj+1)-yvo(jj)
+       deltaywo(jj) = yvo(jj)-yvo(jj-1)
     end do
     do kk = 1, lk
        deltazwo(kk) = zpo(kk+1)-zpo(kk)

@@ -97,12 +97,12 @@ DO k = 2, lk-1
     APi(1)      = 1._DBL !* AW(1)
     AE(1)       = cero
     Rxi(1)      = cero !* AW(1)
-    aw_o(1,j,k) = APi(1)
+    aw_o(1,j,k) = 1.e40_DBL !APi(1)
     !***********************
     APi(mi+1)      = 1._DBL !* AE(mi)
     AW(mi)         = cero
     Rxi(mi+1)      = cero !* AE(mi)
-    aw_o(mi+1,j,k) = APi(mi+1)
+    aw_o(mi+1,j,k) = 1.e40_DBL !APi(mi+1)
     !***********************
     CALL tri(AW,APi,AE,Rxi,mi+1)
     DO i = 1, mi+1
@@ -243,7 +243,7 @@ DO j = 2, nj
     Rzk(1)      = 0._DBL
     ! (fw(i,j,3)*(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2*zwo(1)-zwo(2)-zwo(3)))+&
     !              &fw(i,j,2)*(1._DBL-(zwo(2)-zwo(1))*(zwo(2)-zwo(1))/((zwo(3)-zwo(2))*(2._DBL*zwo(1)-zwo(2)-zwo(3))))) !*AB(1) !cero * AB(1)
-    aw_o(i,j,1) = APk(1)
+    aw_o(i,j,1) = 1.e40_DBL !APk(1)
     !*******************************
     APk(lk)      = 1._DBL !* AT(lk-1)
     AB(lk-1)     = 0._DBL !cero
@@ -251,7 +251,7 @@ DO j = 2, nj
 !                    (fw(i,j,lk-1)*((zwo(lk)-zwo(lk-2))*(zwo(lk)-zwo(lk-1))/((zwo(lk-1)-zwo(lk-2))*(2*zwo(lk)-zwo(lk-2)-zwo(lk-1)))+&
 !                    (zwo(lk)-zwo(lk-2))/(2*zwo(lk)-zwo(lk-2)-zwo(lk-1)))-fw(i,j,lk-2)*((zwo(lk)-zwo(lk-1))*(zwo(lk)-zwo(lk-1))/&
 !                    ((zwo(lk-1)-zwo(lk-2))*(2._DBL*zwo(lk)-zwo(lk-2)-zwo(lk-1))))) !* AT(lk-1)
-    aw_o(i,j,lk) = APk(lk)
+    aw_o(i,j,lk) = 1.e40_DBL !APk(lk)
     !***************************
     CALL tri(AB,APk,AT,Rzk,lk)
     DO k = 1, lk

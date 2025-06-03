@@ -96,12 +96,12 @@ DO k = 2, lk
     APi(1)      = 1._DBL !* AW(1)
     AE(1)       = cero
     Rxi(1)      = cero !* AW(1)
-    av_o(1,j,k) = APi(1)
+    av_o(1,j,k) = 1.e40_DBL !APi(1)
     !*******************************
     APi(mi+1)      = 1._DBL !* AE(mi)
     AW(mi)         = cero
     Rxi(mi+1)      = cero !* AE(mi)
-    av_o(mi+1,j,k) = APi(mi+1)
+    av_o(mi+1,j,k) = 1.e40_DBL !APi(mi+1)
     !***************************
     CALL tri(AW,APi,AE,Rxi,mi+1)
     DO i = 1, mi+1
@@ -167,12 +167,12 @@ DO k = 2, lk
     APj(1)      = 1._DBL !* AS(1)
     AN(1)       = cero
     Ryj(1)      = cero !* AS(1)
-    av_o(i,1,k) = APj(1)
+    av_o(i,1,k) = 1.e40_DBL !APj(1)
     !*******************************
     APj(nj)      = 1._DBL !* AN(nj-1)
     AS(nj-1)     = cero
     Ryj(nj)      = cero !* AN(nj-1)
-    av_o(i,nj,k) = APj(nj)
+    av_o(i,nj,k) = 1.e40_DBL !APj(nj)
     !*************************
     CALL tri(AS,APj,AN,Ryj,nj)
     DO j = 1, nj
@@ -236,12 +236,12 @@ DO j = 2, nj-1
     APk(1)      = 1._DBL !* AB(1)
     AT(1)       = cero
     Rzk(1)      = cero !* AB(1)
-    av_o(i,j,1) = APk(1)
+    av_o(i,j,1) = 1.e40_DBL !APk(1)
     !*******************************
     APk(lk+1)      = 1._DBL !* AT(lk)
     AB(lk)         = cero
     Rzk(lk+1)      = cero !* AT(lk)
-    av_o(i,j,lk+1) = APk(lk+1)
+    av_o(i,j,lk+1) = 1.e40_DBL !APk(lk+1)
     !***************************
     CALL tri(AB,APk,AT,Rzk,lk+1)
     DO k = 1, lk+1

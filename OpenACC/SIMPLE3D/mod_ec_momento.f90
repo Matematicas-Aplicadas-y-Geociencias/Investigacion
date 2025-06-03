@@ -39,7 +39,8 @@ module ec_momento
   !
   ! Variables para la presi\'on
   !
-  real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: pres, corr_pres, dcorr_pres, fcorr_pres
+  real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: pres, corr_pres
+  real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: dcorr_pres, fcorr_pres
   !
   ! Variables de postproceso
   !
@@ -173,7 +174,8 @@ contains
        &rel_vo,&
        &AI_o,AC_o,AD_o,Rx_o,&
        &au_o,av_o,aw_o,&
-       &ii,jj,kk)
+       &ii,jj,kk,&
+       &direc)
     implicit none
     !$acc routine
     !
@@ -222,7 +224,8 @@ contains
     !
     ! \'Indice para recorrer las direcciones x, y. z
     !
-    integer, intent(in)        :: ii, jj, kk
+    integer, intent(in)   :: ii, jj, kk
+    character, intent(in) :: direc
     !
     ! Variables auxiliares
     !

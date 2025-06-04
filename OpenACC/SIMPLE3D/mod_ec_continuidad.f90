@@ -10,8 +10,9 @@
 !
 module ec_continuidad
   !
-  use malla,         only : mi, nj, lk, DBL
-  use malla,         only : xu, yv, zw, xp, yp, zp
+  use malla, only : mi, nj, lk, DBL
+  use malla, only : xu, yv, zw, xp, yp, zp
+  use malla, only : indexp, indeyp, indezp
   !
   ! use cond_frontera, only : tipo_cond_front
   ! !
@@ -20,29 +21,11 @@ module ec_continuidad
   !
   implicit none
   !
-  ! !
-  ! ! Componentes de velocidad, presi\'on
-  ! ! residuos de las ecuaciones de momento y correcci\'on de la presi\'on
-  ! ! coeficientes de difusi\'on y criterios e convergencia
-  ! !
-  ! real(kind=DBL), dimension(mi,nj+1,lk+1)   :: u, u_ant, du, au, Resu, fu
-  ! real(kind=DBL), dimension(mi+1,nj,lk+1)   :: v, v_ant, dv, av, Resv, fv
-  ! real(kind=DBL), dimension(mi+1,nj+1,lk)   :: w, w_ant, dw, aw, Resw, fw
-  ! real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: gamma_momen, Ri
-  ! !
-  ! ! Variables para los t\'erminos fuente de la ec de momento
-  ! ! El t\'ermino lineal fuente_lin debe ser negativo para favorecer
-  ! ! convergencia y estabilidad
-  ! !
-  ! real(kind=DBL), dimension(mi,nj+1,lk+1)   :: fuente_con_u, fuente_lin_u
-  ! real(kind=DBL), dimension(mi+1,nj,lk+1)   :: fuente_con_v, fuente_lin_v
-  ! real(kind=DBL), dimension(mi+1,nj+1,lk)   :: fuente_con_w, fuente_lin_w
-  !
   ! Variables para la presi\'on
   !
   real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: pres, corr_pres
   real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: dcorr_pres, fcorr_pres
-  real(kind=DBL), dimension(lk+1,mi+1,nj+1) :: b_o
+  real(kind=DBL), dimension(lk+1,nj+1,mi+1) :: b_o
   !
   ! Variables de convergencia y relajaci\'on
   !
@@ -115,11 +98,11 @@ contains
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
     ! de momento en, energ\'ia y la correcci\'on de la presi\'on **
     !
-    ! real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
     real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AI_o
     real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AC_o
     real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AD_o
     real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: RX_o
+    !
     real(kind=DBL), dimension(mi,nj+1,lk+1), intent(in)          :: au_o
     real(kind=DBL), dimension(mi+1,nj,lk+1), intent(in)          :: av_o
     real(kind=DBL), dimension(mi+1,nj+1,lk), intent(in)          :: aw_o
@@ -130,34 +113,12 @@ contains
     !
     ! Variables auxiliares
     !
-    integer :: index
-    !
     ! Auxiliares de interpolaci\'on
     !
     real(kind=DBL) :: ui, ud, vs, vn, wt, wb
     real(kind=DBL) :: ai, ad, as, an, at, ab
     real(kind=DBL) :: alpha,beta,gamma,delta
     real(kind=DBL) :: bo
-    ! real(kind=DBL) :: di, dd, ds, dn
-    !
-    ! C\'alculo de los coeficientes
-    !
-    ! $acc loop gang
-    ! bucle_direccion_y: do jj = 2, nj
-    !------------------------
-    ! Condiciones de frontera
-    ! AC_o(1,jj,kk) = 1._DBL
-    ! AD_o(1,jj,kk) = 0._DBL
-    ! Rx_o(1,jj,kk) = 0._DBL
-    !
-    ! Llenado de la matriz
-    !
-    ! $acc loop vector
-    ! bucle_direccion_x: do ii = 2, mi
-    !
-    ! Indice x
-    !
-    index = (mi+1)*(nj+1)*(kk-1) + (mi+1) * (jj-1) + ii
     !
     ! Interpolaciones necesarias
     !
@@ -195,38 +156,26 @@ contains
     !
     ! Coeficientes de la matriz
     !
-    ! AI_o(ii,jj,kk) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
-    ! AD_o(ii,jj,kk) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
-    AI_o(index) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
-    AD_o(index) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
-    alpha       =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
-    beta        =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
-    gamma       =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
-    delta       =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
-    ! AC_o(ii,jj,kk) = ( -AI_o(ii,jj,kk) - AD_o(ii,jj,kk)-&
-    !      &alpha - beta - gamma - delta ) / rel_vo
-    AC_o(index) = ( -AI_o(index) - AD_o(index)-&
+    AI_o(indexp(ii,jj,kk)) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
+    AD_o(indexp(ii,jj,kk)) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
+    alpha                  =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
+    beta                   =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
+    gamma                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
+    delta                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
+    !
+    AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk))-&
          &alpha - beta - gamma - delta ) / rel_vo
     !
     bo = (ui-ud)*deltaypo(jj)*deltazpo(kk)+&
          &(vs-vn)*deltaxpo(ii)*deltazpo(kk)+&
          &(wb-wt)*deltaxpo(ii)*deltaypo(jj)
     !
-    ! Rx_o(ii,jj,kk) =-alpha*corr_pres_o(ii,jj-1,kk)-&
-    Rx_o(index) =-alpha*corr_pres_o(ii,jj-1,kk)-&
+    Rx_o(indexp(ii,jj,kk)) =-alpha*corr_pres_o(ii,jj-1,kk)-&
          &beta *corr_pres_o(ii,jj+1,kk)+&
          &gamma*corr_pres_o(ii,jj,kk-1)+&
          &delta*corr_pres_o(ii,jj,kk+1)+&
          &bo +&
-         &(1._DBL-rel_vo)*AC_o(index)*corr_pres_o(ii,jj,kk)
-         ! &(1._DBL-rel_vo)*AC_o(ii,jj,kk)*corr_pres_o(ii,jj,kk)
-    ! end do bucle_direccion_x
-    !
-    ! Condicion frontera
-    !
-    ! AI_o(mi+1,jj,kk) = 0.0_DBL
-    ! AC_o(mi+1,jj,kk) = 1.0_DBL
-    ! Rx_o(mi+1,jj,kk) = 0.0_DBL
+         &(1._DBL-rel_vo)*AC_o(indexp(ii,jj,kk))*corr_pres_o(ii,jj,kk)
     !
   end subroutine ensambla_corr_pres_x
   !
@@ -251,7 +200,7 @@ contains
        &rel_vo,&
        &AI_o,AC_o,AD_o,Rx_o,&
        &au_o,av_o,aw_o,&
-       &ii,jj,kk)
+       &jj,ii,kk)
     implicit none
     !$acc routine
     !
@@ -291,8 +240,11 @@ contains
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
     ! de momento en, energ\'ia y la correcci\'on de la presi\'on **
     !
-    real(kind=DBL), dimension(nj+1,mi+1,lk+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-    ! real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AI_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AC_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AD_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: RX_o
+    !
     real(kind=DBL), dimension(mi,nj+1,lk+1), intent(in) :: au_o
     real(kind=DBL), dimension(mi+1,nj,lk+1), intent(in) :: av_o
     real(kind=DBL), dimension(mi+1,nj+1,lk), intent(in) :: aw_o
@@ -311,22 +263,6 @@ contains
     real(kind=DBL) :: ai, ad, as, an, at, ab
     real(kind=DBL) :: alpha,beta,gamma,delta
     real(kind=DBL) :: bo
-    ! real(kind=DBL) :: di, dd, ds, dn
-    !
-    ! C\'alculo de los coeficientes
-    !
-    ! $acc loop gang
-    ! bucle_direccion_y: do jj = 2, nj
-    !------------------------
-    ! Condiciones de frontera
-    AC_o(1,ii,kk) = 1._DBL
-    AD_o(1,ii,kk) = 0._DBL
-    Rx_o(1,ii,kk) = 0._DBL
-    !
-    ! Llenado de la matriz
-    !
-    ! $acc loop vector
-    ! bucle_direccion_x: do ii = 2, mi
     !
     ! Interpolaciones necesarias
     !
@@ -364,32 +300,25 @@ contains
     !
     ! Coeficientes de la matriz
     !
-    alpha          =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
-    beta           =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
-    AI_o(jj,ii,kk) =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
-    AD_o(jj,ii,kk) =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
-    gamma          =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
-    delta          =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
-    AC_o(jj,ii,kk) = ( -AI_o(jj,ii,kk) - AD_o(jj,ii,kk)-&
+    alpha                  =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
+    beta                   =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
+    AI_o(indeyp(jj,ii,kk)) =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
+    AD_o(indeyp(jj,ii,kk)) =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
+    gamma                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
+    delta                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
+    AC_o(indeyp(jj,ii,kk)) = ( -AI_o(indeyp(jj,ii,kk)) - AD_o(indeyp(jj,ii,kk))-&
          &alpha - beta - gamma - delta ) / rel_vo
     !
     bo = (ui-ud)*deltaypo(jj)*deltazpo(kk)+&
          &(vs-vn)*deltaxpo(ii)*deltazpo(kk)+&
          &(wb-wt)*deltaxpo(ii)*deltaypo(jj)
     !
-    Rx_o(jj,ii,kk) =-alpha*corr_pres_o(ii,jj-1,kk)-&
-         &beta *corr_pres_o(ii,jj+1,kk)+&
+    Rx_o(indeyp(jj,ii,kk)) =-alpha*corr_pres_o(ii-1,jj,kk)-&
+         &beta *corr_pres_o(ii+1,jj,kk)+&
          &gamma*corr_pres_o(ii,jj,kk-1)+&
          &delta*corr_pres_o(ii,jj,kk+1)+&
          &bo+&
-         &(1._DBL-rel_vo)*AC_o(jj,ii,kk)*corr_pres_o(ii,jj,kk)
-    ! end do bucle_direccion_x
-    !
-    ! Condicion frontera
-    !
-    AI_o(nj+1,ii,kk) = 0.0_DBL
-    AC_o(nj+1,ii,kk) = 1.0_DBL
-    Rx_o(nj+1,ii,kk) = 0.0_DBL
+         &(1._DBL-rel_vo)*AC_o(indeyp(jj,ii,kk))*corr_pres_o(ii,jj,kk)
     !
   end subroutine ensambla_corr_pres_y
   !
@@ -411,11 +340,11 @@ contains
        &deltazwo,&
        &u_o,v_o,w_o,&
        &corr_pres_o,&
-       &b_o,&
+       &b_oo,&
        &rel_vo,&
        &AI_o,AC_o,AD_o,Rx_o,&
        &au_o,av_o,aw_o,&
-       &ii,jj,kk)
+       &kk,jj,ii)
     implicit none
     !$acc routine
     !
@@ -444,7 +373,7 @@ contains
     real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in)  :: v_o
     real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in)  :: w_o
     real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: corr_pres_o
-    real(kind=DBL), dimension(lk+1,mi+1,nj+1), intent(out) :: b_o
+    real(kind=DBL), dimension(lk+1,mi+1,nj+1), intent(out) :: b_oo
     !
     ! coeficiente de relajaci\'on
     !
@@ -456,8 +385,11 @@ contains
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
     ! de momento en, energ\'ia y la correcci\'on de la presi\'on **
     !
-    real(kind=DBL), dimension(lk+1,mi+1,nj+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-    ! real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AI_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AC_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AD_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: RX_o
+    !    
     real(kind=DBL), dimension(mi,nj+1,lk+1), intent(in) :: au_o
     real(kind=DBL), dimension(mi+1,nj,lk+1), intent(in) :: av_o
     real(kind=DBL), dimension(mi+1,nj+1,lk), intent(in) :: aw_o
@@ -466,31 +398,11 @@ contains
     !
     integer,   intent(in) :: ii, jj, kk
     !
-    ! Variables auxiliares
-    !
-    ! integer :: ii, jj
-    !
     ! Auxiliares de interpolaci\'on
     !
     real(kind=DBL) :: ui, ud, vs, vn, wt, wb
     real(kind=DBL) :: ai, ad, as, an, at, ab
     real(kind=DBL) :: alpha,beta,gamma,delta
-    ! real(kind=DBL) :: di, dd, ds, dn
-    !
-    ! C\'alculo de los coeficientes
-    !
-    ! $acc loop gang
-    ! bucle_direccion_y: do jj = 2, nj
-    !------------------------
-    ! Condiciones de frontera
-    ! AC_o(1,ii,jj) = 1._DBL
-    ! AD_o(1,ii,jj) = 0._DBL
-    ! Rx_o(1,ii,jj) = 0._DBL
-    !
-    ! Llenado de la matriz
-    !
-    ! $acc loop vector
-    ! bucle_direccion_x: do ii = 2, mi
     !
     ! Interpolaciones necesarias
     !
@@ -532,28 +444,21 @@ contains
     beta           =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
     gamma          =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
     delta          =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
-    AI_o(kk,ii,jj) =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
-    AD_o(kk,ii,jj) =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
-    AC_o(kk,ii,jj) = ( -AI_o(kk,ii,jj) - AD_o(kk,ii,jj)-&
+    AI_o(indezp(kk,jj,ii)) =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
+    AD_o(indezp(kk,jj,ii)) =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
+    AC_o(indezp(kk,jj,ii)) = ( -AI_o(indezp(kk,jj,ii)) - AD_o(indezp(kk,jj,ii))-&
          &alpha - beta - gamma - delta ) / rel_vo
     !
-    b_o(kk,ii,jj) = (ui-ud)*deltaypo(jj)*deltazpo(kk)+&
+    b_oo(kk,jj,ii) = (ui-ud)*deltaypo(jj)*deltazpo(kk)+&
          &(vs-vn)*deltaxpo(ii)*deltazpo(kk)+&
          &(wb-wt)*deltaxpo(ii)*deltaypo(jj)
     !
-    Rx_o(kk,ii,jj) =-alpha*corr_pres_o(ii,jj-1,kk)-&
-         &beta *corr_pres_o(ii,jj+1,kk)+&
-         &gamma*corr_pres_o(ii,jj,kk-1)+&
-         &delta*corr_pres_o(ii,jj,kk+1)+&
-         &b_o(kk,ii,jj)+&
-         &(1._DBL-rel_vo)*AC_o(kk,ii,jj)*corr_pres_o(ii,jj,kk)
-    ! end do bucle_direccion_x
-    !
-    ! Condicion frontera
-    !
-    ! AI_o(lk+1,ii,jj) = 0.0_DBL
-    ! AC_o(lk+1,ii,jj) = 1.0_DBL
-    ! Rx_o(lk+1,ii,jj) = 0.0_DBL
+    Rx_o(indezp(kk,jj,ii)) =-alpha*corr_pres_o(ii-1,jj,kk)-&
+         &beta *corr_pres_o(ii+1,jj,kk)-&
+         &gamma*corr_pres_o(ii,jj-1,kk)-&
+         &delta*corr_pres_o(ii,jj+1,kk)+&
+         &b_oo(kk,jj,ii)+&
+         &(1._DBL-rel_vo)*AC_o(indezp(kk,jj,ii))*corr_pres_o(ii,jj,kk)
     !
   end subroutine ensambla_corr_pres_z
   !

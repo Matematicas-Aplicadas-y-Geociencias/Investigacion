@@ -330,5 +330,81 @@ contains
     end do
     
   end subroutine lectura_mallas_escalonadas
-
+  !
+  !-----------------------------------------------------------------------------
+  !
+  ! Estas funciones devuelve \'indices 1D para arreglos que representan
+  ! cantidades tridimensionales con el objetivo de garantizar que los datos
+  ! se encuentran en elementos consecutivos de memoria:
+  !
+  !     index(ii,jj,kk) = (dimx*dimy)*(kk-1)+dimx*(jj-1)+ii
+  !     indey(jj,ii,kk) = (dimx*dimy)*(kk-1)+dimy*(ii-1)+jj
+  !     indez(kk,jj,ii) = (dimy*dimz)*(ii-1)+dimz*(jj-1)+kk
+  !
+  function indexu(ii,jj,kk)
+    !
+    implicit none
+    !
+    integer             :: indexu
+    integer, intent(in) :: ii,jj,kk
+    !
+    indexu = (mi*(nj+1))*(kk-1)+mi*(jj-1)+ii
+    !
+  end function indexu
+  !
+  function indexp(ii,jj,kk)
+    !
+    implicit none
+    !
+    integer             :: indexp
+    integer, intent(in) :: ii,jj,kk
+    !
+    indexp = ((mi+1)*(nj+1))*(kk-1)+(mi+1)*(jj-1)+ii
+    !
+  end function indexp
+  !
+  function indeyv(jj,ii,kk)
+    !
+    implicit none
+    !
+    integer             :: indeyv
+    integer, intent(in) :: ii,jj,kk
+    !
+    indeyv = (mi+1)*nj*(kk-1)+(nj)*(ii-1)+jj
+    !
+  end function indeyv
+  !
+  function indeyp(jj,ii,kk)
+    !
+    implicit none
+    !
+    integer             :: indeyp
+    integer, intent(in) :: ii,jj,kk
+    !
+    indeyp = ((mi+1)*(nj+1))*(kk-1)+(nj+1)*(ii-1)+jj
+    !
+  end function indeyp
+   !
+  function indezw(kk,jj,ii)
+    !
+    implicit none
+    !
+    integer             :: indezw
+    integer, intent(in) :: ii,jj,kk
+    !
+    indezw = (lk*(nj+1))*(ii-1)+lk*(jj-1)+kk
+    !
+  end function indezw
+  !
+  function indezp(kk,jj,ii)
+    !
+    implicit none
+    !
+    integer             :: indezp
+    integer, intent(in) :: ii,jj,kk
+    !
+    indezp = ((lk+1)*(nj+1))*(ii-1)+(lk+1)*(jj-1)+kk
+    !
+  end function indezp
+  !
 end MODULE malla

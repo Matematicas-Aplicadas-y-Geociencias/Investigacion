@@ -15,11 +15,16 @@ use malla, only : fexp, feyp, fezp
 use malla, only : fexu, feyv, fezw
 use malla, only : form21, form26
 use malla, only : lectura_mallas_escalonadas
+use malla, only : indexu, indexp
+use malla, only : indeyv, indeyp
+use malla, only : indezw, indezp
 !
 use ec_continuidad, only : pres, corr_pres
 use ec_continuidad, only : dcorr_pres, fcorr_pres
 use ec_continuidad, only : b_o
 use ec_continuidad, only : ensambla_corr_pres_x
+use ec_continuidad, only : ensambla_corr_pres_y
+use ec_continuidad, only : ensambla_corr_pres_z
 !
 use solucionador, only : tridiagonal
 !
@@ -332,19 +337,14 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
             &MAXVAL(DABS(dw))<conv_u)EXIT
       ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(du)), MAXVAL(DABS(dv)), MAXVAL(DABS(dw))
     END DO
-    !****************************************
-    !se calcula la correcci'on de la presi'on
     !
-    ! corr_pres = cero
-    ! DO tt= 1, 3
+    !----------------------------------------------------------------------------------
+    !----------------------------------------------------------------------------------
     !
-    !-----------------------------------------
-    !-----------------------------------------
+    !                  Se calcula la correcci'on de la presi'on
     !
-    ! Se calcula la correcci'on de la presi'on
-    !
-    !-----------------------------------------
-    !-----------------------------------------
+    !----------------------------------------------------------------------------------
+    !----------------------------------------------------------------------------------
     !
     !$acc parallel loop gang collapse(2) !async(stream2)
     inicializa_corrector_presion: do kk=1, lk+1
@@ -369,31 +369,23 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
        !
        !-------------------------
        !
-       ! Condiciones de frontera
+       ! Condiciones de frontera direcci\'on x
        !
        !$acc parallel loop vector !async(stream1)
-       bucle_direccionxe: do kk = 2, lk
+       cond_fron_direc_x: do kk = 2, lk
           do jj = 2, nj
              !***********************
              !Condiciones de frontera
-             a1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 0.0_DBL
-             b1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 1.0_DBL
-             c1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+1)    = 0.0_DBL
+             a1(indexp(1,jj,kk))    = 0.0_DBL
+             b1(indexp(1,jj,kk))    = 1.0_DBL
+             c1(indexp(1,jj,kk))    = 0.0_DBL
              !
-             a1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 0.0_DBL
-             b1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 1.0_DBL
-             c1((mi+1)*(nj+1)*(kk-1) + (mi+1)*(jj-1)+mi+1) = 0.0_DBL
-             !
-             BB(1,jj,kk)  = 1._DBL
-             CC(1,jj,kk)  = 0.0_DBL
-             RR(1,jj,kk)  = 0.0_DBL
-             !
-             BB(mi+1,jj,kk)  = 1._DBL
-             CC(mi+1,jj,kk)  = 0.0_DBL
-             RR(mi+1,jj,kk)  = 0.0_DBL                
+             a1(indexp(mi+1,jj,kk)) = 0.0_DBL
+             b1(indexp(mi+1,jj,kk)) = 1.0_DBL
+             c1(indexp(mi+1,jj,kk)) = 0.0_DBL
              !
           end do
-       end do bucle_direccionxe
+       end do cond_fron_direc_x
        !
        !------------------------------------------
        !
@@ -401,7 +393,7 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
        ! de la presi\'on en direcci\'on x
        !
        !$acc parallel loop gang !async(stream2)
-       do kk = 2, lk
+       ensa_corr_dir_x: do kk = 2, lk
           do jj = 2, nj
              !$acc loop vector
              do ii = 2, mi
@@ -420,103 +412,203 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
                      &ii,jj,kk)
              end do
           end do
-       end do
+       end do ensa_corr_dir_x
        !
        !----------------------------------------------
        !
        ! Soluci\'on de la correcci\'on de la presi\'on
        !
        !$acc parallel loop gang async(stream1) wait(stream2)
-       solucion_presion_x: do kk = 2, lk
+       sol_corr_dir_x: do kk = 2, lk
           do jj = 2,nj
              !
-!             call tridiagonal(AA(1:mi+1,jj,kk),BB(1:mi+1,jj,kk),&
              call tridiagonal(&
-                  &a1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
-                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
-                  &b1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
-                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
-                  &c1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
-                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
-                  &r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1:&
-                  &(mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1),&
+                  &a1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                  &b1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                  &c1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                  &r1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
                   &mi+1)
-             corr_pres(1,jj,kk)    = r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+1)
-             corr_pres(mi+1,jj,kk) = r1((mi+1)*(nj+1)*(kk-1)+(mi+1)*(jj-1)+mi+1)
+             corr_pres(1,jj,kk)    = r1(indexp(1,jj,kk))
+             corr_pres(mi+1,jj,kk) = r1(indexp(mi+1,jj,kk))
              !
           end do
-       end do solucion_presion_x
-       !    !
-       !    !$acc parallel loop gang async(stream2)
-       !    solucion_presion_y: do ii = 2, mi
-             
-       !       call tridiagonal(BS(1:nj+1,ii),BC(1:nj+1,ii),BN(1:nj+1,ii),Ry(1:nj+1,ii),nj+1)
-       !       corr_pres(ii,1)    = Ry(1,ii)
-       !       corr_pres(ii,nj+1) = Ry(nj+1,ii)
-             
-       !    end do solucion_presion_y
-       !    !$acc wait
-       !    !
-       !    ! Actualizaci\'on del corrector de la presi\'on
-       !    !
-       !    !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
-       !    do jj = 2, nj
-       !       do ii = 2, mi
-       !          corr_pres(ii,jj) = 0.5_DBL*Rx(ii,jj)+0.5_DBL*Ry(jj,ii)
-       !       end do
-       !    end do
-       !    !$acc wait
-       !    !
-       !    ! C\'alculo de diferencias y criterio de convergencia
-       !    !
-       !    error = 0.0_DBL
-       !    maxbo = 0.0_DBL
-       !    !
-       !    !$acc parallel loop gang reduction(+:error) !async(stream1)
-       !    calculo_dif_corr_pres: do jj=2, nj
-       !       do ii=2, mi
-       !          ! error = max(error,abs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
-       !          error = error + (corr_pres(ii,jj)-fcorr_pres(ii,jj))*&
-       !               (corr_pres(ii,jj)-fcorr_pres(ii,jj))
-       !          ! maxbo = max(maxbo,abs(b_o(ii,jj)))
-       !       end do
-       !    end do calculo_dif_corr_pres
-       !    error=sqrt(error)
-       !    !
-       ! !$acc parallel loop gang reduction(+:maxbo) !async(stream2)
-       !    calculo_dif_maxbo: do jj=2, nj
-       !       do ii=2, mi
-       !          ! error = max(error,abs(corr_pres(ii,jj)-fcorr_pres(ii,jj)))
-       !          ! maxbo = max(maxbo,abs(b_o(ii,jj)))
-       !          maxbo = maxbo+b_o(ii,jj)*b_o(ii,jj)
-       !       end do
-       !    end do calculo_dif_maxbo
-       !    maxbo = sqrt(maxbo)
-       !    !-----------------------------------------------------
-       !    !
-       !    ! Critero de convergencia del corrector de la presi'on
-       !    !
-       !    ! $acc wait
-       !    if( error<conv_p )then
-       !       ! write(*,*) "PRES: convergencia ", error, " con ", iter_ecuaci," iteraciones"
-       !       iter_ecuaci = 0
-       !       exit
-       !    else if (iter_ecuaci > iter_ecuaci_max) then
-       !       iter_ecuaci = 0
-       !       write(*,*) "ADVER. PRES: convergencia no alcanzada ", error
-       !       exit
-       !    else
-       !       iter_ecuaci = iter_ecuaci+1
-       !       ! write(*,*) 'corrector presion ', MAXVAL(ABS(dcorr_pres)), MAXVAL(ABS(b_o))
-       !    end if
-       ! end do correccion_presion
-       ! !$acc wait
+       end do sol_corr_dir_x
        !
-       ! ---------------------------------------------------------
+       ! Actualizaci\'on del corrector de la presi\'on
+       ! en direcci\'on x
        !
-       CALL corrector_presion(corr_pres,xp,yp,zp,d_xu,d_yv,d_zw,u,v,w,&
-            &temp,b_o,au,av,aw,conv_p)
-       corr_pres = rel_pres*corr_pres
+       do kk = 2, lk
+          do jj = 2, nj
+             do ii =2, mi
+                corr_pres(ii,jj,kk) = r1(indexp(ii,jj,kk))
+             end do
+          end do
+       end do
+       !
+       !-------------------------------------------------------------------------
+       !-------------------------------------------------------------------------
+       !
+       ! Condiciones de frontera direcci\'on y
+       !
+       !$acc parallel loop vector !async(stream1)
+       cond_fron_direc_y: do kk = 2, lk
+          do ii = 2, mi
+             !***********************
+             !Condiciones de frontera
+             a1(indeyp(1,ii,kk))    = 0.0_DBL
+             b1(indeyp(1,ii,kk))    = 1.0_DBL
+             c1(indeyp(1,ii,kk))    = 0.0_DBL
+             !
+             a1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+             b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
+             c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+             !
+          end do
+       end do cond_fron_direc_y
+       !
+       !------------------------------------------
+       !
+       ! Se ensambla la ecuaci\'on de correcci\'on
+       ! de la presi\'on en direcci\'on x
+       !
+       !$acc parallel loop gang !async(stream2)
+       ensa_corr_dir_y: do kk = 2, lk
+          do ii = 2, mi
+             !$acc loop vector
+             do jj = 2, nj
+                call ensambla_corr_pres_y(&
+                     &deltaxp,&
+                     &deltayp,&
+                     &deltazp,&
+                     &deltaxu,&
+                     &deltayv,&
+                     &deltazw,&
+                     &u,v,w,&
+                     &corr_pres,&
+                     &rel_pres,&
+                     &a1,b1,c1,r1,&
+                     &au,av,aw,&
+                     &jj,ii,kk)
+             end do
+          end do
+       end do ensa_corr_dir_y
+       !
+       !----------------------------------------------
+       !
+       ! Soluci\'on de la correcci\'on de la presi\'on
+       ! en direcci\'on y
+       !
+       !$acc parallel loop gang async(stream1) wait(stream2)
+       sol_corr_dir_y: do kk = 2, lk
+          do ii = 2, mi
+             !
+             call tridiagonal(&
+                  &a1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                  &b1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                  &c1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                  &r1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                  &nj+1)
+             corr_pres(ii,1,kk)    = r1(indeyp(1,ii,kk))
+             corr_pres(ii,nj+1,kk) = r1(indeyp(nj+1,ii,kk))
+             !
+          end do
+       end do sol_corr_dir_y
+       !
+       ! Actualizaci\'on del corrector de la presi\'on
+       ! en direcci\'on y
+       !
+       do kk = 2, lk
+          do ii = 2, nj
+             do jj =2, mi
+                corr_pres(ii,jj,kk) = r1(indeyp(jj,ii,kk))
+             end do
+          end do
+       end do
+       !
+       !------------------------------------------------------------------------
+       !------------------------------------------------------------------------
+       !
+       ! Condiciones de frontera direcci\'on z
+       !
+       !$acc parallel loop vector !async(stream1)
+       cond_fron_direc_z: do ii = 2, mi
+          do jj = 2, nj
+             !***********************
+             !Condiciones de frontera
+             a1(indezp(1,jj,ii))    = 0.0_DBL
+             b1(indezp(1,jj,ii))    = 1.0_DBL
+             c1(indezp(1,jj,ii))    = 0.0_DBL
+             !
+             a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+             b1(indezp(lk+1,jj,ii)) = 1.0_DBL
+             c1(indezp(lk+1,jj,ii)) = 0.0_DBL
+             !
+          end do
+       end do cond_fron_direc_z
+       !
+       !------------------------------------------
+       !
+       ! Se ensambla la ecuaci\'on de correcci\'on
+       ! de la presi\'on en direcci\'on x
+       !
+       !$acc parallel loop gang !async(stream2)
+       ensa_corr_dir_z: do ii = 2, mi
+          do jj = 2, nj
+             !$acc loop vector
+             do kk = 2, lk
+                call ensambla_corr_pres_z(&
+                     &deltaxp,&
+                     &deltayp,&
+                     &deltazp,&
+                     &deltaxu,&
+                     &deltayv,&
+                     &deltazw,&
+                     &u,v,w,&
+                     &corr_pres,&
+                     &b_o,&
+                     &rel_pres,&
+                     &a1,b1,c1,r1,&
+                     &au,av,aw,&
+                     &kk,jj,ii)
+             end do
+          end do
+       end do ensa_corr_dir_z
+       !
+       !----------------------------------------------
+       !
+       ! Soluci\'on de la correcci\'on de la presi\'on
+       ! en direcci\'on y
+       !
+       !$acc parallel loop gang async(stream1) wait(stream2)
+       sol_corr_dir_z: do ii = 2, mi
+          do jj = 2, nj
+             !
+             call tridiagonal(&
+                  &a1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                  &b1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                  &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                  &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                  &lk+1)
+             corr_pres(ii,jj,1)    = r1(indezp(1,jj,ii))
+             corr_pres(ii,jj,lk+1) = r1(indezp(lk+1,jj,ii))
+             !
+          end do
+       end do sol_corr_dir_z
+       !
+       ! Actualizaci\'on del corrector de la presi\'on
+       ! en direcci\'on y
+       !
+       do ii = 2, mi
+          do jj = 2, nj
+             do kk =2, lk
+                corr_pres(ii,jj,kk) = r1(indezp(kk,jj,ii))
+             end do
+          end do
+       end do
+       !
+       !-----------------------------------------------------------------------------
+       !-----------------------------------------------------------------------------
+       !
        !****************************************************
        !critero de convergencia del corrector de la presi'on
        IF(MAXVAL(DABS(dcorr_pres))<conv_p)EXIT

@@ -182,69 +182,9 @@ CLOSE(unit=14)
 ! temp_ant(1,1)    = 1._DBL
 ! temp_ant(mi+1,1) = 1._DBL
 !******************************
-! Se definen bordes s'olidos en
-! caso de haberlos.
-! FORALL(i=1:mi,j=1:nsolid,k=1:lk+1)
-!   gamma_u(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_u(i,nj+2-j,k) = visc_solido
-!   Ri(i,j,k)      = cero
-!   Ri(i,nj+2-j,k) = cero
-! END FORALL
-! FORALL(i=1:nsolid,j=1:nj+1,k=1:lk+1)
-!   gamma_u(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_u(mi+1-i,j,k) = visc_solido
-!   Ri(i,j,k)      = cero
-!   Ri(mi+1-i,j,k) = cero
-! END FORALL
-! FORALL(i=1:mi,j=1:nj+1,k=1:nsolid)
-!   gamma_u(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_u(i,j,lk+2-k) = visc_solido
-!   Ri(i,j,k)      = cero
-!   Ri(i,j,lk+2-k) = cero
-! END FORALL
-! FORALL(i=1:mi+1,j=1:nsolid,k=1:lk+1)
-!   gamma_v(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_v(i,nj+1-j,k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:nsolid,j=1:nj,k=1:lk+1)
-!   gamma_v(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_v(mi+2-i,j,k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:mi+1,j=1:nj,k=1:nsolid)
-!   gamma_v(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_v(i,j,lk+2-k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! 
-! FORALL(i=1:mi+1,j=1:nsolid,k=1:lk)
-!   gamma_w(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_w(i,nj+1-j,k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:nsolid,j=1:nj+1,k=1:lk)
-!   gamma_w(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_w(mi+2-i,j,k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:mi+1,j=1:nj+1,k=1:nsolid)
-!   gamma_w(i,j,k)      = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_w(i,j,lk+1-k) = visc_solido !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:mi+1,j=1:nsolid,k=1:lk+1)
-!   gamma_t(i,j,k)      = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_t(i,nj+2-j,k) = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:nsolid,j=1:nj+1,k=1:lk+1)
-!   gamma_t(i,j,k)      = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_t(mi+2-i,j,k) = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=1:mi+1,j=1:nj+1,k=1:nsolid)
-!   gamma_t(i,j,k)      = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-!   gamma_t(i,j,lk+2-k) = gamma_s !sqrt(Pr/Ra)+5.e-2_DBL
-! END FORALL
-! FORALL(i=i_o:i_1,j=1:nsolid,k=1:nsolid)
-!   gamma_t(i,j,k) = visc_solido !sqrt(1._DBL/(Pr*Ra)) !1._DBL
-!   gamma_t(i,nj+2-j,k) = visc_solido !sqrt(1._DBL/(Pr*Ra)) !1._DBL    
-! END FORALL
-!***********
-!incrementos
+!
+!        incrementos
+!
 d_xu(1) = xu(2)-xu(1)
 DO i = 2, mi-1
   d_xu(i)  = xu(i+1)-xu(i)
@@ -260,18 +200,7 @@ DO k = 2, lk-1
   d_zw(k)  = zw(k+1)-zw(k)
   d2_zw(k) = zw(k+1)-zw(k-1)
 END DO
-! fexu(1)    = 0_DBL
-DO i = 1, mi-1
-  fexu(i)  = (xu(i+1) - xp(i+1)) / (xu(i+1) - xu(i))
-END DO
-! feyv(1)    = 0_DBL
-DO j = 1, nj-1
-  feyv(j)  = (yv(j+1) - yp(j+1)) / (yv(j+1) - yv(j))
-END DO
-! fezw(1)    = 0_DBL
-DO k = 1, lk-1
-  fezw(k)  = (zw(k+1) - zp(k+1)) / (zw(k+1) - zw(k))
-END DO
+!
 !------------------------------------------------
 !
 ! Lectura de mallas escalonadas

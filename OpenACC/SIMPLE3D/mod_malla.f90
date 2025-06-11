@@ -276,7 +276,7 @@ contains
        deltayvo(jj) = ypo(jj+1)-ypo(jj)
     end do
     do kk = 2, lk
-       deltazuo(kk) = zwo(kk)-zwo(kk-1)
+       deltazvo(kk) = zwo(kk)-zwo(kk-1)
     end do
     !
     ! C\'alculo de los tamanios de los vol\'umenes de control

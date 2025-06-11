@@ -11,7 +11,6 @@
 module ec_continuidad
   !
   use malla, only : mi, nj, lk, DBL
-  use malla, only : xu, yv, zw, xp, yp, zp
   use malla, only : indexp, indeyp, indezp
   !
   ! use cond_frontera, only : tipo_cond_front

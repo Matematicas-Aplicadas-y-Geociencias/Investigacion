@@ -11,7 +11,6 @@
 module ec_momento
   !
   use malla,         only : mi, nj, lk, DBL
-  use malla,         only : xu, yv, zw, xp, yp, zp
   !
   use cond_frontera, only : tipo_cond_front
   !
@@ -79,7 +78,7 @@ contains
        do kk = 1, lk+1
           do jj = 1, nj+1
              do ii = 1, mi
-                u_ant(ii,jj) = 0.0_DBL
+                u_ant(ii,jj,kk) = 0.0_DBL
              end do
           end do
        end do
@@ -153,201 +152,40 @@ contains
     !
   end subroutine ini_frontera_uv
   !
-  ! !*******************************************************************
-  ! !
-  ! ! ensambla_corr_pres
-  ! !
-  ! ! Subrutina que calcula los coeficientes de la matriz tridiagonal
-  ! ! para la correcci\'on de la presi\'on
-  ! !
-  ! !*******************************************************************
-  ! subroutine ensambla_corr_pres(&
-  !      &deltaxpo,&
-  !      &deltaypo,&
-  !      &deltazpo,&
-  !      &deltaxuo,&
-  !      &deltayvo,&
-  !      &deltazwo,&
-  !      &u_o,v_o,w_o,&
-  !      b_o,&
-  !      &corr_pres_o,&
-  !      &rel_vo,&
-  !      &AI_o,AC_o,AD_o,Rx_o,&
-  !      &au_o,av_o,aw_o,&
-  !      &ii,jj,kk,&
-  !      &direc)
-  !   implicit none
-  !   !$acc routine
-  !   !
-  !   ! Tama\~no del volumen de control
-  !   !
-  !   real(kind=DBL), dimension(mi), intent(in) :: deltaxpo
-  !   real(kind=DBL), dimension(nj), intent(in) :: deltaypo
-  !   real(kind=DBL), dimension(lk), intent(in) :: deltazpo
-  !   !
-  !   ! Distancia entre nodos contiguos de la malla de p en direcci\'on horizontal x
-  !   !
-  !   real(kind=DBL), dimension(mi), intent(in) :: deltaxuo
-  !   !
-  !   ! Distancia entre nodos contiguos de la malla de p en direcci\'on horizontal y
-  !   !
-  !   real(kind=DBL), dimension(nj), intent(in) :: deltayvo
-  !   !
-  !   !
-  !   ! Distancia entre nodos contiguos de la malla de p en direcci\'on vertical z
-  !   !
-  !   real(kind=DBL), dimension(nj), intent(in) :: deltazwo
-  !   !   
-  !   ! Velocidad, presi\'on, t\'ermino fuente b
-  !   !
-  !   real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in)  :: u_o
-  !   real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in)  :: v_o
-  !   real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in)  :: w_o
-  !   real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: corr_pres_o
-  !   real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(out) :: b_o
-  !   !
-  !   ! coeficiente de relajaci\'on
-  !   !
-  !   real(kind=DBL), intent(in) :: rel_vo
-  !   !
-  !   ! Coeficientes de las matrices
-  !   !
-  !   ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
-  !   ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
-  !   ! de momento en, energ\'ia y la correcci\'on de la presi\'on **
-  !   !
-  !   real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-  !   ! real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
-  !   real(kind=DBL), dimension(mi,nj+1,lk+1), intent(in) :: au_o
-  !   real(kind=DBL), dimension(mi+1,nj,lk+1), intent(in) :: av_o
-  !   real(kind=DBL), dimension(mi+1,nj+1,lk), intent(in) :: aw_o
-  !   !
-  !   ! \'Indice para recorrer las direcciones x, y. z
-  !   !
-  !   integer, intent(in)   :: ii, jj, kk
-  !   character, intent(in) :: direc
-  !   !
-  !   ! Variables auxiliares
-  !   !
-  !   ! integer :: ii, jj
-  !   !
-  !   ! Auxiliares de interpolaci\'on
-  !   !
-  !   real(kind=DBL) :: ui, ud, vs, vn, wt, wb
-  !   real(kind=DBL) :: ai, ad, as, an, at, ab
-  !   real(kind=DBL) :: alpha,beta,gamma,delta
-  !   ! real(kind=DBL) :: di, dd, ds, dn
-  !   !
-  !   ! C\'alculo de los coeficientes
-  !   !
-  !   ! $acc loop gang
-  !   ! bucle_direccion_y: do jj = 2, nj
-  !   !------------------------
-  !   ! Condiciones de frontera
-  !   AC_o(1,jj,kk) = 1._DBL
-  !   AD_o(1,jj,kk) = 0._DBL
-  !   Rx_o(1,jj,kk) = 0._DBL
-  !   !
-  !   ! Llenado de la matriz
-  !   !
-  !   ! $acc loop vector
-  !   ! bucle_direccion_x: do ii = 2, mi
-  !   !
-  !   ! Interpolaciones necesarias
-  !   !
-  !   ! u
-  !   !
-  !   ud = u_o(ii,jj,kk)
-  !   ui = u_o(ii-1,jj,kk)
-  !   !
-  !   ! v
-  !   !
-  !   vn = v_o(ii,jj,kk)
-  !   vs = v_o(ii,jj-1,kk)
-  !   !
-  !   ! w
-  !   !
-  !   wt = w_o(ii,jj,kk)
-  !   wb = w_o(ii,jj,kk-1)
-  !   !    
-  !   ! coeficientes de la ecuaci\'on de momento
-  !   !
-  !   ai = au_o(ii-1,jj,kk)
-  !   ad = au_o(ii,jj,kk)
-  !   as = av_o(ii,jj-1,kk)
-  !   an = av_o(ii,jj,kk)
-  !   ab = aw_o(ii,jj,kk-1)
-  !   at = aw_o(ii,jj,kk)
-  !   !
-  !   ! Tama\~no de los vol\'umenes de control para la velocidad u
-  !   !
-  !   ! delta_x = deltaxpo(ii)
-  !   ! delta_y = deltaypo(jj)
-  !   ! delta_z = deltazpo(kk)
-  !   !
-  !   ! -------------------------
-  !   !
-  !   ! Coeficientes de la matriz
-  !   !
-  !   AI_o(ii,jj,kk) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ai
-  !   AD_o(ii,jj,kk) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/ad
-  !   alpha          =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/as
-  !   beta           =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/an
-  !   gamma          =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/ab
-  !   delta          =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/at
-  !   AC_o(ii,jj,kk) = ( -AI_o(ii,jj) - AD_o(ii,jj)-&
-  !        &alpha - beta - gamma - delta ) / rel_vo
-  !   !
-  !   b_o(ii,jj)  = (ui-ud)*deltaypo(jj)*deltazpo(kk)+&
-  !        &(vs-vn)*deltaxpo(ii)*deltazpo(kk)+&
-  !        &(wb-wt)*deltaxpo(ii)*deltaypo(jj)
-  !   !
-  !   Rx_o(ii,jj) =-alpha*corr_pres_o(ii,jj-1,kk)-&
-  !        &beta *corr_pres_o(ii,jj+1,kk)+&
-  !        &gamma*corr_pres_o(ii,jj,kk-1)+&
-  !        &delta*corr_pres_o(ii,jj,kk+1)+&
-  !        &b_o(ii,jj,kk) +&
-  !        &(1._DBL-rel_vo)*AC_o(ii,jj,kk)*corr_pres_o(ii,jj,kk)
-  !   ! end do bucle_direccion_x
-  !   ! !
-  !   ! ! Condicion frontera
-  !   ! !
-  !   AI_o(mi+1,jj,kk) = 0.0_DBL
-  !   AC_o(mi+1,jj,kk) = 1.0_DBL
-  !   Rx_o(mi+1,jj,kk) = 0.0_DBL
-
-  !   ! end do bucle_direccion_y
-  !   !
-  !   ! Condiciones de frontera para la direcci\'on y
-  !   !
-  !   ! bucle_direccionx: do ii = 2, mi
-  !   !    !***********************
-  !   !    !Condiciones de frontera
-  !   !    BC_o(1,ii)     = 1._DBL
-  !   !    BN_o(1,ii)     = 0.0_DBL
-  !   !    Ry_o(1,ii)     = 0.0_DBL
-  !   !    !
-  !   !    BC_o(nj+1,ii)  = 1._DBL
-  !   !    BS_o(nj+1,ii)  = 0.0_DBL
-  !   !    Ry_o(nj+1,ii)  = 0.0_DBL
-  !   ! end do bucle_direccionx
-  ! end subroutine ensambla_corr_pres
-  ! !  
   !*******************************************************************
   !
-  ! ensambla_velu
+  ! ensambla_velu_x
   !
   ! Subrutina que calcula los coeficientes de la matriz tridiagonal
-  ! para la velocidad u
+  ! para la velocidad u en la direcci\'on x
   !
   !*******************************************************************
-  subroutine ensambla_velu(deltaxuo,deltayuo,deltaxpo,&
-       &deltayvo,fexpo,feypo,fexuo,gamma_momento,&
-       &fuente_con_uo,fuente_lin_uo,&
-       &u_o,u_anto,v_o,&
-       &temp_o,pres_o,Ri_o,dt_o,rel_vo,&
-       &AI_o,AC_o,AD_o,Rx_o,BS_o,BC_o,BN_o,Ry_o,au_o,&
-       &ii,jj&
+  subroutine ensambla_velu_x(&
+       &deltaxuo,&
+       &deltayuo,&
+       &deltazuo,&
+       &deltaxpo,&
+       &deltayvo,&
+       &deltazwo,&
+       &fexpo,&
+       &feypo,&
+       &fezpo,&
+       &fexuo,&
+       &gamma_momento,&
+       &u_o,&
+       &u_anto,&
+       &v_o,&
+       &w_o,&
+       &temp_o,&
+       &pres_o,&
+       &fuente_con_uo,&
+       &fuente_lin_uo,&
+       &Ri_o,&
+       &dt_o,&
+       &rel_vo,&
+       &AI_o,AC_o,AD_o,Rx_o,&
+       &au_o,&
+       &ii,jj,kk&
        &)
     implicit none
     !$acc routine
@@ -356,45 +194,52 @@ contains
     !
     real(kind=DBL), dimension(mi), intent(in) :: deltaxuo
     real(kind=DBL), dimension(nj), intent(in) :: deltayuo
+    real(kind=DBL), dimension(lk), intent(in) :: deltazuo
     !
-    ! Distancia entre nodos contiguos de la malla de u en direcci\'on horizontal
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on horizontal x
     !
     real(kind=DBL), dimension(mi), intent(in) :: deltaxpo
     !
-    ! Distancia entre nodos contiguos de la malla de u en direcci\'on vertical
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on horizontal y
     !
     real(kind=DBL), dimension(nj), intent(in) :: deltayvo
+    !
+    ! Distancia entre nodos contiguos de la malla de u en direcci\'on vertical z
+    !
+    real(kind=DBL), dimension(nj), intent(in) :: deltazwo
     !
     ! Coeficientes para interpolaci\'on
     !
     real(kind=DBL), DIMENSION(mi),   intent(in) :: fexpo
     real(kind=DBL), DIMENSION(nj),   intent(in) :: feypo
+    real(kind=DBL), dimension(lk),   intent(in) :: fezpo
     real(kind=DBL), DIMENSION(mi-1), intent(in) :: fexuo
     !
     ! Coeficiente de difusi\'on
     !
-    real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: gamma_momento
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in) :: gamma_momento
     !
     ! Velocidad, presi\'on y temperatura
     !
-    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: u_o,    u_anto
-    real(kind=DBL), dimension(mi+1,nj),   intent(in) :: v_o
-    real(kind=DBL), dimension(mi+1,nj+1), intent(in) :: temp_o, pres_o
+    real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in) :: u_o, u_anto
+    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: v_o
+    real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in) :: w_o
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in) :: temp_o, pres_o
     !
     ! T\'erminos fuente
     !
-    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_con_uo
-    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: fuente_lin_uo    
-    real(kind=DBL), dimension(mi,nj+1),   intent(in) :: Ri_o
+    real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in) :: fuente_con_uo
+    real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in) :: fuente_lin_uo    
+    real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in) :: Ri_o
     
     !
     ! Incremento de tiempo y coeficiente de relajaci\'on
     !
     real(kind=DBL), intent(in) :: dt_o, rel_vo
-    ! !
-    ! ! \'Indice para recorrer la direcci\'on y
-    ! !
-    integer, intent(in)        :: ii, jj
+    !
+    ! \'Indices para recorrer las direcciones x, y, z
+    !
+    integer, intent(in)        :: ii, jj, kk
     !
     ! Coeficientes de las matrices
     !
@@ -439,7 +284,7 @@ contains
     ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
     ! corresponde **
     gammad = ( gamma_momento(ii+1,jj+1) * gamma_momento(ii+1,jj) ) / &
-         &( gamma_momento(ii+1,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii+1,jj)*feypo(jj) )
+         &( gamma_momento(ii+1,jj+1)*(1._DBL-feypo(jj))+gamma_momento(ii+1,jj)*feypo(jj) )
     gammai = ( gamma_momento(ii,jj+1) * gamma_momento(ii,jj) ) / &
          &( gamma_momento(ii,jj+1) * (1._DBL-feypo(jj))+gamma_momento(ii,jj)*feypo(jj) )
     !
@@ -526,9 +371,8 @@ contains
          &(pres_o(ii,jj)-pres_o(ii+1,jj))*deltay+&
          &BC_o(jj,ii)*(1._DBL-rel_vo)*u_o(ii,jj)
     !
-  end subroutine ensambla_velu
-
-
+  end subroutine ensambla_velu_x
+  !
   !*******************************************************************
   !*******************************************************************
   !

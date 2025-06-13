@@ -352,6 +352,17 @@ contains
     !
   end function indexu
   !
+  function indeyu(jj,ii,kk)
+    !
+    implicit none
+    !
+    integer             :: indeyu
+    integer, intent(in) :: ii,jj,kk
+    !
+    indeyu = (mi*(nj+1))*(kk-1)+(nj+1)*(ii-1)+jj
+    !
+  end function indeyu
+  !
   function indexp(ii,jj,kk)
     !
     implicit none

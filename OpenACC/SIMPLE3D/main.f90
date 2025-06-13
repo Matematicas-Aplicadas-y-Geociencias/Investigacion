@@ -26,6 +26,15 @@ use ec_continuidad, only : ensambla_corr_pres_x
 use ec_continuidad, only : ensambla_corr_pres_y
 use ec_continuidad, only : ensambla_corr_pres_z
 !
+use ec_momento, only : u, u_ant, du, au, Resu, fu
+use ec_momento, only : v, v_ant, dv, av, Resv, fv
+use ec_momento, only : w, w_ant, dw, aw, Resw, fw
+use ec_momento, only : fuente_con_u, fuente_lin_u
+use ec_momento, only : fuente_con_v, fuente_lin_v
+use ec_momento, only : fuente_con_w, fuente_lin_w
+use ec_momento, only : gamma_momen, Ri
+use ec_momento, only : ensambla_velu_x
+!
 use solucionador, only : tridiagonal
 !
 IMPLICIT NONE
@@ -46,9 +55,9 @@ INTEGER :: i,j,k,tt,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_ite
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 !*******************************************
 ! Variables del flujo,entropia,nusselt e inc'ognitas,residuos,relajaci'on y convergencia
-REAL(kind=DBL), DIMENSION(mi,nj+1,lk+1)   :: u,u_ant,du,au,Resu,gamma_u
-REAL(kind=DBL), DIMENSION(mi+1,nj,lk+1)   :: v,v_ant,dv,av,Resv,gamma_v
-REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk)   :: w,w_ant,dw,aw,Resw,gamma_w,Ri
+REAL(kind=DBL), DIMENSION(mi,nj+1,lk+1)   :: gamma_u
+REAL(kind=DBL), DIMENSION(mi+1,nj,lk+1)   :: gamma_v
+REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk)   :: gamma_w
 REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: temp,temp_ant,dtemp,Restemp,gamma_t
 !,pres,corr_pres,dcorr_pres
 REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: entropia_calor,entropia_viscosa,entropia,uf,vf,wf
@@ -132,6 +141,9 @@ ENDIF
 gamma_s = 600._DBL*sqrt(1._DBL/(Pr*Ra))
 gamma_t = 1._DBL/(Pr*Ra) !sqrt(1._DBL/(Pr*Ra))
 gamma_u = 1._DBL/Ra      !sqrt(Pr/Ra)
+gamma_momen = 1._DBL/Ra
+fuente_con_u = 0._DBL
+fuente_lin_u = 0._DBL
 gamma_v = 1._DBL/Ra      !sqrt(Pr/Ra)
 gamma_w = 1._DBL/Ra      !sqrt(Pr/Ra)
 Ri      = Rin
@@ -251,21 +263,136 @@ WRITE(*,*)' '
 106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
 !*********************************************************
 DO l=1,itermax/paq_itera   !inicio del repetidor principal
-DO kl=1,paq_itera          !inicio del paquete iteraciones
-ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
-    DO tt= 1, 3
-       CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
-            &v,w,pres,gamma_u,dt,du,au,rel_vel)
-       CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
-            &w,pres,gamma_v,dt,dv,av,rel_vel)
-       CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
-            &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
-      !****************************************
-      !Criterio de convergencia de la velocidad
-       IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
-            &MAXVAL(DABS(dw))<conv_u)EXIT
-      ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(du)), MAXVAL(DABS(dv)), MAXVAL(DABS(dw))
-    END DO
+   DO kl=1,paq_itera          !inicio del paquete iteraciones
+      ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
+         DO tt= 1, 3
+            !
+            !----------------------------------------------------------
+            !----------------------------------------------------------
+            !
+            !          Se resuelve la ecuaci'on de momento
+            !
+            !----------------------------------------------------------
+            !----------------------------------------------------------
+            !
+            !$acc parallel loop gang collapse(2) !async(stream1)
+            inicializacion_fux: do kk = 1, lk+1
+               do jj = 1, nj+1
+                  do ii = 1, mi
+                     fu(ii,jj,kk) = u(ii,jj,kk)
+                  end do
+               end do
+            end do inicializacion_fux
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de x
+            !
+            !$acc parallel loop gang !async(stream2)
+            ensa_velu_dir_x: do kk = 2, lk
+               do jj = 2, nj
+                  do ii = 2, mi-1
+                     call ensambla_velu_x(&
+                          &deltaxu,&
+                          &deltayu,&
+                          &deltazu,&
+                          &deltaxp,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &fexu,&
+                          &gamma_momen,&
+                          &u,&
+                          &u_ant,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_u,&
+                          &fuente_lin_u,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &au,&
+                          &ii,jj,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_velu_dir_x
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on x
+            !
+            !$acc parallel loop vector !async(stream1)
+            cond_fron_u_direc_x: do kk = 2, lk
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indexu(1,jj,kk))    = 0.0_DBL
+                  b1(indexu(1,jj,kk))    = 1.0_DBL
+                  c1(indexu(1,jj,kk))    = 0.0_DBL
+                  r1(indexu(1,jj,kk))    = 0.0_DBL
+                  au(1,jj,kk)            = 1.0e40_DBL
+                  !
+                  a1(indexu(mi,jj,kk))   = 0.0_DBL
+                  b1(indexu(mi,jj,kk))   = 1.0_DBL
+                  c1(indexu(mi,jj,kk))   = 0.0_DBL
+                  r1(indexu(mi,jj,kk))   = 0.0_DBL
+                  au(mi,jj,kk)           = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_u_direc_x
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de momento para u
+            ! en direcci\'on x
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            sol_u_dir_x: do kk = 2, lk
+               do jj = 2, nj
+                  !
+                  call tridiagonal(&
+                       &a1(indexu(1,jj,kk):indexu(mi,jj,kk)),&
+                       &b1(indexu(1,jj,kk):indexu(mi,jj,kk)),&
+                       &c1(indexu(1,jj,kk):indexu(mi,jj,kk)),&
+                       &r1(indexu(1,jj,kk):indexu(mi,jj,kk)),&
+                       &mi)
+                  !
+               end do
+            end do sol_u_dir_x
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad u
+            ! en direcci\'on x
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            do kk = 2, lk
+               do jj = 2, nj
+                  do ii = 1, mi
+                     u(ii,jj,kk) = r1(indexu(ii,jj,kk))
+                  end do
+               end do
+            end do
+            !
+            CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
+                 &v,w,pres,gamma_u,dt,du,au,rel_vel)
+            CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
+                 &w,pres,gamma_v,dt,dv,av,rel_vel)
+            CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
+                 &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
+            !****************************************
+            !Criterio de convergencia de la velocidad
+            IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
+                 &MAXVAL(DABS(dw))<conv_u)EXIT
+            ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(du)), MAXVAL(DABS(dv)), MAXVAL(DABS(dw))
+         END DO
     !
     !----------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------
@@ -308,10 +435,12 @@ ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
              a1(indexp(1,jj,kk))    = 0.0_DBL
              b1(indexp(1,jj,kk))    = 1.0_DBL
              c1(indexp(1,jj,kk))    = 0.0_DBL
+             r1(indexp(1,jj,kk))    = 0.0_DBL
              !
              a1(indexp(mi+1,jj,kk)) = 0.0_DBL
              b1(indexp(mi+1,jj,kk)) = 1.0_DBL
              c1(indexp(mi+1,jj,kk)) = 0.0_DBL
+             r1(indexp(mi+1,jj,kk)) = 0.0_DBL
              !
           end do
        end do cond_fron_direc_x

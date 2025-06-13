@@ -11,6 +11,7 @@
 module ec_momento
   !
   use malla,         only : mi, nj, lk, DBL
+  use malla,         only : indexp, indeyp, indezp
   !
   use cond_frontera, only : tipo_cond_front
   !
@@ -247,13 +248,16 @@ contains
     ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
     ! de momento, energ\'ia y la correcci\'on de la presi\'on **
     !
-    real(kind=DBL), dimension(mi+1,nj+1), intent(out) :: AI_o, AC_o, AD_o, Rx_o
-    real(kind=DBL), dimension(nj+1,mi+1), intent(out) :: BS_o, BC_o, BN_o, Ry_o
-    real(kind=DBL), dimension(mi,nj+1),   intent(out) :: au_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AI_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AC_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AD_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: RX_o
+    !
+    real(kind=DBL), dimension(mi,nj+1,lk+1),         intent(out) :: au_o
     !
     ! Variables auxiliares
     !
-    integer :: kk, info
+    integer :: info
     !
     ! Auxiliares de interpolaci\'on
     !
@@ -268,10 +272,8 @@ contains
     !
     ! u
     !
-    ud = fexuo(ii)  *u_o(ii+1,jj)+(1.0_DBL-fexuo(ii))  *u_o(ii,jj)
-    ui = fexuo(ii-1)*u_o(ii,jj)  +(1.0_DBL-fexuo(ii-1))*u_o(ii-1,jj)
-    ! ui = (u_o(ii-1,jj)+u_o(ii,jj))/2._DBL
-    ! ud = (u_o(ii,jj)+u_o(ii+1,jj))/2._DBL
+    ud = fexuo(ii)  *u_o(ii+1,jj,kk)+(1.0_DBL-fexuo(ii))  *u_o(ii,jj,kk)
+    ui = fexuo(ii-1)*u_o(ii,jj,kk)  +(1.0_DBL-fexuo(ii-1))*u_o(ii-1,jj,kk)
     !
     ! v
     !

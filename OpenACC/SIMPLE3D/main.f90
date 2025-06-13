@@ -16,6 +16,7 @@ use malla, only : fexu, feyv, fezw
 use malla, only : form21, form26
 use malla, only : lectura_mallas_escalonadas
 use malla, only : indexu, indexp
+use malla, only : indeyu
 use malla, only : indeyv, indeyp
 use malla, only : indezw, indezp
 !
@@ -34,6 +35,8 @@ use ec_momento, only : fuente_con_v, fuente_lin_v
 use ec_momento, only : fuente_con_w, fuente_lin_w
 use ec_momento, only : gamma_momen, Ri
 use ec_momento, only : ensambla_velu_x
+use ec_momento, only : ensambla_velu_y
+use ec_momento, only : ensambla_velu_z
 !
 use solucionador, only : tridiagonal
 !
@@ -276,13 +279,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !----------------------------------------------------------
             !
             !$acc parallel loop gang collapse(2) !async(stream1)
-            inicializacion_fux: do kk = 1, lk+1
+            inicializacion_fu: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi
                      fu(ii,jj,kk) = u(ii,jj,kk)
                   end do
                end do
-            end do inicializacion_fux
+            end do inicializacion_fu
             !
             !----------------------------------------
             !
@@ -381,15 +384,217 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do
             !
-            CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
-                 &v,w,pres,gamma_u,dt,du,au,rel_vel)
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de y
+            !
+            !$acc parallel loop gang !async(stream2)
+            ensa_velu_dir_y: do kk = 2, lk
+               do ii = 2, mi-1
+                  do jj = 2, lk
+                     call ensambla_velu_y(&
+                          &deltaxu,&
+                          &deltayu,&
+                          &deltazu,&
+                          &deltaxp,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &fexu,&
+                          &gamma_momen,&
+                          &u,&
+                          &u_ant,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_u,&
+                          &fuente_lin_u,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &jj,ii,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_velu_dir_y
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on y
+            !
+            !$acc parallel loop vector !async(stream1)
+            cond_fron_u_direc_y: do kk = 2, lk
+               do ii = 2, mi-1
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indeyu(1,ii,kk))    = 0.0_DBL
+                  b1(indeyu(1,ii,kk))    = 1.0_DBL
+                  c1(indeyu(1,ii,kk))    = 0.0_DBL
+                  r1(indeyu(1,ii,kk))    = 0.0_DBL
+                  au(ii,1,kk)            = 1.0e40_DBL
+                  !
+                  a1(indeyu(nj+1,ii,kk)) = 0.0_DBL
+                  b1(indeyu(nj+1,ii,kk)) = 1.0_DBL
+                  c1(indeyu(nj+1,ii,kk)) = 0.0_DBL
+                  r1(indeyu(nj+1,ii,kk)) = 0.0_DBL
+                  au(ii,nj+1,kk)         = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_u_direc_y
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de momento para u
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            sol_u_dir_y: do kk = 2, lk
+               do ii = 2, mi-1
+                  !
+                  call tridiagonal(&
+                       &a1(indeyu(1,ii,kk):indeyu(nj+1,ii,kk)),&
+                       &b1(indeyu(1,ii,kk):indeyu(nj+1,ii,kk)),&
+                       &c1(indeyu(1,ii,kk):indeyu(nj+1,ii,kk)),&
+                       &r1(indeyu(1,ii,kk):indeyu(nj+1,ii,kk)),&
+                       &nj+1)
+                  !
+               end do
+            end do sol_u_dir_y
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad u
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            do kk = 2, lk
+               do ii = 2, mi-1
+                  do jj = 1, nj+1
+                     u(ii,jj,kk) = r1(indeyu(jj,ii,kk))
+                  end do
+               end do
+            end do
+            !
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de z
+            !
+            !$acc parallel loop gang !async(stream2)
+            ensa_velu_dir_z: do ii = 2, mi-1
+               do jj = 2, nj
+                  do kk = 2, lk
+                     call ensambla_velu_z(&
+                          &deltaxu,&
+                          &deltayu,&
+                          &deltazu,&
+                          &deltaxp,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &fexu,&
+                          &gamma_momen,&
+                          &u,&
+                          &u_ant,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_u,&
+                          &fuente_lin_u,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &kk,jj,ii&
+                          &)
+                  end do
+               end do
+            end do ensa_velu_dir_z
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on z
+            !
+            !$acc parallel loop vector !async(stream1)
+            cond_fron_u_direc_z: do ii = 2, mi-1
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indezp(1,jj,ii))    = 0.0_DBL
+                  b1(indezp(1,jj,ii))    = 1.0_DBL
+                  c1(indezp(1,jj,ii))    = 0.0_DBL
+                  r1(indezp(1,jj,ii))    = 1.0_DBL
+                  au(ii,jj,1)            = 1.0e40_DBL
+                  !
+                  a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  b1(indezp(lk+1,jj,ii)) = 1.0_DBL
+                  c1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  r1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  au(ii,jj,lk+1)         = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_u_direc_z
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de momento para u
+            ! en direcci\'on z
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            sol_u_dir_z: do ii = 2, mi-1
+               do jj = 2, nj
+                  !
+                  call tridiagonal(&
+                       &a1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &b1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &lk+1)
+                  !
+               end do
+            end do sol_u_dir_z
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad u
+            ! en direcci\'on z
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            do ii = 2, mi-1
+               do jj = 2, nj
+                  do kk = 1, lk+1
+                     u(ii,jj,kk) = r1(indezp(kk,jj,ii))
+                  end do
+               end do
+            end do
+            !
+            !
+            calcula_fu: do kk = 1, lk+1
+               do jj = 1, nj+1
+                  do ii = 1, mi
+                     fu(ii,jj,kk) = fu(ii,jj,kk)-u(ii,jj,kk)
+                  end do
+               end do
+            end do calcula_fu
+            !
+            ! CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
+            !      &v,w,pres,gamma_u,dt,du,au,rel_vel)
             CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
                  &w,pres,gamma_v,dt,dv,av,rel_vel)
             CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
                  &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
             !****************************************
             !Criterio de convergencia de la velocidad
-            IF(MAXVAL(DABS(du))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
+            IF(MAXVAL(DABS(fu))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
                  &MAXVAL(DABS(dw))<conv_u)EXIT
             ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(du)), MAXVAL(DABS(dv)), MAXVAL(DABS(dw))
          END DO
@@ -397,7 +602,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
     !----------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------
     !
-    !                  Se calcula la correcci'on de la presi'on
+    !              Se calcula la correcci'on de la presi'on
     !
     !----------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------
@@ -664,6 +869,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
           end do
        end do
        !
+       calcula_fcorr_press: do kk=2, lk
+          do jj=2, nj
+             do ii = 2, mi
+                fcorr_pres(ii,jj,kk) = fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk)
+             end do
+          end do
+       end do calcula_fcorr_press
        !-----------------------------------------------------------------------------
        !-----------------------------------------------------------------------------
        !

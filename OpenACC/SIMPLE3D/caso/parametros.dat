@@ -2,16 +2,16 @@
 1d2    !Rec
 7.01d0 !Pr
 1.d-2  !dt
-100   !paq_itera
+50   !paq_itera
 0.d0   !Richardson
-0.60d0 !relajaci'on_presi'on
-0.50d0 !relajaci'on velocidad
-0.50d0 !relajaci'on temperatura
-1.d-3  !convergencia velocidad
-1.d-3  !convergencia temperatura
-5.d-2  !convergencia presi'on
-1.d-8  !convergencia del residuo
-1.d-8  !convergencia paso
+0.50d0 !relajaci'on_presi'on
+0.70d0 !relajaci'on velocidad
+0.70d0 !relajaci'on temperatura
+1.d-4  !convergencia velocidad
+1.d-4  !convergencia temperatura
+1.d-3  !convergencia presi'on
+1.d-7  !convergencia del residuo
+1.d-7  !convergencia paso
 './out_n050m050k050_Rxxxu.dat'   !archivo de entrada de u
 './out_n050m050k050_Rxxxv.dat'   !archivo de entrada de u
 './out_n050m050k050_Rxxxw.dat'   !archivo de entrada de v

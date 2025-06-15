@@ -167,14 +167,14 @@ DO k = 2, lk-1
     !***********************
     !Condiciones de frontera
     APj(1)      = 1._DBL !* AS(1)
-    AN(1)       = cero
+    AN(1)       = 0._DBL !cero
     Ryj(1)      = cero !* AS(1)
-    aw_o(i,1,k) = APj(1)
+    aw_o(i,1,k) = 1.e40_DBL !APj(1)
     !***********************
     APj(nj+1)      = 1._DBL !* AN(nj)
-    AS(nj)         = cero
+    AS(nj)         = 0._DBL ! cero
     Ryj(nj+1)      = cero !* AN(nj)
-    aw_o(i,nj+1,k) = APj(nj+1)
+    aw_o(i,nj+1,k) = 1.e40_DBL !APj(nj+1)
     !***********************
     CALL tri(AS,APj,AN,Ryj,nj+1)
     DO j = 1, nj+1

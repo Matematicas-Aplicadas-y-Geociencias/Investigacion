@@ -110,7 +110,7 @@ DO k = 2, lk
   END DO
 END DO
 !$OMP END PARALLEL DO
-!********************
+! !********************
 !TDMA en direccion  y
 !$OMP  PARALLEL DO DEFAULT(NONE)&
 !$OMP& PRIVATE(AS,APj,AN,Ryj,uw,ue,vs,vn,wb,wt,dw,de,ds,dn,db,dtop,gamma_w,gamma_e,gamma_s,gamma_n,gamma_b,gamma_top,delta_x,delta_y,delta_z,alpha,beta,kappa,sigma)&

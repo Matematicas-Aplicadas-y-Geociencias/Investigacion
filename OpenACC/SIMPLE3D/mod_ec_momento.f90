@@ -12,7 +12,7 @@ module ec_momento
   !
   use malla, only : mi, nj, lk, DBL
   use malla, only : indexu, indeyu, indezp  ! indices para u
-  use malla, only : indeyv, indezw
+  use malla, only : indexv, indeyv, indezw
   !
   ! use cond_frontera, only : tipo_cond_front
   !
@@ -175,8 +175,8 @@ contains
        &w_o,&
        &temp_o,&
        &pres_o,&
-       &fuente_con_uo,&
-       &fuente_lin_uo,&
+       &fuente_con_vo,&
+       &fuente_lin_vo,&
        &Ri_o,&
        &dt_o,&
        &rel_vo,&
@@ -225,8 +225,8 @@ contains
     !
     ! T\'erminos fuente
     !
-    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: fuente_con_uo
-    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: fuente_lin_uo    
+    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: fuente_con_vo
+    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: fuente_lin_vo    
     real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: Ri_o
     
     !
@@ -283,69 +283,71 @@ contains
     wt = feypo(jj)*w_o(ii,jj+1,kk)  +(1.0_DBL-feypo(jj)) * w_o(ii,jj,kk)
     wb = feypo(jj)*w_o(ii,jj+1,kk-1)+(1.0_DBL-feypo(jj)) * w_o(ii,jj,kk-1)
     !
-    ! gamma_n 
+    ! gamma_d
     !
-    ! ** se utilizan las constantes gammai y gammad como auxiliares para
-    ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
+    ! ** se utilizan las constantes gamman y gammas como auxiliares para
+    ! calcular gammad, despu\'es se utilizan para el coeficiente gamma que
     ! corresponde **
-    gammad = ( gamma_momento(ii+1,jj+1,kk) * gamma_momento(ii+1,jj,kk) ) / &
-         &(gamma_momento(ii+1,jj+1,kk)*(1._DBL-feypo(jj))+&
-         &gamma_momento(ii+1,jj,kk)*feypo(jj) )
-    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
-         &( gamma_momento(ii,jj+1,kk) * (1._DBL-feypo(jj))+&
-         &gamma_momento(ii,jj,kk)*feypo(jj) )
+    gamman = ( gamma_momento(ii+1,jj+1,kk) * gamma_momento(ii,jj+1,kk) ) / &
+         &(gamma_momento(ii+1,jj+1,kk)*(1._DBL-fexpo(ii))+&
+         &gamma_momento(ii,jj+1,kk)*fexpo(ii) )
+    gammas = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii,jj,kk) ) / &
+         &( gamma_momento(ii+1,jj,kk) * (1._DBL-fexpo(ii))+&
+         &gamma_momento(ii,jj,kk)*fexpo(jj) )
     !
-    gamman = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
-    !
-    ! gamma_s 
-    !
-    ! ** se utilizan las constantes gammai y gammad como auxiliares para
-    ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
-    ! corresponde **
-    gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj-1,kk) ) / &
-         &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
-         &gamma_momento(ii+1,jj-1,kk)*feypo(jj-1))
-    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
-         &(gamma_momento(ii,jj,kk)*(1._DBL-feypo(jj-1))+&
-         &gamma_momento(ii,jj-1,kk)*feypo(jj-1))
-    !
-    gammas = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
-    !
-    ! gamma_t
-    !
-    ! ** se utilizan las constantes gammai y gammad como auxiliares para
-    ! calcular gammat, despu\'es se utilizan para el coeficiente gamma que
-    ! corresponde **
-    gammad = ( gamma_momento(ii+1,jj,kk+1) * gamma_momento(ii+1,jj,kk) ) / &
-         &( gamma_momento(ii+1,jj,kk+1)*(1._DBL-fezpo(kk))+&
-         &gamma_momento(ii+1,jj,kk)*fezpo(kk) )
-    gammai = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
-         &( gamma_momento(ii,jj,kk+1) * (1._DBL-fezpo(kk))+&
-         &gamma_momento(ii,jj,kk)*fezpo(kk) )
-    !
-    gammat = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
-    !
-    ! gamma_b 
-    !
-    ! ** se utilizan las constantes gammai y gammad como auxiliares para
-    ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
-    ! corresponde **
-    gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj,kk-1) ) / &
-         &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
-         &gamma_momento(ii+1,jj,kk-1)*fezpo(kk-1))
-    gammai = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
-         &(gamma_momento(ii,jj,kk)*(1._DBL-fezpo(kk-1))+&
-         &gamma_momento(ii,jj,kk-1)*fezpo(kk-1))
-    !
-    gammab = gammai*gammad / (gammad * (1._DBL-fexpo(ii)) + gammai * fexpo(ii))
+    gammad = gammas*gamman / (gammas * (1._DBL-feypo(jj)) + gamman * feypo(jj))
     !
     ! gamma_i
     !
+    ! ** se utilizan las constantes gamman y gammas como auxiliares para
+    ! calcular gammai, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gamman = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii-1,jj+1,kk) ) / &
+         &(gamma_momento(ii,jj+1,kk)*(1._DBL-fexpo(ii-1))+&
+         &gamma_momento(ii-1,jj+1,kk)*fexpo(ii-1))
+    gammas = ( gamma_momento(ii,jj,kk) * gamma_momento(ii-1,jj,kk) ) / &
+         &(gamma_momento(ii,jj,kk)*(1._DBL-fexpo(ii-1))+&
+         &gamma_momento(ii-1,jj,kk)*fexpo(ii-1))
+    !
+    gammai = gamman*gammas / (gammas * (1._DBL-feypo(jj)) + gamman * feypo(jj))
+    !
+    ! gamma_t
+    !
+    ! ** se utilizan las constantes gamman y gammas como auxiliares para
+    ! calcular gammat, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gamman = ( gamma_momento(ii,jj+1,kk+1) * gamma_momento(ii,jj+1,kk) ) / &
+         &(gamma_momento(ii,jj+1,kk+1)*(1._DBL-fezpo(kk))+&
+         &gamma_momento(ii,jj+1,kk)*fezpo(kk) )
+    !
+    gammas = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
+         &( gamma_momento(ii,jj,kk+1) * (1._DBL-fezpo(kk))+&
+         &gamma_momento(ii,jj,kk)*fezpo(kk) ) 
+    !
+    gammat = gamman*gammas / (gammas * (1._DBL-feypo(jj)) + gamman * feypo(jj))
+    !
+    ! gamma_b 
+    !
+    ! ** se utilizan las constantes gamman y gammas como auxiliares para
+    ! calcular gammab, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gamman = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj+1,kk-1) ) / &
+         &(gamma_momento(ii,jj+1,kk)*(1._DBL-fezpo(kk-1))+&
+         &gamma_momento(ii,jj+1,kk-1)*fezpo(kk-1))
+    !
+    gammas = ( gamma_momento(ii,jj,kk) * gamma_momento(ii,jj,kk-1) ) / &
+         &(gamma_momento(ii,jj,kk)*(1._DBL-fezpo(kk-1))+&
+         &gamma_momento(ii,jj,kk-1)*fezpo(kk-1))
+    !
+    gammab =  gamman*gammas / (gammas * (1._DBL-feypo(jj)) + gamman * feypo(jj))
+    !
+    ! gamma_n
+    !
+    gamman = gamma_momento(ii,jj+1,kk)
+    !
+    ! gamma_s
+    !
     gammai = gamma_momento(ii,jj,kk)
-    !
-    ! gamma_d
-    !
-    gammai = gamma_momento(ii+1,jj,kk)
     !
     ! distancias entre nodos contiguos
     !
@@ -364,17 +366,17 @@ contains
     !
     ! Interpolaci\'on para la temperatura
     !
-    temp_int = fexpo(ii)*temp_o(ii+1,jj,kk) + (1.0_DBL-fexpo(ii))*temp_o(ii,jj,kk)
+    temp_int = feypo(jj)*temp_o(ii,jj+1,kk) + (1.0_DBL-feypo(jj))*temp_o(ii,jj,kk)
     !
     ! *************************
     !
     ! Coeficientes de la matriz
     !
-    AI_o(indexu(ii,jj,kk)) =-(gammai*deltay*deltaz/di*&
+    AI_o(indexv(ii,jj,kk)) =-(gammai*deltay*deltaz/di*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
          &DMAX1(0.0_DBL, ui*deltay*deltaz))
     !
-    AD_o(indexu(ii,jj,kk)) =-(gammad*deltay*deltaz/dd*&
+    AD_o(indexv(ii,jj,kk)) =-(gammad*deltay*deltaz/dd*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
          &DMAX1(0.0_DBL,-ud*deltay*deltaz))
     !
@@ -394,22 +396,22 @@ contains
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wt*dt/gammat))**5)+&
          &DMAX1(0.0_DBL,-wt*deltax*deltay)) 
     !
-    AC_o(indexu(ii,jj,kk)) = ( -AI_o(indexu(ii,jj,kk)) - AD_o(indexu(ii,jj,kk)) &
+    AC_o(indexv(ii,jj,kk)) = ( -AI_o(indexv(ii,jj,kk)) - AD_o(indexv(ii,jj,kk)) &
          &- alpha - beta - gamma - delta - &
-         &deltax*deltay*deltaz*fuente_lin_uo(ii,jj,kk)+&
+         &deltax*deltay*deltaz*fuente_lin_vo(ii,jj,kk)+&
          &deltax*deltay*deltaz/dt_o ) / rel_vo
     !
-    Rx_o(indexu(ii,jj,kk)) =-alpha*u_o(ii,jj-1,kk) -&
-         &beta  * u_o(ii,jj+1,kk) - &
-         &gamma * u_o(ii,jj,kk-1) - &
-         &delta * u_o(ii,jj,kk+1) - &
+    Rx_o(indexv(ii,jj,kk)) =-alpha*v_o(ii,jj-1,kk) -&
+         &beta  * v_o(ii,jj+1,kk) - &
+         &gamma * v_o(ii,jj,kk-1) - &
+         &delta * v_o(ii,jj,kk+1) - &
          &deltax*deltay*deltaz*Ri_o(ii,jj,kk)*temp_int+&
-         &deltax*deltay*deltaz*fuente_con_uo(ii,jj,kk)+&
+         &deltax*deltay*deltaz*fuente_con_vo(ii,jj,kk)+&
          &deltax*deltay*deltaz*v_anto(ii,jj,kk)/dt_o+&
-         &(pres_o(ii,jj,kk)-pres_o(ii+1,jj,kk))*deltay*deltaz+&
-         &AC_o(indexu(ii,jj,kk))*(1._DBL-rel_vo)*u_o(ii,jj,kk)
+         &(pres_o(ii,jj,kk)-pres_o(ii,jj+1,kk))*deltax*deltaz+&
+         &AC_o(indexv(ii,jj,kk))*(1._DBL-rel_vo)*v_o(ii,jj,kk)
     !
-    av_o(ii,jj,kk) = AC_o(indexu(ii,jj,kk)) * rel_vo
+    av_o(ii,jj,kk) = AC_o(indexv(ii,jj,kk)) * rel_vo
     !
   end subroutine ensambla_velv_x
   !
@@ -598,7 +600,7 @@ contains
     ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
     ! corresponde **
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj,kk-1) ) / &
-         &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
+         &(gamma_momento(ii+1,jj,kk)*(1._DBL-fezpo(kk-1))+&
          &gamma_momento(ii+1,jj,kk-1)*fezpo(kk-1))
     gammai = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-fezpo(kk-1))+&
@@ -612,7 +614,7 @@ contains
     !
     ! gamma_d
     !
-    gammai = gamma_momento(ii+1,jj,kk)
+    gammad = gamma_momento(ii+1,jj,kk)
     !
     ! distancias entre nodos contiguos
     !
@@ -864,7 +866,7 @@ contains
     ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
     ! corresponde **
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj,kk-1) ) / &
-         &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
+         &(gamma_momento(ii+1,jj,kk)*(1._DBL-fezpo(kk-1))+&
          &gamma_momento(ii+1,jj,kk-1)*fezpo(kk-1))
     gammai = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-fezpo(kk-1))+&
@@ -878,7 +880,7 @@ contains
     !
     ! gamma_d
     !
-    gammai = gamma_momento(ii+1,jj,kk)
+    gammad = gamma_momento(ii+1,jj,kk)
     !
     ! distancias entre nodos contiguos
     !
@@ -1130,7 +1132,7 @@ contains
     ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
     ! corresponde **
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj,kk-1) ) / &
-         &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
+         &(gamma_momento(ii+1,jj,kk)*(1._DBL-fezpo(kk-1))+&
          &gamma_momento(ii+1,jj,kk-1)*fezpo(kk-1))
     gammai = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-fezpo(kk-1))+&
@@ -1144,7 +1146,7 @@ contains
     !
     ! gamma_d
     !
-    gammai = gamma_momento(ii+1,jj,kk)
+    gammad = gamma_momento(ii+1,jj,kk)
     !
     ! distancias entre nodos contiguos
     !

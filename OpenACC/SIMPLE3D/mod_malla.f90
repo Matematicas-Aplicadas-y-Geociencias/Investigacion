@@ -374,6 +374,17 @@ contains
     !
   end function indexp
   !
+  function indexv(ii,jj,kk)
+    !
+    implicit none
+    !
+    integer             :: indexv
+    integer, intent(in) :: ii,jj,kk
+    !
+    indexv = ((mi+1)*(nj))*(kk-1)+(mi+1)*(jj-1)+ii
+    !
+  end function indexv
+  !
   function indeyv(jj,ii,kk)
     !
     implicit none

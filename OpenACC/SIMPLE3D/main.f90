@@ -16,7 +16,7 @@ use malla, only : fexu, feyv, fezw
 use malla, only : form21, form26
 use malla, only : lectura_mallas_escalonadas
 use malla, only : indexu, indeyu, indexp
-use malla, only : indexv, indeyv
+use malla, only : indexv, indeyv, indezv
 use malla, only : indeyp
 use malla, only : indezw, indezp
 !
@@ -38,6 +38,8 @@ use ec_momento, only : ensambla_velu_x
 use ec_momento, only : ensambla_velu_y
 use ec_momento, only : ensambla_velu_z
 use ec_momento, only : ensambla_velv_x
+use ec_momento, only : ensambla_velv_y
+use ec_momento, only : ensambla_velv_z
 !
 use solucionador, only : tridiagonal
 !
@@ -405,7 +407,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
-            ! en la direcci'on de z para v
+            ! en la direcci'on de z para u
             !
             !$acc parallel loop gang !async(stream2)
             !$OMP PARALLEL DO DEFAULT(SHARED)
@@ -642,8 +644,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! CALL vel_u(xu,yp,zp,feyv,fezw,d_xu,d2_xu,d_yv,d_zw,u,u_ant,&
             !      &v,w,pres,gamma_u,dt,du,au,rel_vel)
-            CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
-                 &w,pres,gamma_v,dt,dv,av,rel_vel)
+            ! CALL vel_v(xp,yv,zp,fexu,fezw,d_yv,d2_yv,d_xu,d_zw,u,v,v_ant,&
+            !      &w,pres,gamma_v,dt,dv,av,rel_vel)
             !
             !----------------------------------------
             !
@@ -651,67 +653,275 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para v
             !
             !$acc parallel loop gang !async(stream2)
-            ! !$OMP PARALLEL DO DEFAULT(SHARED)
-            ! ensa_velv_dir_x: do kk = 2, lk
-            !    do jj = 2, nj-1
-            !       do ii = 2, mi
-            !          call ensambla_velv_x(&
-            !               &deltaxv,&
-            !               &deltayv,&
-            !               &deltazv,&
-            !               &deltaxu,&
-            !               &deltayp,&
-            !               &deltazw,&
-            !               &fexp,&
-            !               &feyp,&
-            !               &fezp,&
-            !               &feyv,&
-            !               &gamma_momen,&
-            !               &u,&
-            !               &v,&
-            !               &v_ant,&
-            !               &w,&
-            !               &temp,&
-            !               &pres,&
-            !               &fuente_con_v,&
-            !               &fuente_lin_v,&
-            !               &Ri,&
-            !               &dt,&
-            !               &rel_vel,&
-            !               &a1,b1,c1,r1,&
-            !               &av,&
-            !               &ii,jj,kk&
-            !               &)
-            !       end do
-            !    end do
-            ! end do ensa_velv_dir_x
-            ! !$OMP END PARALLEL DO
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_velv_dir_z: do ii = 2, mi
+               do jj = 2, nj-1
+                  do kk = 2, lk
+                     call ensambla_velv_z(&
+                          &deltaxv,&
+                          &deltayv,&
+                          &deltazv,&
+                          &deltaxu,&
+                          &deltayp,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &feyv,&
+                          &gamma_momen,&
+                          &u,&
+                          &v,&
+                          &v_ant,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_v,&
+                          &fuente_lin_v,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &kk,jj,ii&
+                          &)
+                  end do
+               end do
+            end do ensa_velv_dir_z
+            !$OMP END PARALLEL DO
+            !
+            !-----------------------------------------
+            !
+            ! Condiciones de frontera v direcci\'on y
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_v_direc_z: do ii = 2, mi
+               do jj = 2, nj-1
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indezv(1,jj,ii))    = 0.0_DBL
+                  b1(indezv(1,jj,ii))    = 1.0_DBL
+                  c1(indezv(1,jj,ii))    = 0.0_DBL
+                  r1(indezv(1,jj,ii))    = 0.0_DBL
+                  av(1,jj,ii)            = 1.0e40_DBL
+                  !
+                  a1(indezv(lk+1,jj,ii)) = 0.0_DBL
+                  b1(indezv(lk+1,jj,ii)) = 1.0_DBL
+                  c1(indezv(lk+1,jj,ii)) = 0.0_DBL
+                  r1(indezv(lk+1,jj,ii)) = 0.0_DBL
+                  av(lk+1,jj,ii)         = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_v_direc_z
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de momento para v
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_v_dir_z: do ii = 2, mi
+               do jj = 2, nj-1
+                  !
+                  call tridiagonal(&
+                       &a1(indezv(1,jj,ii):indezv(lk+1,jj,ii)),&
+                       &b1(indezv(1,jj,ii):indezv(lk+1,jj,ii)),&
+                       &c1(indezv(1,jj,ii):indezv(lk+1,jj,ii)),&
+                       &r1(indezv(1,jj,ii):indezv(lk+1,jj,ii)),&
+                       &lk+1)
+                  !
+               end do
+            end do sol_v_dir_z
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad v
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do ii = 2, mi
+               do jj = 2, nj-1
+                  do kk = 1, lk+1
+                     v(ii,jj,kk) = r1(indezv(kk,jj,ii))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de x para v
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_velv_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  do jj = 2, nj-1
+                     call ensambla_velv_y(&
+                          &deltaxv,&
+                          &deltayv,&
+                          &deltazv,&
+                          &deltaxu,&
+                          &deltayp,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &feyv,&
+                          &gamma_momen,&
+                          &u,&
+                          &v,&
+                          &v_ant,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_v,&
+                          &fuente_lin_v,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &jj,ii,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_velv_dir_y
+            !$OMP END PARALLEL DO
+            !
+            !-----------------------------------------
+            !
+            ! Condiciones de frontera v direcci\'on y
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_v_direc_y: do kk = 2, lk
+               do ii = 2, mi
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indeyv(1,ii,kk))    = 0.0_DBL
+                  b1(indeyv(1,ii,kk))    = 1.0_DBL
+                  c1(indeyv(1,ii,kk))    = 0.0_DBL
+                  r1(indeyv(1,ii,kk))    = 0.0_DBL
+                  av(ii,1,kk)            = 1.0e40_DBL
+                  !
+                  a1(indeyv(nj,ii,kk))   = 0.0_DBL
+                  b1(indeyv(nj,ii,kk))   = 1.0_DBL
+                  c1(indeyv(nj,ii,kk))   = 0.0_DBL
+                  r1(indeyv(nj,ii,kk))   = 0.0_DBL
+                  av(ii,nj-1,kk)         = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_v_direc_y
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de momento para v
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_v_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  !
+                  call tridiagonal(&
+                       &a1(indeyv(1,ii,kk):indeyv(nj,ii,kk)),&
+                       &b1(indeyv(1,ii,kk):indeyv(nj,ii,kk)),&
+                       &c1(indeyv(1,ii,kk):indeyv(nj,ii,kk)),&
+                       &r1(indeyv(1,ii,kk):indeyv(nj,ii,kk)),&
+                       &nj)
+                  !
+               end do
+            end do sol_v_dir_y
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad v
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do ii = 2, mi
+                  do jj = 1, nj
+                     v(ii,jj,kk) = r1(indeyv(jj,ii,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de x para v
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_velv_dir_x: do kk = 2, lk
+               do jj = 2, nj-1
+                  do ii = 2, mi
+                     call ensambla_velv_x(&
+                          &deltaxv,&
+                          &deltayv,&
+                          &deltazv,&
+                          &deltaxu,&
+                          &deltayp,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &feyv,&
+                          &gamma_momen,&
+                          &u,&
+                          &v,&
+                          &v_ant,&
+                          &w,&
+                          &temp,&
+                          &pres,&
+                          &fuente_con_v,&
+                          &fuente_lin_v,&
+                          &Ri,&
+                          &dt,&
+                          &rel_vel,&
+                          &a1,b1,c1,r1,&
+                          &av,&
+                          &ii,jj,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_velv_dir_x
+            !$OMP END PARALLEL DO
             !
             !-----------------------------------------
             !
             ! Condiciones de frontera v direcci\'on x
             !
             !$acc parallel loop vector !async(stream1)
-            ! !$OMP PARALLEL DO DEFAULT(SHARED)
-            ! cond_fron_v_direc_x: do kk = 2, lk
-            !    do jj = 2, nj-1
-            !       !***********************
-            !       !Condiciones de frontera
-            !       a1(indexv(1,jj,kk))      = 0.0_DBL
-            !       b1(indexv(1,jj,kk))      = 1.0_DBL
-            !       c1(indexv(1,jj,kk))      = 0.0_DBL
-            !       r1(indexv(1,jj,kk))      = 0.0_DBL
-            !       av(1,jj,kk)              = 1.0e40_DBL
-            !       !
-            !       a1(indexv(mi+1,jj,kk))   = 0.0_DBL
-            !       b1(indexv(mi+1,jj,kk))   = 1.0_DBL
-            !       c1(indexv(mi+1,jj,kk))   = 0.0_DBL
-            !       r1(indexv(mi+1,jj,kk))   = 0.0_DBL
-            !       av(mi+1,jj,kk)           = 1.0e40_DBL
-            !       !
-            !    end do
-            ! end do cond_fron_v_direc_x
-            ! !$OMP END PARALLEL DO
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_v_direc_x: do kk = 2, lk
+               do jj = 2, nj-1
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indexv(1,jj,kk))      = 0.0_DBL
+                  b1(indexv(1,jj,kk))      = 1.0_DBL
+                  c1(indexv(1,jj,kk))      = 0.0_DBL
+                  r1(indexv(1,jj,kk))      = 0.0_DBL
+                  av(1,jj,kk)              = 1.0e40_DBL
+                  !
+                  a1(indexv(mi+1,jj,kk))   = 0.0_DBL
+                  b1(indexv(mi+1,jj,kk))   = 1.0_DBL
+                  c1(indexv(mi+1,jj,kk))   = 0.0_DBL
+                  r1(indexv(mi+1,jj,kk))   = 0.0_DBL
+                  av(mi+1,jj,kk)           = 1.0e40_DBL
+                  !
+               end do
+            end do cond_fron_v_direc_x
+            !$OMP END PARALLEL DO
             !
             !----------------------------------------------
             !
@@ -719,20 +929,20 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            ! !$OMP PARALLEL DO DEFAULT(SHARED)
-            ! sol_v_dir_x: do kk = 2, lk
-            !    do jj = 2, nj-1
-            !       !
-            !       call tridiagonal(&
-            !            &a1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
-            !            &b1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
-            !            &c1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
-            !            &r1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
-            !            &mi+1)
-            !       !
-            !    end do
-            ! end do sol_v_dir_x
-            ! !$OMP END PARALLEL DO
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_v_dir_x: do kk = 2, lk
+               do jj = 2, nj-1
+                  !
+                  call tridiagonal(&
+                       &a1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
+                       &b1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
+                       &c1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
+                       &r1(indexv(1,jj,kk):indexv(mi+1,jj,kk)),&
+                       &mi+1)
+                  !
+               end do
+            end do sol_v_dir_x
+            !$OMP END PARALLEL DO
             !
             !----------------------------------
             !
@@ -740,15 +950,15 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! !$OMP PARALLEL DO DEFAULT(SHARED)
-            ! do kk = 2, lk
-            !    do jj = 2, nj-1
-            !       do ii = 1, mi+1
-            !          v(ii,jj,kk) = r1(indexv(ii,jj,kk))
-            !       end do
-            !    end do
-            ! end do
-            ! !$OMP END PARALLEL DO
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do jj = 2, nj-1
+                  do ii = 1, mi+1
+                     v(ii,jj,kk) = r1(indexv(ii,jj,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
             !
             CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
                  &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)

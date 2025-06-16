@@ -396,6 +396,17 @@ contains
     !
   end function indeyv
   !
+  function indezv(kk,jj,ii)
+    !
+    implicit none
+    !
+    integer             :: indezv
+    integer, intent(in) :: ii,jj,kk
+    !
+    indezv = (nj*(lk+1))*(ii-1)+lk*(jj-1)+kk
+    !
+  end function indezv
+  !
   function indeyp(jj,ii,kk)
     !
     implicit none

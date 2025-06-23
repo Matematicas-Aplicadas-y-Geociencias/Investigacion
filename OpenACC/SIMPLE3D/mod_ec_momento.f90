@@ -13,7 +13,7 @@ module ec_momento
   use malla, only : mi, nj, lk, DBL
   use malla, only : indexu, indeyu, indezp  ! indices para u
   use malla, only : indexv, indeyv, indezv  ! indices para v
-  use malla, only : indezw
+  use malla, only : indexp, indeyp, indezw  ! indices para w
   !
   ! use cond_frontera, only : tipo_cond_front
   !
@@ -149,6 +149,273 @@ contains
   !   !
   ! end subroutine ini_frontera_uv
   !
+    !
+  !
+  !-------------------------------------------------------------------  
+  !*******************************************************************
+  !
+  ! ensambla_velu_w
+  !
+  ! Subrutina que calcula los coeficientes de la matriz tridiagonal
+  ! para la velocidad w en la direcci\'on x
+  !
+  !*******************************************************************
+  !-------------------------------------------------------------------
+  subroutine ensambla_velw_x(&
+       &deltaxwo,&
+       &deltaywo,&
+       &deltazwo,&
+       &deltaxuo,&
+       &deltayvo,&
+       &deltazpo,&
+       &fexpo,&
+       &feypo,&
+       &fezpo,&
+       &fezwo,&
+       &gamma_momento,&
+       &u_o,&
+       &v_o,&
+       &w_o,&
+       &w_anto,&
+       &temp_o,&
+       &pres_o,&
+       &fuente_con_wo,&
+       &fuente_lin_wo,&
+       &Ri_o,&
+       &dt_o,&
+       &rel_vo,&
+       &AI_o,AC_o,AD_o,Rx_o,&
+       &aw_o,&
+       &ii,jj,kk&
+       &)
+    implicit none
+    !$acc routine
+    !
+    ! Tama\~no del volumen de control
+    !
+    real(kind=DBL), dimension(mi), intent(in) :: deltaxwo
+    real(kind=DBL), dimension(nj), intent(in) :: deltaywo
+    real(kind=DBL), dimension(lk), intent(in) :: deltazwo
+    !
+    ! Distancia entre nodos contiguos de la malla de w en direcci\'on horizontal x
+    !
+    real(kind=DBL), dimension(mi), intent(in) :: deltaxuo
+    !
+    ! Distancia entre nodos contiguos de la malla de w en direcci\'on horizontal y
+    !
+    real(kind=DBL), dimension(nj), intent(in) :: deltayvo
+    !
+    ! Distancia entre nodos contiguos de la malla de w en direcci\'on vertical z
+    !
+    real(kind=DBL), dimension(lk), intent(in) :: deltazpo
+    !
+    ! Coeficientes para interpolaci\'on
+    !
+    real(kind=DBL), DIMENSION(mi),   intent(in) :: fexpo
+    real(kind=DBL), DIMENSION(nj),   intent(in) :: feypo
+    real(kind=DBL), dimension(lk),   intent(in) :: fezpo
+    real(kind=DBL), DIMENSION(lk-1), intent(in) :: fezwo
+    !
+    ! Coeficiente de difusi\'on
+    !
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in) :: gamma_momento
+    !
+    ! Velocidad, presi\'on y temperatura
+    !
+    real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in) :: u_o
+    real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in) :: v_o
+    real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in) :: w_o, w_anto
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in) :: temp_o, pres_o
+    !
+    ! T\'erminos fuente
+    !
+    real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in) :: fuente_con_wo
+    real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in) :: fuente_lin_wo    
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in) :: Ri_o
+    
+    !
+    ! Incremento de tiempo y coeficiente de relajaci\'on
+    !
+    real(kind=DBL), intent(in) :: dt_o, rel_vo
+    !
+    ! \'Indices para recorrer las direcciones x, y, z
+    !
+    integer, intent(in)        :: ii, jj, kk
+    !
+    ! Coeficientes de las matrices
+    !
+    ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
+    ! en la gpu, los arreglos que se reciben en esta subrutina se usan para las ecs.
+    ! de momento, energ\'ia y la correcci\'on de la presi\'on **
+    !
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AI_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AC_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: AD_o
+    real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)), intent(out) :: RX_o
+    !
+    real(kind=DBL), dimension(mi+1,nj+1,lk),         intent(out) :: aw_o
+    !
+    ! Variables auxiliares
+    !
+    integer :: info
+    !
+    ! Auxiliares de interpolaci\'on y coeficientes
+    !
+    real(kind=DBL) :: ui, ud, vs, vn, wb, wt
+    real(kind=DBL) :: di, dd, ds, dn, db, dt
+    real(kind=DBL) :: gammai, gammad
+    real(kind=DBL) :: gammas, gamman
+    real(kind=DBL) :: gammab, gammat
+    real(kind=DBL) :: alpha, beta, gamma, delta
+    real(kind=DBL) :: deltax, deltay, deltaz
+    real(kind=DBL) :: temp_int
+    !
+    ! Interpolaciones necesarias
+    !
+    ! u
+    !
+    ud = fezpo(kk)*u_o(ii,jj,kk+1)  +(1.0_DBL-fezpo(kk))*u_o(ii,jj,kk)
+    ui = fezpo(kk)*u_o(ii-1,jj,kk+1)+(1.0_DBL-fezpo(kk))*u_o(ii-1,jj,kk)
+    !
+    ! v
+    !
+    vn = fezpo(kk)*v_o(ii,jj,kk+1)  +(1.0_DBL-fezpo(kk))*v_o(ii,jj,kk)
+    vs = fezpo(kk)*v_o(ii,jj-1,kk+1)+(1.0_DBL-fezpo(kk))*v_o(ii,jj-1,kk)
+    !
+    ! w
+    !
+    wt = fezwo(kk)  *w_o(ii,jj,kk+1)+(1.0_DBL-fezwo(kk))  *w_o(ii,jj,kk)
+    wb = fezwo(kk-1)*w_o(ii,jj,kk)  +(1.0_DBL-fezwo(kk-1))*w_o(ii,jj,kk-1)
+    !
+    ! gamma_n 
+    !
+    ! ** se utilizan las constantes gammai y gammad como auxiliares para
+    ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gammad = ( gamma_momento(ii,jj+1,kk+1) * gamma_momento(ii,jj,kk+1) ) / &
+         &(gamma_momento(ii,jj+1,kk+1)*(1._DBL-feypo(jj))+&
+         &gamma_momento(ii,jj,kk+1)*feypo(jj) )
+    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
+         &( gamma_momento(ii,jj+1,kk) * (1._DBL-feypo(jj))+&
+         &gamma_momento(ii,jj,kk)*feypo(jj) )
+    !
+    gamman = gammai*gammad / (gammad * (1._DBL-fezpo(kk)) + gammai * fezpo(kk))
+    !
+    ! gamma_s 
+    !
+    ! ** se utilizan las constantes gammai y gammad como auxiliares para
+    ! calcular gamman, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gammad = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii,jj-1,kk+1) ) / &
+         &(gamma_momento(ii,jj,kk+1)*(1._DBL-feypo(jj-1))+&
+         &gamma_momento(ii,jj-1,kk+1)*feypo(jj-1))
+    gammai = ( gamma_momento(ii,jj,kk) * gamma_momento(ii,jj-1,kk) ) / &
+         &(gamma_momento(ii,jj,kk)*(1._DBL-feypo(jj-1))+&
+         &gamma_momento(ii,jj-1,kk)*feypo(jj-1))
+    !
+    gammas = gammai*gammad / (gammad * (1._DBL-fezpo(kk)) + gammai * fezpo(kk))
+    !
+    ! gamma_d 
+    !
+    ! ** se utilizan las constantes gammat y gammab como auxiliares para
+    ! calcular gammad, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gammat = ( gamma_momento(ii+1,jj,kk+1) * gamma_momento(ii,jj,kk+1) ) / &
+         &(gamma_momento(ii+1,jj,kk+1)*(1._DBL-fexpo(ii))+&
+         &gamma_momento(ii,jj,kk+1)*fexpo(ii))
+    gammab = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii,jj,kk) ) / &
+         &(gamma_momento(ii+1,jj,kk)*(1._DBL-fexpo(ii))+&
+         &gamma_momento(ii,jj,kk)*fexpo(ii))
+    !
+    gammad = gammat*gammab / (gammat * (1._DBL-fezpo(kk)) + gammab * fezpo(kk))
+    !
+    ! gamma_i
+    !
+    ! ** se utilizan las constantes gammat y gammab como auxiliares para
+    ! calcular gammai, despu\'es se utilizan para el coeficiente gamma que
+    ! corresponde **
+    gammat = ( gamma_momento(ii,jj,kk+1) * gamma_momento(ii-1,jj,kk+1) ) / &
+         &( gamma_momento(ii,jj,kk+1)*(1._DBL-fexpo(ii-1))+&
+         &gamma_momento(ii-1,jj,kk+1)*fexpo(ii-1) )
+    gammab = ( gamma_momento(ii,jj,kk) * gamma_momento(ii-1,jj,kk) ) / &
+         &( gamma_momento(ii,jj,kk) * (1._DBL-fexpo(ii-1))+&
+         &gamma_momento(ii-1,jj,kk)*fexpo(ii-1) )
+    !
+    gammai = gammat*gammab / (gammat * (1._DBL-fezpo(kk)) + gammab * fezpo(kk))
+    !
+    ! gamma_t
+    !
+    gammat = gamma_momento(ii,jj,kk+1)
+    !
+    ! gamma_b
+    !
+    gammab = gamma_momento(ii,jj,kk)
+    !
+    ! distancias entre nodos contiguos
+    !
+    di = deltaxuo(ii-1)
+    dd = deltaxuo(ii)
+    ds = deltayvo(jj-1)
+    dn = deltayvo(jj)
+    db = deltazpo(kk)
+    dt = deltazpo(kk+1)
+    !
+    ! Tama\~no de los vol\'umenes de control para la velocidad u
+    !
+    deltax = deltaxwo(ii)
+    deltay = deltaywo(jj)
+    deltaz = deltazwo(kk)
+    !
+    ! Interpolaci\'on para la temperatura
+    !
+    temp_int = fezpo(kk)*temp_o(ii,jj,kk+1) + (1.0_DBL-fezpo(kk))*temp_o(ii,jj,kk)
+    !
+    ! *************************
+    !
+    ! Coeficientes de la matriz
+    !
+    AI_o(indexp(ii,jj,kk)) =-(gammai*deltay*deltaz/di*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
+         &DMAX1(0.0_DBL, ui*deltay*deltaz))
+    !
+    AD_o(indexp(ii,jj,kk)) =-(gammad*deltay*deltaz/dd*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
+         &DMAX1(0.0_DBL,-ud*deltay*deltaz))
+    !
+    alpha =-(gammas*deltax*deltaz/ds*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
+         &DMAX1(0.0_DBL, vs*deltax*deltaz))
+    !
+    beta  =-(gamman*deltax*deltaz/dn*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
+         &DMAX1(0.0_DBL,-vn*deltax*deltaz))
+    !
+    gamma =-(gammab*deltax*deltay/db*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wb*db/gammab))**5)+&
+         &DMAX1(0.0_DBL, wb*deltax*deltay))
+    !
+    delta =-(gammat*deltax*deltay/dt*&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wt*dt/gammat))**5)+&
+         &DMAX1(0.0_DBL,-wt*deltax*deltay)) 
+    !
+    AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk)) &
+         &- alpha - beta - gamma - delta - &
+         &deltax*deltay*deltaz*fuente_lin_wo(ii,jj,kk)+&
+         &deltax*deltay*deltaz/dt_o ) / rel_vo
+    !
+    Rx_o(indexp(ii,jj,kk)) =-alpha*w_o(ii,jj-1,kk) -&
+         &beta  * w_o(ii,jj+1,kk) - &
+         &gamma * w_o(ii,jj,kk-1) - &
+         &delta * w_o(ii,jj,kk+1) - &
+         &deltax*deltay*deltaz*Ri_o(ii,jj,kk)*temp_int+&
+         &deltax*deltay*deltaz*fuente_con_wo(ii,jj,kk)+&
+         &deltax*deltay*deltaz*w_anto(ii,jj,kk)/dt_o+&
+         &(pres_o(ii,jj,kk)-pres_o(ii,jj,kk+1))*deltax*deltay+&
+         &AC_o(indexp(ii,jj,kk))*(1._DBL-rel_vo)*w_o(ii,jj,kk)
+    !
+    aw_o(ii,jj,kk) = AC_o(indexp(ii,jj,kk)) * rel_vo
+    !
+  end subroutine ensambla_velw_x
   !-------------------------------------------------------------------  
   !*******************************************************************
   !
@@ -1104,7 +1371,7 @@ contains
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj-1,kk) ) / &
          &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii+1,jj-1,kk)*feypo(jj-1))
-    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
+    gammai = ( gamma_momento(ii,jj,kk) * gamma_momento(ii,jj-1,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii,jj-1,kk)*feypo(jj-1))
     !
@@ -1370,7 +1637,7 @@ contains
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj-1,kk) ) / &
          &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii+1,jj-1,kk)*feypo(jj-1))
-    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
+    gammai = ( gamma_momento(ii,jj,kk) * gamma_momento(ii,jj-1,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii,jj-1,kk)*feypo(jj-1))
     !
@@ -1636,7 +1903,7 @@ contains
     gammad = ( gamma_momento(ii+1,jj,kk) * gamma_momento(ii+1,jj-1,kk) ) / &
          &(gamma_momento(ii+1,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii+1,jj-1,kk)*feypo(jj-1))
-    gammai = ( gamma_momento(ii,jj+1,kk) * gamma_momento(ii,jj,kk) ) / &
+    gammai = ( gamma_momento(ii,jj,kk) * gamma_momento(ii,jj-1,kk) ) / &
          &(gamma_momento(ii,jj,kk)*(1._DBL-feypo(jj-1))+&
          &gamma_momento(ii,jj-1,kk)*feypo(jj-1))
     !

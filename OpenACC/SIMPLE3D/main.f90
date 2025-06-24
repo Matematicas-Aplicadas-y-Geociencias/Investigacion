@@ -1103,15 +1103,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !$OMP END PARALLEL DO
             !****************************************
             !Criterio de convergencia de la velocidad
-            IF(MAXVAL(DABS(fu))<conv_u.and.MAXVAL(DABS(dv))<conv_u.and.&
-                 &MAXVAL(DABS(dw))<conv_u)EXIT
+            IF(MAXVAL(DABS(fu))<conv_u)EXIT
             ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(fu))
          END DO
     !
     !----------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------
     !
-    !       Se calcula la correcci'on de la presi'on
+    !                   Se calcula la correcci'on de la presi'on
     !
     !----------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------
@@ -1128,7 +1127,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
     end do inicializa_corrector_presion
     !$OMP END PARALLEL DO
     !
-    correccion_presion: do tt = 1, 10
+    correccion_presion: do tt = 1, 100
        !
        !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
        !$OMP PARALLEL DO DEFAULT(SHARED)

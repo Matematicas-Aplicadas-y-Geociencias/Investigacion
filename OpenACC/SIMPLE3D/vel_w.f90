@@ -161,7 +161,7 @@ DO k = 2, lk-1
       APj(j)  =(alpha+beta-AN(j)-AS(j-1)+kappa+sigma+delta_x*delta_y*delta_z/dt_o) / rel_vo
       Ryj(j)  = alpha*w_o(i+1,j,k)+beta*w_o(i-1,j,k)+kappa*w_o(i,j,k+1)+sigma*w_o(i,j,k-1)+delta_x*delta_y*delta_z*w_anto(i,j,k)/dt_o+&
       &(pres_o(i,j,k)-pres_o(i,j,k+1))*delta_x*delta_y+APj(j)*(1._DBL-rel_vo)*w_o(i,j,k)+Ri_o(i,j,k)*temp_int*delta_x*delta_y*delta_z
-      ! aw_o(i,j,k) = APj(j) * rel_vo
+      aw_o(i,j,k) = APj(j) * rel_vo
       !****************************
     END DO
     !***********************
@@ -233,7 +233,7 @@ DO j = 2, nj
       APk(k)  =(alpha+beta+kappa+sigma-AT(k)-AB(k-1)+delta_x*delta_y*delta_z/dt_o) / rel_vo
       Rzk(k)  = alpha*w_o(i+1,j,k)+beta*w_o(i-1,j,k)+kappa*w_o(i,j+1,k)+sigma*w_o(i,j-1,k)+delta_x*delta_y*delta_z*w_anto(i,j,k)/dt_o+&
       &(pres_o(i,j,k)-pres_o(i,j,k+1))*delta_x*delta_y+APk(k)*(1._DBL-rel_vo)*w_o(i,j,k)+Ri_o(i,j,k)*temp_int*delta_x*delta_y*delta_z
-      ! aw_o(i,j,k) = APk(k) * rel_vo
+      aw_o(i,j,k) = APk(k) * rel_vo
       !****************************
     END DO
     !***********************

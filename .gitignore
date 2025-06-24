@@ -1,4 +1,6 @@
 # No rastrear los cambios de los siguientes archivos:
+*.f90~
+*.pvsm
 *.vtk
 *.txt
 *.png

@@ -95,25 +95,25 @@ DO k = 2, lk
     END DO
     !***********************
     !Condiciones de frontera
-    IF (k>=i_oo .AND. k<=i_1o .and. j>=j_oo .AND. j<=j_1o) THEN
-      APi(1) = 1._DBL
-      AE(1)  = cero
-      Rxi(1) = 1._DBL
-    ELSE
-      APi(1) =-1._DBL
-      AE(1)  = 1._DBL
-      Rxi(1) = temp_o(1,j,k)*delta_x !cero
-    END IF
+    !IF (k>=i_oo .AND. k<=i_1o .and. j>=j_oo .AND. j<=j_1o) THEN
+    APi(1) = 1._DBL
+    AE(1)  = 0._DBL
+    Rxi(1) = 1._DBL
+    !ELSE
+    ! APi(1) =-1._DBL
+    ! AE(1)  = 1._DBL
+    ! Rxi(1) = temp_o(1,j,k)*delta_x !cero
+    ! END IF
     !*****************
-    IF (k>=i_oo .and. k<=i_1o .and. j>=j_oo .AND. j<=j_1o) THEN
-      APi(mi+1) = 1._DBL
-      AW(mi)    = 0._DBL !-1._DBL ! cero
-      Rxi(mi+1) = 1.0_DBL !-temp_o(mi+1,j,k)*100.d0*delta_x !cero   ! 1._DBL
-    ELSE
-      APi(mi+1) = 1._DBL
-      AW(mi)    =-1._DBL
-      Rxi(mi+1) =-temp_o(mi+1,j,k)*delta_x !cero
-    END IF 
+    !IF (k>=i_oo .and. k<=i_1o .and. j>=j_oo .AND. j<=j_1o) THEN
+    APi(mi+1) = 1._DBL
+    AW(mi)    = 0._DBL !-1._DBL ! cero
+    Rxi(mi+1) = 0.0_DBL !-temp_o(mi+1,j,k)*100.d0*delta_x !cero   ! 1._DBL
+    !ELSE
+    !  APi(mi+1) = 1._DBL
+    !  AW(mi)    =-1._DBL
+    !  Rxi(mi+1) =-temp_o(mi+1,j,k)*delta_x !cero
+    !END IF 
     !***************************
     CALL tri(AW,APi,AE,Rxi,mi+1)
     DO i = 1, mi+1

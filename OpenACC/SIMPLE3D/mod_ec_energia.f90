@@ -53,6 +53,9 @@ contains
        &deltaxuo,&
        &deltayvo,&
        &deltazwo,&
+       &fexpo,&
+       &feypo,&
+       &fezpo,&
        &temper_o,&
        &u_o,v_o,w_o,&
        &rel_energo,&
@@ -79,7 +82,13 @@ contains
     ! Distancia entre nodos contiguos de la malla de p en direcci\'on vertical z
     !
     real(kind=DBL), dimension(nj), intent(in) :: deltazwo
-    !   
+    !
+    ! Coeficientes de interpolaci\'on
+    !
+    real(kind=DBL), DIMENSION(mi), intent(in) :: fexpo
+    real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
+    real(kind=DBL), DIMENSION(nj), intent(in) :: fezpo
+    !
     ! Velocidad, presi\'on, t\'ermino fuente b
     !
     real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in)  :: u_o
@@ -112,6 +121,9 @@ contains
     !
     real(kind=DBL) :: ui, ud, vs, vn, wt, wb
     real(kind=DBL) :: di, dd, ds, dn, db, da
+    real(kind=DBL) :: gammai, gammad
+    real(kind=DBL) :: gammas, gamman
+    real(kind=DBL) :: gammab, gammat
     real(kind=DBL) :: alpha,beta,gamma,delta
     !
     ! Interpolaciones necesarias
@@ -140,6 +152,21 @@ contains
     db = deltazwo(kk-1)
     da = deltazwo(kk)
     !
+    ! Coeficientes de difusi\'on
+    !
+    gammad = ( gamma_ener(ii+1,jj,kk) * gamma_ener(ii,jj,kk) ) / &
+         &( gamma_ener(ii+1,jj,kk) * (1._DBL-fexpo(ii))+gamma_ener(ii,jj,kk)*fexpo(ii) )
+    gammai = ( gamma_ener(ii,jj,kk) * gamma_ener(ii-1,jj,kk) ) / &
+         &( gamma_ener(ii,jj,kk) * (1._DBL-fexpo(ii-1))+gamma_ener(ii-1,jj,kk)*fexpo(ii-1) )
+    gamman = ( gamma_ener(ii,jj+1,kk) * gamma_ener(ii,jj,kk) ) / &
+         &( gamma_ener(ii,jj+1,kk) * (1._DBL-feypo(jj))+gamma_ener(ii,jj,kk)*feypo(jj) )
+    gammas = ( gamma_ener(ii,jj,kk) * gamma_ener(ii,jj-1,kk) ) / &
+         &( gamma_ener(ii,jj,kk) * (1._DBL-feypo(jj-1))+gamma_ener(ii,jj-1,kk)*feypo(jj-1) )
+    gammat = ( gamma_ener(ii,jj,kk+1) * gamma_ener(ii,jj,kk) ) / &
+         &( gamma_ener(ii,jj,kk+1) * (1._DBL-fezpo(kk))+gamma_ener(ii,jj,kk)*fezpo(kk) )
+    gammat = ( gamma_ener(ii,jj,kk) * gamma_ener(ii,jj,kk-1) ) / &
+         &( gamma_ener(ii,jj,kk) * (1._DBL-fezpo(kk-1))+gamma_ener(ii,jj,kk-1)*fezpo(kk-1) )
+    !
     ! Tama\~no de los vol\'umenes de control para la velocidad u
     !
     ! delta_x = deltaxpo(ii)
@@ -150,12 +177,12 @@ contains
     !
     ! Coeficientes de la matriz
     !
-    AI_o(indexp(ii,jj,kk)) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/di
-    AD_o(indexp(ii,jj,kk)) =-deltaypo(jj)*deltaypo(jj)*deltazpo(kk)*deltazpo(kk)/dd
-    alpha                  =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/ds
-    beta                   =-deltaxpo(ii)*deltaxpo(ii)*deltazpo(kk)*deltazpo(kk)/dn
-    gamma                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/db
-    delta                  =-deltaxpo(ii)*deltaxpo(ii)*deltaypo(jj)*deltaypo(jj)/da
+    AI_o(indexp(ii,jj,kk)) =-gammai * deltaypo(jj)*deltazpo(kk)/di
+    AD_o(indexp(ii,jj,kk)) =-gammad * deltaypo(jj)*deltazpo(kk)/dd
+    alpha                  =-gammas * deltaxpo(ii)*deltazpo(kk)/ds
+    beta                   =-gamman * deltaxpo(ii)*deltazpo(kk)/dn
+    gamma                  =-gammab * deltaxpo(ii)*deltaypo(jj)/db
+    delta                  =-gammat * deltaxpo(ii)*deltaypo(jj)/da
     !
     AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk))-&
          &alpha - beta - gamma - delta ) / rel_energo
@@ -165,7 +192,7 @@ contains
          &gamma+&
          &delta+&
          &(1._DBL-rel_energo)*AC_o(indexp(ii,jj,kk))
-    !
+
   end subroutine ensambla_energ_x
   !
 end module ec_energia

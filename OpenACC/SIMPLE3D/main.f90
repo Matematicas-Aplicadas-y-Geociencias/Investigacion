@@ -44,6 +44,7 @@ use ec_momento, only : ensambla_velw_x
 use ec_momento, only : ensambla_velw_y
 use ec_momento, only : ensambla_velw_z
 !
+!
 use solucionador, only : tridiagonal
 !
 IMPLICIT NONE

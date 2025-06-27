@@ -44,6 +44,11 @@ use ec_momento, only : ensambla_velw_x
 use ec_momento, only : ensambla_velw_y
 use ec_momento, only : ensambla_velw_z
 !
+use ec_energia, only : temp, temp_ant, ftemp
+use ec_energia, only : fuente_con_temp, fuente_lin_temp
+use ec_energia, only : gamma_ener
+use ec_energia, only : rel_ener
+use ec_energia, only : ensambla_energia_x
 !
 use solucionador, only : tridiagonal
 !
@@ -68,7 +73,7 @@ INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 REAL(kind=DBL), DIMENSION(mi,nj+1,lk+1)   :: gamma_u
 REAL(kind=DBL), DIMENSION(mi+1,nj,lk+1)   :: gamma_v
 REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk)   :: gamma_w
-REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: temp,temp_ant,dtemp,Restemp,gamma_t
+REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: dtemp,Restemp,gamma_t
 !,pres,corr_pres,dcorr_pres
 REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1) :: entropia_calor,entropia_viscosa,entropia,uf,vf,wf
 REAL(kind=DBL) :: temp_med,nusselt0,nusselt1,entropia_int,temp_int,gamma_s
@@ -152,12 +157,16 @@ gamma_s = 600._DBL*sqrt(1._DBL/(Pr*Ra))
 gamma_t = 1._DBL/(Pr*Ra) !sqrt(1._DBL/(Pr*Ra))
 gamma_u = 1._DBL/Ra      !sqrt(Pr/Ra)
 gamma_momen = 1._DBL/Ra
+gamma_ener  = 1._DBL/(Pr*Ra)
 fuente_con_u = 0._DBL
 fuente_lin_u = 0._DBL
 fuente_con_v = 0._DBL
 fuente_lin_v = 0._DBL
 fuente_con_w = 0._DBL
 fuente_lin_w = 0._DBL
+fuente_con_temp = 0._DBL
+fuente_lin_temp = 0._DBL
+rel_ener = rel_tem
 gamma_v = 1._DBL/Ra      !sqrt(Pr/Ra)
 gamma_w = 1._DBL/Ra      !sqrt(Pr/Ra)
 Ri      = Rin
@@ -1319,417 +1328,547 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                  & MAXVAL(DABS(fw))<conv_u)EXIT
             ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(fu))
          END DO
-    !
-    !----------------------------------------------------------------------------------
-    !----------------------------------------------------------------------------------
-    !
-    !                   Se calcula la correcci'on de la presi'on
-    !
-    !----------------------------------------------------------------------------------
-    !----------------------------------------------------------------------------------
-    !
-    !$acc parallel loop gang collapse(2) !async(stream2)
-    !$OMP PARALLEL DO DEFAULT(SHARED)     
-    inicializa_corrector_presion: do kk=1, lk+1
-       do jj = 1, nj+1
-          do ii = 1, mi+1
-             corr_pres(ii,jj,kk) = 0.0_DBL
-             fcorr_pres(ii,jj,kk)= 0.0_DBL
-          end do
-       end do
-    end do inicializa_corrector_presion
-    !$OMP END PARALLEL DO
-    !
-    correccion_presion: do tt = 1, 100
-       !
-       !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       inicializa_fcorr_press: do kk=2, lk
-          do jj=2, nj
-             do ii = 2, mi
-                fcorr_pres(ii,jj,kk) = corr_pres(ii,jj,kk)
-             end do
-          end do
-       end do inicializa_fcorr_press
-       !$OMP END PARALLEL DO
-       !
-       !------------------------------------------
-       !
-       ! Se ensambla la ecuaci\'on de correcci\'on
-       ! de la presi\'on en direcci\'on x
-       !
-       !$acc parallel loop gang !async(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       ensa_corr_dir_x: do kk = 2, lk
-          do jj = 2, nj
-             !$acc loop vector
-             do ii = 2, mi
-                call ensambla_corr_pres_x(&
-                     &deltaxp,&
-                     &deltayp,&
-                     &deltazp,&
-                     &deltaxu,&
-                     &deltayv,&
-                     &deltazw,&
-                     &u,v,w,&
-                     &corr_pres,&
-                     &rel_pres,&
-                     &a1,b1,c1,r1,&
-                     &au,av,aw,&
-                     &ii,jj,kk)
-             end do
-          end do
-       end do ensa_corr_dir_x
-       !OMP END PARALLEL DO
-       !
-       !---------------------------------------
-       !
-       ! Condiciones de frontera direcci\'on x
-       !
-       !$acc parallel loop vector !async(stream1)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       cond_fron_direc_x: do kk = 2, lk
-          do jj = 2, nj
-             !***********************
-             !Condiciones de frontera
-             a1(indexp(1,jj,kk))    = 0.0_DBL
-             b1(indexp(1,jj,kk))    = 1.0_DBL
-             c1(indexp(1,jj,kk))    = 0.0_DBL
-             r1(indexp(1,jj,kk))    = 0.0_DBL
-             !
-             a1(indexp(mi+1,jj,kk)) = 0.0_DBL
-             b1(indexp(mi+1,jj,kk)) = 1.0_DBL
-             c1(indexp(mi+1,jj,kk)) = 0.0_DBL
-             r1(indexp(mi+1,jj,kk)) = 0.0_DBL
-             !
-          end do
-       end do cond_fron_direc_x
-       !$OMP END PARALLEL DO
-       !
-       !----------------------------------------------
-       !
-       ! Soluci\'on de la correcci\'on de la presi\'on
-       !
-       !$acc parallel loop gang async(stream1) wait(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       sol_corr_dir_x: do kk = 2, lk
-          do jj = 2,nj
-             !
-             call tridiagonal(&
-                  &a1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
-                  &b1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
-                  &c1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
-                  &r1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
-                  &mi+1)
-             ! corr_pres(1,jj,kk)    = r1(indexp(1,jj,kk))
-             ! corr_pres(mi+1,jj,kk) = r1(indexp(mi+1,jj,kk))
-             !
-          end do
-       end do sol_corr_dir_x
-       !$OMP END PARALLEL DO
-       !
-       ! Actualizaci\'on del corrector de la presi\'on
-       ! en direcci\'on x
-       !
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       do kk = 2, lk
-          do jj = 2, nj
-             do ii =1, mi+1
-                corr_pres(ii,jj,kk) = r1(indexp(ii,jj,kk))
-             end do
-          end do
-       end do
-       !$OMP END PARALLEL DO
-       !
-       !------------------------------------------
-       !
-       ! Se ensambla la ecuaci\'on de correcci\'on
-       ! de la presi\'on en direcci\'on x
-       !
-       !$acc parallel loop gang !async(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED) 
-       ensa_corr_dir_y: do kk = 2, lk
-          do ii = 2, mi
-             !$acc loop vector
-             do jj = 2, nj
-                call ensambla_corr_pres_y(&
-                     &deltaxp,&
-                     &deltayp,&
-                     &deltazp,&
-                     &deltaxu,&
-                     &deltayv,&
-                     &deltazw,&
-                     &u,v,w,&
-                     &corr_pres,&
-                     &rel_pres,&
-                     &a1,b1,c1,r1,&
-                     &au,av,aw,&
-                     &jj,ii,kk)
-             end do
-          end do
-       end do ensa_corr_dir_y
-       !$OMP END PARALLEL DO
-       !
-       !--------------------------------------------
-       !--------------------------------------------
-       !
-       ! Condiciones de frontera direcci\'on y
-       !
-       !$acc parallel loop vector !async(stream1)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       cond_fron_direc_y: do kk = 2, lk
-          do ii = 2, mi
-             !***********************
-             !Condiciones de frontera
-             a1(indeyp(1,ii,kk))    = 0.0_DBL
-             b1(indeyp(1,ii,kk))    = 1.0_DBL
-             c1(indeyp(1,ii,kk))    = 0.0_DBL
-             !
-             a1(indeyp(nj+1,ii,kk)) = 0.0_DBL
-             b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
-             c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
-             !
-          end do
-       end do cond_fron_direc_y
-       !$OMP END PARALLEL DO
-       !
-       !----------------------------------------------
-       !
-       ! Soluci\'on de la correcci\'on de la presi\'on
-       ! en direcci\'on y
-       !
-       !$acc parallel loop gang async(stream1) wait(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       sol_corr_dir_y: do kk = 2, lk
-          do ii = 2, mi
-             !
-             call tridiagonal(&
-                  &a1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
-                  &b1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
-                  &c1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
-                  &r1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
-                  &nj+1)
-             ! corr_pres(ii,1,kk)    = r1(indeyp(1,ii,kk))
-             ! corr_pres(ii,nj+1,kk) = r1(indeyp(nj+1,ii,kk))
-             !
-          end do
-       end do sol_corr_dir_y
-       !$OMP END PARALLEL DO
-       !
-       ! Actualizaci\'on del corrector de la presi\'on
-       ! en direcci\'on y
-       !
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       do kk = 2, lk
-          do ii = 2, mi
-             do jj =2, nj
-                corr_pres(ii,jj,kk) = r1(indeyp(jj,ii,kk))
-             end do
-          end do
-       end do
-       !$OMP END PARALLEL DO
-       !
-       !------------------------------------------
-       !
-       ! Se ensambla la ecuaci\'on de correcci\'on
-       ! de la presi\'on en direcci\'on z
-       !
-       !$acc parallel loop gang !async(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       ensa_corr_dir_z: do ii = 2, mi
-          do jj = 2, nj
-             !$acc loop vector
-             do kk = 2, lk
-                call ensambla_corr_pres_z(&
-                     &deltaxp,&
-                     &deltayp,&
-                     &deltazp,&
-                     &deltaxu,&
-                     &deltayv,&
-                     &deltazw,&
-                     &u,v,w,&
-                     &corr_pres,&
-                     &b_o,&
-                     &rel_pres,&
-                     &a1,b1,c1,r1,&
-                     &au,av,aw,&
-                     &kk,jj,ii)
-             end do
-          end do
-       end do ensa_corr_dir_z
-       !$OMP END PARALLEL DO
-       !
-       !------------------------------------------------------------------------
-       !------------------------------------------------------------------------
-       !
-       ! Condiciones de frontera direcci\'on z
-       !
-       !$acc parallel loop vector !async(stream1)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       cond_fron_direc_z: do ii = 2, mi
-          do jj = 2, nj
-             !***********************
-             !Condiciones de frontera
-             a1(indezp(1,jj,ii))    = 0.0_DBL
-             b1(indezp(1,jj,ii))    = 1.0_DBL
-             c1(indezp(1,jj,ii))    = 0.0_DBL
-             !
-             a1(indezp(lk+1,jj,ii)) = 0.0_DBL
-             b1(indezp(lk+1,jj,ii)) = 1.0_DBL
-             c1(indezp(lk+1,jj,ii)) = 0.0_DBL
-             !
-          end do
-       end do cond_fron_direc_z
-       !$OMP END PARALLEL DO
-       !
-       !----------------------------------------------
-       !
-       ! Soluci\'on de la correcci\'on de la presi\'on
-       ! en direcci\'on y
-       !
-       !$acc parallel loop gang async(stream1) wait(stream2)
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       sol_corr_dir_z: do ii = 2, mi
-          do jj = 2, nj
-             !
-             call tridiagonal(&
-                  &a1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
-                  &b1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
-                  &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
-                  &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
-                  &lk+1)
-             ! corr_pres(ii,jj,1)    = r1(indezp(1,jj,ii))
-             ! corr_pres(ii,jj,lk+1) = r1(indezp(lk+1,jj,ii))
-             !
-          end do
-       end do sol_corr_dir_z
-       !$OMP END PARALLEL DO
-       !
-       ! Actualizaci\'on del corrector de la presi\'on
-       ! en direcci\'on y
-       !
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       do ii = 2, mi
-          do jj = 2, nj
-             do kk =1, lk+1
-                corr_pres(ii,jj,kk) = r1(indezp(kk,jj,ii))
-             end do
-          end do
-       end do
-       !$OMP END PARALLEL DO
-       !
-       !$OMP PARALLEL DO DEFAULT(SHARED)
-       calcula_fcorr_press: do kk=2, lk
-          do jj=2, nj
-             do ii = 2, mi
-                fcorr_pres(ii,jj,kk) = fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk)
-             end do
-          end do
-       end do calcula_fcorr_press
-       !$OMP END PARALLEL DO
-       !
-       !-----------------------------------------------------------------------------
-       !-----------------------------------------------------------------------------
-       !
-       !****************************************************
-       !critero de convergencia del corrector de la presi'on
-       IF(MAXVAL(DABS(fcorr_pres))<conv_p)EXIT
-       ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(fcorr_pres))
-    END DO correccion_presion
-    !*********************
-    !se corrige la presion
-    !$OMP PARALLEL DO
-    DO k = 2, lk
-      DO j = 2, nj
-        DO i = 2, mi
-          pres(i,j,k) = pres(i,j,k)+corr_pres(i,j,k)
-        END DO
-      END DO
-    END DO
-    !$OMP END PARALLEL DO
-    !*****************************
-    !se actualizan las velocidades
-    !$OMP PARALLEL DO
-    DO k = 2, lk
-      DO j = 2, nj
-        DO i = 2, mi-1
-          u(i,j,k) = u(i,j,k)+d_yv(j-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i+1,j,k))/au(i,j,k)
-        END DO
-      END DO
-    END DO
-    !$OMP END PARALLEL DO
-    !$OMP PARALLEL DO
-    DO k = 2, lk
-      DO j = 2, nj-1
-        DO i = 2, mi
-          v(i,j,k) = v(i,j,k)+d_xu(i-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i,j+1,k))/av(i,j,k)
-        END DO
-      END DO
-    END DO
-    !$OMP END PARALLEL DO
-    !$OMP PARALLEL DO
-    DO k = 2, lk-1
-      DO j = 2, nj
-        DO i = 2, mi
-          w(i,j,k) = w(i,j,k)+d_xu(i-1)*d_yv(j-1)*(corr_pres(i,j,k)-corr_pres(i,j,k+1))/aw(i,j,k)
-        END DO
-      END DO
-    END DO
-    !$OMP END PARALLEL DO
-    !*************************
-    !se calcula la temperatura
-    DO tt = 1, 3
-      CALL temperatura(xp,yp,zp,fexu,feyv,fezw,d_xu,d_yv,d_zw,u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
-      !************************************
-      !Criterio de convergencia temperatura
-      IF(MAXVAL(DABS(dtemp))<conv_t)EXIT
-      ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
-    END DO
-    !*******************************************
-    !Criterio de convergencia del paso de tiempo
-!     CALL residuou(res_fluido_u,xu,y,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
-    WRITE(*,*) 'tiempo ',itera,MAXVAL(DABS(b_o))
-    IF( MAXVAL(DABS(b_o))<conv_paso )EXIT
-    !*************************************************
-  END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
-  itera = itera + 1
-  IF( mod(itera,100)==0 )WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o))
-!   IF(mod(itera,10)==0)THEN
-!     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,entropia_int,temp_int,a_ent,lambda_ent)
-!     CALL nusselt(x,y,d_xu,d_yv,temp,nusselt0,nusselt1,i_o,i_1)
-!     temp_med = (temp((i_o+i_1)/2,nj/2+1)+temp((i_o+i_1)/2+1,nj/2+1))/2._DBL
-!     OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rac//'.dat',access = 'append')
-!     WRITE(5,26) tiempo_inicial+itera*dt,nusselt0,nusselt1,temp_med,temp_int,entropia_int
-!     CLOSE(unit = 5)
-!   ENDIF
-  !*********************************
-  tiempo   = tiempo_inicial+itera*dt
-  temp_ant = temp
-  u_ant    = u
-  v_ant    = v
-  w_ant    = w
-!   !************************************
-!   !*** Formato de escritura Tecplot ***
-!   OPEN(unit=1,file='tprueba.plt')
-!   WRITE(1,*)'TITLE     = "Tempe" '
-!   WRITE(1,*)'VARIABLES = "x"'
-!   WRITE(1,*)'"y"'
-!   WRITE(1,*)'"z"'
-!   WRITE(1,*)'"Temperature"'        ! variable
-!   WRITE(1,*)'"Temperature_a"'        ! variable
-!   !WRITE(1,*)'"XD"'
-!   !WRITE(1,*)'"DTEMP"'
-!   WRITE(1,*)'ZONE T= "Matrix"'
-!   WRITE(1,*)'I=',mi+1,' J=',nj+1,' K=',lk+1,' F=POINT'
-!   DO kl = 1, lk+1
-!     DO j = 1, nj+1
-!       DO i = 1, mi+1
-! 	WRITE(1,25) x(i),y(j),z(kl),temp(i,j,kl),temp_ant(i,j,kl)
-!       END DO
-!     END DO
-!   END DO
-!   CLOSE(unit=1)
-END DO !*************termina el paquete de iteraciones
+         !
+         !----------------------------------------------------------------------------------
+         !----------------------------------------------------------------------------------
+         !
+         !                   Se calcula la correcci'on de la presi'on
+         !
+         !----------------------------------------------------------------------------------
+         !----------------------------------------------------------------------------------
+         !
+         !$acc parallel loop gang collapse(2) !async(stream2)
+         !$OMP PARALLEL DO DEFAULT(SHARED)     
+         inicializa_corrector_presion: do kk=1, lk+1
+            do jj = 1, nj+1
+               do ii = 1, mi+1
+                  corr_pres(ii,jj,kk) = 0.0_DBL
+                  fcorr_pres(ii,jj,kk)= 0.0_DBL
+               end do
+            end do
+         end do inicializa_corrector_presion
+         !$OMP END PARALLEL DO
+         !
+         correccion_presion: do tt = 1, 100
+            !
+            !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            inicializa_fcorr_press: do kk=2, lk
+               do jj=2, nj
+                  do ii = 2, mi
+                     fcorr_pres(ii,jj,kk) = corr_pres(ii,jj,kk)
+                  end do
+               end do
+            end do inicializa_fcorr_press
+            !$OMP END PARALLEL DO
+            !
+            !------------------------------------------
+            !
+            ! Se ensambla la ecuaci\'on de correcci\'on
+            ! de la presi\'on en direcci\'on x
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_corr_dir_x: do kk = 2, lk
+               do jj = 2, nj
+                  !$acc loop vector
+                  do ii = 2, mi
+                     call ensambla_corr_pres_x(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &u,v,w,&
+                          &corr_pres,&
+                          &rel_pres,&
+                          &a1,b1,c1,r1,&
+                          &au,av,aw,&
+                          &ii,jj,kk)
+                  end do
+               end do
+            end do ensa_corr_dir_x
+            !OMP END PARALLEL DO
+            !
+            !---------------------------------------
+            !
+            ! Condiciones de frontera direcci\'on x
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_direc_x: do kk = 2, lk
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indexp(1,jj,kk))    = 0.0_DBL
+                  b1(indexp(1,jj,kk))    = 1.0_DBL
+                  c1(indexp(1,jj,kk))    = 0.0_DBL
+                  r1(indexp(1,jj,kk))    = 0.0_DBL
+                  !
+                  a1(indexp(mi+1,jj,kk)) = 0.0_DBL
+                  b1(indexp(mi+1,jj,kk)) = 1.0_DBL
+                  c1(indexp(mi+1,jj,kk)) = 0.0_DBL
+                  r1(indexp(mi+1,jj,kk)) = 0.0_DBL
+                  !
+               end do
+            end do cond_fron_direc_x
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la correcci\'on de la presi\'on
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_corr_dir_x: do kk = 2, lk
+               do jj = 2,nj
+                  !
+                  call tridiagonal(&
+                       &a1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &b1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &c1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &r1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &mi+1)
+                  ! corr_pres(1,jj,kk)    = r1(indexp(1,jj,kk))
+                  ! corr_pres(mi+1,jj,kk) = r1(indexp(mi+1,jj,kk))
+                  !
+               end do
+            end do sol_corr_dir_x
+            !$OMP END PARALLEL DO
+            !
+            ! Actualizaci\'on del corrector de la presi\'on
+            ! en direcci\'on x
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do jj = 2, nj
+                  do ii =1, mi+1
+                     corr_pres(ii,jj,kk) = r1(indexp(ii,jj,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !------------------------------------------
+            !
+            ! Se ensambla la ecuaci\'on de correcci\'on
+            ! de la presi\'on en direcci\'on x
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED) 
+            ensa_corr_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  !$acc loop vector
+                  do jj = 2, nj
+                     call ensambla_corr_pres_y(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &u,v,w,&
+                          &corr_pres,&
+                          &rel_pres,&
+                          &a1,b1,c1,r1,&
+                          &au,av,aw,&
+                          &jj,ii,kk)
+                  end do
+               end do
+            end do ensa_corr_dir_y
+            !$OMP END PARALLEL DO
+            !
+            !--------------------------------------------
+            !--------------------------------------------
+            !
+            ! Condiciones de frontera direcci\'on y
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_direc_y: do kk = 2, lk
+               do ii = 2, mi
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indeyp(1,ii,kk))    = 0.0_DBL
+                  b1(indeyp(1,ii,kk))    = 1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 0.0_DBL
+                  !
+                  a1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
+                  c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  !
+               end do
+            end do cond_fron_direc_y
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la correcci\'on de la presi\'on
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_corr_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  !
+                  call tridiagonal(&
+                       &a1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &b1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &c1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &r1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &nj+1)
+                  ! corr_pres(ii,1,kk)    = r1(indeyp(1,ii,kk))
+                  ! corr_pres(ii,nj+1,kk) = r1(indeyp(nj+1,ii,kk))
+                  !
+               end do
+            end do sol_corr_dir_y
+            !$OMP END PARALLEL DO
+            !
+            ! Actualizaci\'on del corrector de la presi\'on
+            ! en direcci\'on y
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do ii = 2, mi
+                  do jj =2, nj
+                     corr_pres(ii,jj,kk) = r1(indeyp(jj,ii,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !------------------------------------------
+            !
+            ! Se ensambla la ecuaci\'on de correcci\'on
+            ! de la presi\'on en direcci\'on z
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_corr_dir_z: do ii = 2, mi
+               do jj = 2, nj
+                  !$acc loop vector
+                  do kk = 2, lk
+                     call ensambla_corr_pres_z(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &u,v,w,&
+                          &corr_pres,&
+                          &b_o,&
+                          &rel_pres,&
+                          &a1,b1,c1,r1,&
+                          &au,av,aw,&
+                          &kk,jj,ii)
+                  end do
+               end do
+            end do ensa_corr_dir_z
+            !$OMP END PARALLEL DO
+            !
+            !------------------------------------------------------------------------
+            !------------------------------------------------------------------------
+            !
+            ! Condiciones de frontera direcci\'on z
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_direc_z: do ii = 2, mi
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indezp(1,jj,ii))    = 0.0_DBL
+                  b1(indezp(1,jj,ii))    = 1.0_DBL
+                  c1(indezp(1,jj,ii))    = 0.0_DBL
+                  !
+                  a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  b1(indezp(lk+1,jj,ii)) = 1.0_DBL
+                  c1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  !
+               end do
+            end do cond_fron_direc_z
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la correcci\'on de la presi\'on
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_corr_dir_z: do ii = 2, mi
+               do jj = 2, nj
+                  !
+                  call tridiagonal(&
+                       &a1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &b1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &lk+1)
+                  ! corr_pres(ii,jj,1)    = r1(indezp(1,jj,ii))
+                  ! corr_pres(ii,jj,lk+1) = r1(indezp(lk+1,jj,ii))
+                  !
+               end do
+            end do sol_corr_dir_z
+            !$OMP END PARALLEL DO
+            !
+            ! Actualizaci\'on del corrector de la presi\'on
+            ! en direcci\'on y
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do ii = 2, mi
+               do jj = 2, nj
+                  do kk =1, lk+1
+                     corr_pres(ii,jj,kk) = r1(indezp(kk,jj,ii))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            calcula_fcorr_press: do kk=2, lk
+               do jj=2, nj
+                  do ii = 2, mi
+                     fcorr_pres(ii,jj,kk) = fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk)
+                  end do
+               end do
+            end do calcula_fcorr_press
+            !$OMP END PARALLEL DO
+            !
+            !-----------------------------------------------------------------------------
+            !-----------------------------------------------------------------------------
+            !
+            !****************************************************
+            !critero de convergencia del corrector de la presi'on
+            IF(MAXVAL(DABS(fcorr_pres))<conv_p)EXIT
+            ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(fcorr_pres))
+         END DO correccion_presion
+         !*********************
+         !se corrige la presion
+         !$OMP PARALLEL DO
+         DO k = 2, lk
+            DO j = 2, nj
+               DO i = 2, mi
+                  pres(i,j,k) = pres(i,j,k)+corr_pres(i,j,k)
+               END DO
+            END DO
+         END DO
+         !$OMP END PARALLEL DO
+         !*****************************
+         !se actualizan las velocidades
+         !$OMP PARALLEL DO
+         DO k = 2, lk
+            DO j = 2, nj
+               DO i = 2, mi-1
+                  u(i,j,k) = u(i,j,k)+d_yv(j-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i+1,j,k))/au(i,j,k)
+               END DO
+            END DO
+         END DO
+         !$OMP END PARALLEL DO
+         !$OMP PARALLEL DO
+         DO k = 2, lk
+            DO j = 2, nj-1
+               DO i = 2, mi
+                  v(i,j,k) = v(i,j,k)+d_xu(i-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i,j+1,k))/av(i,j,k)
+               END DO
+            END DO
+         END DO
+         !$OMP END PARALLEL DO
+         !$OMP PARALLEL DO
+         DO k = 2, lk-1
+            DO j = 2, nj
+               DO i = 2, mi
+                  w(i,j,k) = w(i,j,k)+d_xu(i-1)*d_yv(j-1)*(corr_pres(i,j,k)-corr_pres(i,j,k+1))/aw(i,j,k)
+               END DO
+            END DO
+         END DO
+         !$OMP END PARALLEL DO
+         !*************************
+         !
+         !------------------------------------------------------------------------------
+         !------------------------------------------------------------------------------
+         !
+         !                   Se resuelve la ec. de la energ\'ia
+         !
+         !------------------------------------------------------------------------------
+         !------------------------------------------------------------------------------
+         !
+         DO tt = 1, 3
+            !$acc parallel loop gang collapse(2) !async(stream1)
+            !$OMP PARALLEL DO
+            inicializacion_ftemp: do kk = 1, lk+1
+               do jj = 1, nj+1
+                  do ii = 1, mi+1
+                     ftemp(ii,jj,kk) = temp(ii,jj,kk)
+                  end do
+               end do
+            end do inicializacion_ftemp
+            !$OMP END PARALLEL DO
+            !
+            CALL temperatura(xp,yp,zp,fexu,feyv,fezw,d_xu,d_yv,d_zw,&
+                 &u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de y para u
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_ener_dir_x: do kk = 2, lk
+               do jj = 2, nj
+                  do ii = 2, mi
+                     call ensambla_energia_x(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &gamma_ener,&
+                          &u,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &temp_ant,&
+                          &fuente_con_temp,&
+                          &fuente_lin_temp,&
+                          &dt,&
+                          &rel_ener,&
+                          &a1,b1,c1,r1,&
+                          &ii,jj,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_ener_dir_x
+            !$OMP END PARALLEL DO
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on x
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_ener_direc_x: do kk = 2, lk
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indexp(1,jj,kk))    = 0.0_DBL
+                  b1(indexp(1,jj,kk))    = 1.0_DBL
+                  c1(indexp(1,jj,kk))    = 0.0_DBL
+                  r1(indexp(1,jj,kk))    = 0.0_DBL
+                  !
+                  a1(indexp(mi+1,jj,kk)) = 0.0_DBL
+                  b1(indexp(mi+1,jj,kk)) = 1.0_DBL
+                  c1(indexp(mi+1,jj,kk)) = 0.0_DBL
+                  r1(indexp(mi+1,jj,kk)) = 1.0_DBL
+                  !
+               end do
+            end do cond_fron_ener_direc_x
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de la energ\'ia
+            ! en direcci\'on x
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_ener_dir_x: do kk = 2, lk
+               do jj = 2, nj
+                  !
+                  call tridiagonal(&
+                       &a1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &b1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &c1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &r1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
+                       &mi+1)
+                  !
+               end do
+            end do sol_ener_dir_x
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la velocidad u
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do jj = 2, nj
+                  do ii = 1, mi+1
+                     ! temp(ii,jj,kk) = r1(indexp(ii,jj,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            calcula_ftemp: do kk = 1, lk+1
+               do jj = 1, nj+1
+                  do ii = 1, mi+1
+                     ftemp(ii,jj,kk) = ftemp(ii,jj,kk)-temp(ii,jj,kk)
+                  end do
+               end do
+            end do calcula_ftemp
+            !$OMP END PARALLEL DO
+            !************************************
+            !Criterio de convergencia temperatura
+            IF(MAXVAL(DABS(dtemp))<conv_t)EXIT
+            ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
+         END DO
+         !*******************************************
+         !Criterio de convergencia del paso de tiempo
+         !     CALL residuou(res_fluido_u,xu,y,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
+         WRITE(*,*) 'tiempo ',itera,MAXVAL(DABS(b_o))
+         IF( MAXVAL(DABS(b_o))<conv_paso )EXIT
+         !*************************************************
+      END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
+      itera = itera + 1
+      IF( mod(itera,100)==0 )WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o))
+      !   IF(mod(itera,10)==0)THEN
+      !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,entropia_int,temp_int,a_ent,lambda_ent)
+      !     CALL nusselt(x,y,d_xu,d_yv,temp,nusselt0,nusselt1,i_o,i_1)
+      !     temp_med = (temp((i_o+i_1)/2,nj/2+1)+temp((i_o+i_1)/2+1,nj/2+1))/2._DBL
+      !     OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rac//'.dat',access = 'append')
+      !     WRITE(5,26) tiempo_inicial+itera*dt,nusselt0,nusselt1,temp_med,temp_int,entropia_int
+      !     CLOSE(unit = 5)
+      !   ENDIF
+      !*********************************
+      tiempo   = tiempo_inicial+itera*dt
+      temp_ant = temp
+      u_ant    = u
+      v_ant    = v
+      w_ant    = w
+      !   !************************************
+      !   !*** Formato de escritura Tecplot ***
+      !   OPEN(unit=1,file='tprueba.plt')
+      !   WRITE(1,*)'TITLE     = "Tempe" '
+      !   WRITE(1,*)'VARIABLES = "x"'
+      !   WRITE(1,*)'"y"'
+      !   WRITE(1,*)'"z"'
+      !   WRITE(1,*)'"Temperature"'        ! variable
+      !   WRITE(1,*)'"Temperature_a"'        ! variable
+      !   !WRITE(1,*)'"XD"'
+      !   !WRITE(1,*)'"DTEMP"'
+      !   WRITE(1,*)'ZONE T= "Matrix"'
+      !   WRITE(1,*)'I=',mi+1,' J=',nj+1,' K=',lk+1,' F=POINT'
+      !   DO kl = 1, lk+1
+      !     DO j = 1, nj+1
+      !       DO i = 1, mi+1
+      ! 	WRITE(1,25) x(i),y(j),z(kl),temp(i,j,kl),temp_ant(i,j,kl)
+      !       END DO
+      !     END DO
+      !   END DO
+      !   CLOSE(unit=1)
+   END DO !*************termina el paquete de iteraciones
 !*****************************************************
 !*****************************************************
 itera_total = itera_inicial+itera

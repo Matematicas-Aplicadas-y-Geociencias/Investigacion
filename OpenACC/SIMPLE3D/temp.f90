@@ -41,9 +41,9 @@ REAL(kind=DBL), INTENT(in)                  :: dt_o,rel_to
 REAL(kind=DBL) alpha,beta,kappa,sigma
 !****************************
 !auxiliar para calcular dtemp
-ftemp = temp_o
-!*******************
-!TDMA en direccion x
+! ftemp = temp_o
+! !*******************
+! !TDMA en direccion x
 !$OMP  PARALLEL DO DEFAULT(NONE)&
 !$OMP& PRIVATE(AW,APi,AE,Rxi,uw,ue,vs,vn,wb,wt,dw,de,ds,dn,db,dtop,gamma_w,gamma_e,gamma_s,gamma_n,gamma_b,gamma_top,delta_x,delta_y,delta_z,alpha,beta,kappa,sigma)&
 !$OMP& SHARED(u_o,v_o,w_o,temp_o,temp_anto,d_xuo,d_yvo,d_zwo,xo,yo,zo,fexu,feyv,fezw,dt_o,gamma_to,rel_to,i_oo,i_1o,j_oo,j_1o)
@@ -156,18 +156,24 @@ DO k = 2, lk
       delta_y = d_yvo(j-1)
       delta_z = d_zwo(k-1)
       !*******************
-      alpha   =  gamma_e*delta_y*delta_z/de*DMAX1(cero,(1._DBL-0.1_DBL*DABS(ue*de/gamma_e))**5._DBL)+&
-      &DMAX1(cero,-ue*delta_y*delta_z)
-      beta    =  gamma_w*delta_y*delta_z/dw*DMAX1(cero,(1._DBL-0.1_DBL*DABS(uw*dw/gamma_w))**5._DBL)+&
-      &DMAX1(cero,uw*delta_y*delta_z)
-      AN(j)   =-(gamma_n*delta_x*delta_z/dn*DMAX1(cero,(1._DBL-0.1_DBL*DABS(vn*dn/gamma_n))**5._DBL)+&
-      &DMAX1(cero,-vn*delta_x*delta_z))
-      AS(j-1) =-(gamma_s*delta_x*delta_z/ds*DMAX1(cero,(1._DBL-0.1_DBL*DABS(vs*ds/gamma_s))**5._DBL)+&
-      &DMAX1(cero,vs*delta_x*delta_z))
-      kappa   =  gamma_top*delta_x*delta_y/dtop*DMAX1(cero,(1._DBL-0.1_DBL*DABS(wt*dtop/gamma_top))**5._DBL)+&
-      &DMAX1(cero,-wt*delta_x*delta_y)
-      sigma   =  gamma_b*delta_x*delta_y/db*DMAX1(cero,(1._DBL-0.1_DBL*DABS(wb*db/gamma_b))**5._DBL)+&
-      &DMAX1(cero,wb*delta_x*delta_y)
+      alpha   =  gamma_e*delta_y*delta_z/de*&
+           DMAX1(cero,(1._DBL-0.1_DBL*DABS(ue*de/gamma_e))**5._DBL)+&
+           &DMAX1(cero,-ue*delta_y*delta_z)
+      beta    =  gamma_w*delta_y*delta_z/dw&
+           *DMAX1(cero,(1._DBL-0.1_DBL*DABS(uw*dw/gamma_w))**5._DBL)+&
+           &DMAX1(cero,uw*delta_y*delta_z)
+      AN(j)   =-(gamma_n*delta_x*delta_z/dn*&
+           DMAX1(cero,(1._DBL-0.1_DBL*DABS(vn*dn/gamma_n))**5._DBL)+&
+           &DMAX1(cero,-vn*delta_x*delta_z))
+      AS(j-1) =-(gamma_s*delta_x*delta_z/ds*&
+           DMAX1(cero,(1._DBL-0.1_DBL*DABS(vs*ds/gamma_s))**5._DBL)+&
+           &DMAX1(cero,vs*delta_x*delta_z))
+      kappa   =  gamma_top*delta_x*delta_y/dtop*&
+           DMAX1(cero,(1._DBL-0.1_DBL*DABS(wt*dtop/gamma_top))**5._DBL)+&
+           &DMAX1(cero,-wt*delta_x*delta_y)
+      sigma   =  gamma_b*delta_x*delta_y/db*&
+           DMAX1(cero,(1._DBL-0.1_DBL*DABS(wb*db/gamma_b))**5._DBL)+&
+           &DMAX1(cero,wb*delta_x*delta_y)
       APj(j)  = (alpha+beta-AN(j)-AS(j-1)+kappa+sigma+delta_x*delta_y*delta_z/dt_o) / rel_to
       Ryj(j)  = alpha*temp_o(i+1,j,k)+beta*temp_o(i-1,j,k)+kappa*temp_o(i,j,k+1)+sigma*temp_o(i,j,k-1)+delta_x*delta_y*delta_z*temp_anto(i,j,k)/dt_o+&
       &APj(j)*(1._DBL-rel_to)*temp_o(i,j,k)

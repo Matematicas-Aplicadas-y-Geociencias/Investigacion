@@ -31,6 +31,11 @@ module ec_energia
   real(kind=DBL) :: conv_t    ! Criterio de convergencia
   real(kind=DBL) :: rel_ener  ! Par\'ametro de relajaci\'on
   !
+  ! Variables para los t\'erminos fuente de la ec de la energ\'ia
+  ! El t\'ermino lineal fuente_lin debe ser negativo para favorecer
+  ! convergencia y estabilidad
+  !
+  real(kind=DBL), dimension(mi+1,nj+1,lk+1)   :: fuente_con_temp, fuente_lin_temp
   ! Estructuras para guardar la informaci\'on de las condiciones de frontera
   !
   ! type( tipo_cond_front ) :: cond_front_ua, cond_front_ub, cond_front_uc, cond_front_ud
@@ -46,7 +51,7 @@ contains
   ! para la ec. de la energ\'ia en direcci\'on x 
   !
   !*******************************************************************
-  subroutine ensambla_energ_x(&
+  subroutine ensambla_energia_x(&
        &deltaxpo,&
        &deltaypo,&
        &deltazpo,&
@@ -56,11 +61,20 @@ contains
        &fexpo,&
        &feypo,&
        &fezpo,&
+       &gamma_enero,&
+       &u_o,&
+       &v_o,&
+       &w_o,&
        &temper_o,&
-       &u_o,v_o,w_o,&
+       &temper_anto,&
+       &fuente_con_tempo,&
+       &fuente_lin_tempo,&
+       &dt_o,&
        &rel_energo,&
        &AI_o,AC_o,AD_o,Rx_o,&
-       &ii,jj,kk)
+       &ii,jj,kk&
+       &)
+    !
     implicit none
     !$acc routine
     !
@@ -89,12 +103,19 @@ contains
     real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
     real(kind=DBL), DIMENSION(nj), intent(in) :: fezpo
     !
+    ! Coeficiente de difusi\'on para la energ\'ia
+    !
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: gamma_enero
+    !
     ! Velocidad, presi\'on, t\'ermino fuente b
     !
     real(kind=DBL), dimension(mi,nj+1,lk+1),   intent(in)  :: u_o
     real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in)  :: v_o
     real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in)  :: w_o
     real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: temper_o
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: temper_anto
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: fuente_con_tempo
+    real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: fuente_lin_tempo
     !
     ! coeficiente de relajaci\'on
     !
@@ -158,18 +179,24 @@ contains
     !
     ! Coeficientes de difusi\'on
     !
-    gammad = ( gamma_ener(ii+1,jj,kk) * gamma_ener(ii,jj,kk) ) / &
-         &( gamma_ener(ii+1,jj,kk) * (1._DBL-fexpo(ii))+gamma_ener(ii,jj,kk)*fexpo(ii) )
-    gammai = ( gamma_ener(ii,jj,kk) * gamma_ener(ii-1,jj,kk) ) / &
-         &( gamma_ener(ii,jj,kk) * (1._DBL-fexpo(ii-1))+gamma_ener(ii-1,jj,kk)*fexpo(ii-1) )
-    gamman = ( gamma_ener(ii,jj+1,kk) * gamma_ener(ii,jj,kk) ) / &
-         &( gamma_ener(ii,jj+1,kk) * (1._DBL-feypo(jj))+gamma_ener(ii,jj,kk)*feypo(jj) )
-    gammas = ( gamma_ener(ii,jj,kk) * gamma_ener(ii,jj-1,kk) ) / &
-         &( gamma_ener(ii,jj,kk) * (1._DBL-feypo(jj-1))+gamma_ener(ii,jj-1,kk)*feypo(jj-1) )
-    gammat = ( gamma_ener(ii,jj,kk+1) * gamma_ener(ii,jj,kk) ) / &
-         &( gamma_ener(ii,jj,kk+1) * (1._DBL-fezpo(kk))+gamma_ener(ii,jj,kk)*fezpo(kk) )
-    gammat = ( gamma_ener(ii,jj,kk) * gamma_ener(ii,jj,kk-1) ) / &
-         &( gamma_ener(ii,jj,kk) * (1._DBL-fezpo(kk-1))+gamma_ener(ii,jj,kk-1)*fezpo(kk-1) )
+    gammad = ( gamma_enero(ii+1,jj,kk) * gamma_enero(ii,jj,kk) ) / &
+         &( gamma_enero(ii+1,jj,kk)*(1._DBL-fexpo(ii))+&
+         &gamma_enero(ii,jj,kk)*fexpo(ii) )
+    gammai = ( gamma_enero(ii,jj,kk) * gamma_enero(ii-1,jj,kk) ) / &
+         &( gamma_enero(ii,jj,kk)*(1._DBL-fexpo(ii-1))+&
+         &gamma_enero(ii-1,jj,kk)*fexpo(ii-1) )
+    gamman = ( gamma_enero(ii,jj+1,kk) * gamma_enero(ii,jj,kk) ) / &
+         &( gamma_enero(ii,jj+1,kk) * (1._DBL-feypo(jj))+&
+         &gamma_enero(ii,jj,kk)*feypo(jj) )
+    gammas = ( gamma_enero(ii,jj,kk) * gamma_enero(ii,jj-1,kk) ) / &
+         &( gamma_enero(ii,jj,kk) * (1._DBL-feypo(jj-1))+&
+         &gamma_enero(ii,jj-1,kk)*feypo(jj-1) )
+    gammat = ( gamma_enero(ii,jj,kk+1) * gamma_enero(ii,jj,kk) ) / &
+         &( gamma_enero(ii,jj,kk+1) * (1._DBL-fezpo(kk))+&
+         &gamma_enero(ii,jj,kk)*fezpo(kk) )
+    gammab = ( gamma_enero(ii,jj,kk) * gamma_enero(ii,jj,kk-1) ) / &
+         &( gamma_enero(ii,jj,kk) * (1._DBL-fezpo(kk-1))+&
+         &gamma_enero(ii,jj,kk-1)*fezpo(kk-1) )
     !
     ! Tama\~no de los vol\'umenes de control para la velocidad u
     !
@@ -181,35 +208,47 @@ contains
     !
     ! Coeficientes de la matriz
     !
-    AI_o(indexp(ii,jj,kk)) =-(gammai*deltaypo(jj)*deltazpo(kk) /di&
+    AI_o(indexp(ii,jj,kk)) =-(gammai*deltaypo(jj)*deltazpo(kk)/di*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
          &DMAX1(0.0_DBL, ui*deltaypo(jj)*deltazpo(kk)))
-    AD_o(indexp(ii,jj,kk)) =-gammad*deltaypo(jj)*deltazpo(kk) /dd&
+    !
+    AD_o(indexp(ii,jj,kk)) =-(gammad*deltaypo(jj)*deltazpo(kk)/dd*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
-         &DMAX1(0.0_DBL, ud*deltaypo(jj)*deltazpo(kk)))
-    alpha                  =-gammas*deltaxpo(ii)*deltazpo(kk) /ds&
+         &DMAX1(0.0_DBL,-ud*deltaypo(jj)*deltazpo(kk)))
+    !
+    alpha                  =-(gammas*deltaxpo(ii)*deltazpo(kk)/ds*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
          &DMAX1(0.0_DBL, vs*deltaxpo(ii)*deltazpo(kk)))
-    beta                   =-gamman*deltaxpo(ii)*deltazpo(kk) /dn&
+    !
+    beta                   =-(gamman*deltaxpo(ii)*deltazpo(kk)/dn*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
-         &DMAX1(0.0_DBL, vn*deltaxpo(ii)*deltazpo(kk)))
-    gamma                  =-gammab*deltaxpo(ii)*deltaypo(jj) /db&
+         &DMAX1(0.0_DBL,-vn*deltaxpo(ii)*deltazpo(kk)))
+    !
+    gamma                  =-(gammab*deltaxpo(ii)*deltaypo(jj)/db*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wb*db/gammab))**5)+&
          &DMAX1(0.0_DBL, wb*deltaxpo(ii)*deltaypo(jj)))
-    delta                  =-gammat*deltaxpo(ii)*deltaypo(jj) /da&
+    !
+    delta                  =-(gammat*deltaxpo(ii)*deltaypo(jj)/da*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wt*da/gammat))**5)+&
-         &DMAX1(0.0_DBL, wt*deltaxpo(ii)*deltaypo(jj)))
+         &DMAX1(0.0_DBL,-wt*deltaxpo(ii)*deltaypo(jj)))
     !
     AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk))-&
          &alpha - beta - gamma - delta +&
+         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*fuente_lin_tempo(ii,jj,kk)+&
          &deltaxpo(ii)+deltaypo(jj)+deltazpo(kk)/dt_o) / rel_energo
     !
     Rx_o(indexp(ii,jj,kk)) =-alpha*temper_o(ii,jj-1,kk)-&
-         &beta *temper_o(ii,jj+1,kk) +&
-         &gamma*temper_o(ii,jj,kk-1) +&
+         &beta *temper_o(ii,jj+1,kk) -&
+         &gamma*temper_o(ii,jj,kk-1) -&
          &delta*temper_o(ii,jj,kk+1) +&
+         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*fuente_con_tempo(ii,jj,kk)+&
+         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*temper_anto(ii,jj,kk)/dt_o+&
          &AC_o(indexp(ii,jj,kk))*(1._DBL-rel_energo)*temper_o(ii,jj,kk)
-
-  end subroutine ensambla_energ_x
+    !
+    ! print*,"DEBUG:a ",  alpha
+    ! print*,"DEBUG:b ",  beta
+    ! print*,"DEBUG:c ",  gamma
+    ! print*,"DEBUG:d ",  delta
+  end subroutine ensambla_energia_x
   !
 end module ec_energia

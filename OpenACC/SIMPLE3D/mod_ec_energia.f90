@@ -100,6 +100,10 @@ contains
     !
     real(kind=DBL), intent(in) :: rel_energo
     !
+    ! Incremento de tiempo
+    !
+    real(kind=DBL), intent(in) :: dt_o
+    !
     ! Coeficientes de las matrices
     !
     ! ** Estos coeficientes est\'an sobredimensionados para reducir el uso de memoria
@@ -177,21 +181,34 @@ contains
     !
     ! Coeficientes de la matriz
     !
-    AI_o(indexp(ii,jj,kk)) =-gammai * deltaypo(jj)*deltazpo(kk)/di
-    AD_o(indexp(ii,jj,kk)) =-gammad * deltaypo(jj)*deltazpo(kk)/dd
-    alpha                  =-gammas * deltaxpo(ii)*deltazpo(kk)/ds
-    beta                   =-gamman * deltaxpo(ii)*deltazpo(kk)/dn
-    gamma                  =-gammab * deltaxpo(ii)*deltaypo(jj)/db
-    delta                  =-gammat * deltaxpo(ii)*deltaypo(jj)/da
+    AI_o(indexp(ii,jj,kk)) =-(gammai*deltaypo(jj)*deltazpo(kk) /di&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
+         &DMAX1(0.0_DBL, ui*deltaypo(jj)*deltazpo(kk)))
+    AD_o(indexp(ii,jj,kk)) =-gammad*deltaypo(jj)*deltazpo(kk) /dd&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
+         &DMAX1(0.0_DBL, ud*deltaypo(jj)*deltazpo(kk)))
+    alpha                  =-gammas*deltaxpo(ii)*deltazpo(kk) /ds&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
+         &DMAX1(0.0_DBL, vs*deltaxpo(ii)*deltazpo(kk)))
+    beta                   =-gamman*deltaxpo(ii)*deltazpo(kk) /dn&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
+         &DMAX1(0.0_DBL, vn*deltaxpo(ii)*deltazpo(kk)))
+    gamma                  =-gammab*deltaxpo(ii)*deltaypo(jj) /db&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wb*db/gammab))**5)+&
+         &DMAX1(0.0_DBL, wb*deltaxpo(ii)*deltaypo(jj)))
+    delta                  =-gammat*deltaxpo(ii)*deltaypo(jj) /da&
+         &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wt*da/gammat))**5)+&
+         &DMAX1(0.0_DBL, wt*deltaxpo(ii)*deltaypo(jj)))
     !
     AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk))-&
-         &alpha - beta - gamma - delta ) / rel_energo
+         &alpha - beta - gamma - delta +&
+         &deltaxpo(ii)+deltaypo(jj)+deltazpo(kk)/dt_o) / rel_energo
     !
-    Rx_o(indexp(ii,jj,kk)) =-alpha-&
-         &beta +&
-         &gamma+&
-         &delta+&
-         &(1._DBL-rel_energo)*AC_o(indexp(ii,jj,kk))
+    Rx_o(indexp(ii,jj,kk)) =-alpha*temper_o(ii,jj-1,kk)-&
+         &beta *temper_o(ii,jj+1,kk) +&
+         &gamma*temper_o(ii,jj,kk-1) +&
+         &delta*temper_o(ii,jj,kk+1) +&
+         &AC_o(indexp(ii,jj,kk))*(1._DBL-rel_energo)*temper_o(ii,jj,kk)
 
   end subroutine ensambla_energ_x
   !

@@ -92,16 +92,15 @@ contains
     !
     real(kind=DBL), dimension(nj), intent(in) :: deltayvo
     !
-    !
     ! Distancia entre nodos contiguos de la malla de p en direcci\'on vertical z
     !
-    real(kind=DBL), dimension(nj), intent(in) :: deltazwo
+    real(kind=DBL), dimension(lk), intent(in) :: deltazwo
     !
     ! Coeficientes de interpolaci\'on
     !
     real(kind=DBL), DIMENSION(mi), intent(in) :: fexpo
     real(kind=DBL), DIMENSION(nj), intent(in) :: feypo
-    real(kind=DBL), DIMENSION(nj), intent(in) :: fezpo
+    real(kind=DBL), DIMENSION(lk), intent(in) :: fezpo
     !
     ! Coeficiente de difusi\'on para la energ\'ia
     !
@@ -149,6 +148,7 @@ contains
     real(kind=DBL) :: gammai, gammad
     real(kind=DBL) :: gammas, gamman
     real(kind=DBL) :: gammab, gammat
+    real(kind=DBL) :: deltax, deltay, deltaz
     real(kind=DBL) :: alpha,beta,gamma,delta
     !
     ! Interpolaciones necesarias
@@ -198,57 +198,53 @@ contains
          &( gamma_enero(ii,jj,kk) * (1._DBL-fezpo(kk-1))+&
          &gamma_enero(ii,jj,kk-1)*fezpo(kk-1) )
     !
-    ! Tama\~no de los vol\'umenes de control para la velocidad u
+    ! Tama\~no de los vol\'umenes de control para la temperatura
     !
-    ! delta_x = deltaxpo(ii)
-    ! delta_y = deltaypo(jj)
-    ! delta_z = deltazpo(kk)
+    deltax = deltaxpo(ii)
+    deltay = deltaypo(jj)
+    deltaz = deltazpo(kk)
     !
     ! -------------------------
     !
     ! Coeficientes de la matriz
     !
-    AI_o(indexp(ii,jj,kk)) =-(gammai*deltaypo(jj)*deltazpo(kk)/di*&
+    AI_o(indexp(ii,jj,kk)) =-(gammai*deltay*deltaz/di*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ui*di/gammai))**5)+&
-         &DMAX1(0.0_DBL, ui*deltaypo(jj)*deltazpo(kk)))
+         &DMAX1(0.0_DBL, ui*deltay*deltaz))
     !
-    AD_o(indexp(ii,jj,kk)) =-(gammad*deltaypo(jj)*deltazpo(kk)/dd*&
+    AD_o(indexp(ii,jj,kk)) =-(gammad*deltay*deltaz/dd*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(ud*dd/gammad))**5)+&
-         &DMAX1(0.0_DBL,-ud*deltaypo(jj)*deltazpo(kk)))
+         &DMAX1(0.0_DBL,-ud*deltay*deltaz))
     !
-    alpha                  =-(gammas*deltaxpo(ii)*deltazpo(kk)/ds*&
+    alpha                  =-(gammas*deltax*deltaz/ds*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vs*ds/gammas))**5)+&
-         &DMAX1(0.0_DBL, vs*deltaxpo(ii)*deltazpo(kk)))
+         &DMAX1(0.0_DBL, vs*deltax*deltaz))
     !
-    beta                   =-(gamman*deltaxpo(ii)*deltazpo(kk)/dn*&
+    beta                   =-(gamman*deltax*deltaz/dn*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(vn*dn/gamman))**5)+&
-         &DMAX1(0.0_DBL,-vn*deltaxpo(ii)*deltazpo(kk)))
+         &DMAX1(0.0_DBL,-vn*deltax*deltaz))
     !
-    gamma                  =-(gammab*deltaxpo(ii)*deltaypo(jj)/db*&
+    gamma                  =-(gammab*deltax*deltay/db*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wb*db/gammab))**5)+&
-         &DMAX1(0.0_DBL, wb*deltaxpo(ii)*deltaypo(jj)))
+         &DMAX1(0.0_DBL, wb*deltax*deltay))
     !
-    delta                  =-(gammat*deltaxpo(ii)*deltaypo(jj)/da*&
+    delta                  =-(gammat*deltax*deltay/da*&
          &DMAX1(0.0_DBL,(1._DBL-0.1_DBL*dabs(wt*da/gammat))**5)+&
-         &DMAX1(0.0_DBL,-wt*deltaxpo(ii)*deltaypo(jj)))
+         &DMAX1(0.0_DBL,-wt*deltax*deltay))
     !
     AC_o(indexp(ii,jj,kk)) = ( -AI_o(indexp(ii,jj,kk)) - AD_o(indexp(ii,jj,kk))-&
          &alpha - beta - gamma - delta +&
-         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*fuente_lin_tempo(ii,jj,kk)+&
-         &deltaxpo(ii)+deltaypo(jj)+deltazpo(kk)/dt_o) / rel_energo
+         &deltax*deltay*deltaz*fuente_lin_tempo(ii,jj,kk)+&
+         &deltax*deltay*deltaz/dt_o) / rel_energo
     !
     Rx_o(indexp(ii,jj,kk)) =-alpha*temper_o(ii,jj-1,kk)-&
          &beta *temper_o(ii,jj+1,kk) -&
          &gamma*temper_o(ii,jj,kk-1) -&
          &delta*temper_o(ii,jj,kk+1) +&
-         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*fuente_con_tempo(ii,jj,kk)+&
-         &deltaxpo(ii)*deltaypo(jj)*deltazpo(kk)*temper_anto(ii,jj,kk)/dt_o+&
+         &deltax*deltay*deltaz*fuente_con_tempo(ii,jj,kk)+&
+         &deltax*deltay*deltaz*temper_anto(ii,jj,kk)/dt_o+&
          &AC_o(indexp(ii,jj,kk))*(1._DBL-rel_energo)*temper_o(ii,jj,kk)
     !
-    ! print*,"DEBUG:a ",  alpha
-    ! print*,"DEBUG:b ",  beta
-    ! print*,"DEBUG:c ",  gamma
-    ! print*,"DEBUG:d ",  delta
   end subroutine ensambla_energia_x
   !
 end module ec_energia

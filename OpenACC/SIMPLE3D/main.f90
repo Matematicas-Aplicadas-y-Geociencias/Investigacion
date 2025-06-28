@@ -1695,7 +1695,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !------------------------------------------------------------------------------
          !------------------------------------------------------------------------------
          !
-         DO tt = 1, 3
+         DO tt = 1, 100
             !$acc parallel loop gang collapse(2) !async(stream1)
             !$OMP PARALLEL DO
             inicializacion_ftemp: do kk = 1, lk+1
@@ -1761,12 +1761,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   a1(indexp(1,jj,kk))    = 0.0_DBL
                   b1(indexp(1,jj,kk))    = 1.0_DBL
                   c1(indexp(1,jj,kk))    = 0.0_DBL
-                  r1(indexp(1,jj,kk))    = 0.0_DBL
+                  r1(indexp(1,jj,kk))    = 1.0_DBL
                   !
                   a1(indexp(mi+1,jj,kk)) = 0.0_DBL
                   b1(indexp(mi+1,jj,kk)) = 1.0_DBL
                   c1(indexp(mi+1,jj,kk)) = 0.0_DBL
-                  r1(indexp(mi+1,jj,kk)) = 1.0_DBL
+                  r1(indexp(mi+1,jj,kk)) = 0.0_DBL
                   !
                end do
             end do cond_fron_ener_direc_x
@@ -1803,7 +1803,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             do kk = 2, lk
                do jj = 2, nj
                   do ii = 1, mi+1
-                     ! temp(ii,jj,kk) = r1(indexp(ii,jj,kk))
+                     temp(ii,jj,kk) = r1(indexp(ii,jj,kk))
                   end do
                end do
             end do
@@ -1821,7 +1821,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !$OMP END PARALLEL DO
             !************************************
             !Criterio de convergencia temperatura
-            IF(MAXVAL(DABS(dtemp))<conv_t)EXIT
+            IF(MAXVAL(DABS(ftemp))<conv_t)EXIT
             ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
          END DO
          !*******************************************

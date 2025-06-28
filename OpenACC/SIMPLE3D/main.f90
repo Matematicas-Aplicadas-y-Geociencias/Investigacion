@@ -43,6 +43,7 @@ use ec_momento, only : ensambla_velv_z
 use ec_momento, only : ensambla_velw_x
 use ec_momento, only : ensambla_velw_y
 use ec_momento, only : ensambla_velw_z
+use ec_momento, only : residuo_u
 !
 use ec_energia, only : temp, temp_ant, ftemp
 use ec_energia, only : fuente_con_temp, fuente_lin_temp
@@ -60,8 +61,9 @@ INCLUDE 'omp_lib.h'
 !
 ! Coeficientes para las matrices 
 !
-real(kind=DBL), dimension(mi+1,nj+1,lk+1) :: AA, BB, CC, RR
 real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)) :: a1, b1, c1, r1
+!
+real(kind=DBL) :: residuo
 !
 ! --------------------------------------------------------------------------------
 !
@@ -1000,8 +1002,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do inicializacion_fw
             !$OMP END PARALLEL DO
-            ! CALL vel_w(xp,yp,zw,fexu,feyv,d_zw,d2_zw,d_xu,d_yv,w,w_ant,u,v&
-            !      &,pres,temp,gamma_w,Ri,dt,dw,aw,rel_vel)
             !
             !----------------------------------------
             !
@@ -1607,8 +1607,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                        &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
                        &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
                        &lk+1)
-                  ! corr_pres(ii,jj,1)    = r1(indezp(1,jj,ii))
-                  ! corr_pres(ii,jj,lk+1) = r1(indezp(lk+1,jj,ii))
                   !
                end do
             end do sol_corr_dir_z
@@ -1662,7 +1660,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi-1
-                  u(i,j,k) = u(i,j,k)+d_yv(j-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i+1,j,k))/au(i,j,k)
+                  u(i,j,k) = u(i,j,k)+d_yv(j-1)*d_zw(k-1)*&
+                       &(corr_pres(i,j,k)-corr_pres(i+1,j,k))/au(i,j,k)
                END DO
             END DO
          END DO
@@ -1671,7 +1670,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          DO k = 2, lk
             DO j = 2, nj-1
                DO i = 2, mi
-                  v(i,j,k) = v(i,j,k)+d_xu(i-1)*d_zw(k-1)*(corr_pres(i,j,k)-corr_pres(i,j+1,k))/av(i,j,k)
+                  v(i,j,k) = v(i,j,k)+d_xu(i-1)*d_zw(k-1)*&
+                       &(corr_pres(i,j,k)-corr_pres(i,j+1,k))/av(i,j,k)
                END DO
             END DO
          END DO
@@ -1680,7 +1680,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          DO k = 2, lk-1
             DO j = 2, nj
                DO i = 2, mi
-                  w(i,j,k) = w(i,j,k)+d_xu(i-1)*d_yv(j-1)*(corr_pres(i,j,k)-corr_pres(i,j,k+1))/aw(i,j,k)
+                  w(i,j,k) = w(i,j,k)+d_xu(i-1)*d_yv(j-1)*&
+                       &(corr_pres(i,j,k)-corr_pres(i,j,k+1))/aw(i,j,k)
                END DO
             END DO
          END DO
@@ -1824,11 +1825,75 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             IF(MAXVAL(DABS(ftemp))<conv_t)EXIT
             ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
          END DO
-         !*******************************************
-         !Criterio de convergencia del paso de tiempo
-         !     CALL residuou(res_fluido_u,xu,y,feyv,d_xu,d2_xu,d_yv,u,u_ant,v,temp,pres,Resu,gamma_u,Ri,dt)
-         WRITE(*,*) 'tiempo ',itera,MAXVAL(DABS(b_o))
-         IF( MAXVAL(DABS(b_o))<conv_paso )EXIT
+         !
+         !---------------------------------------------
+         !---------------------------------------------
+         !
+         ! Criterios de convergencia del paso de tiempo
+         !
+         !---------------------------------------------
+         !---------------------------------------------
+         !
+         !$acc parallel !async(stream1)
+         !$OMP PARALLEL DO DEFAULT(SHARED)
+         bucle_direccion_z: do kk = 2, lk
+            !
+            bucle_direccion_y: do jj = 2, nj
+               !
+               !$acc loop vector
+               bucle_direccion_x: do ii = 2, mi-1
+                  call residuo_u(&
+                       &deltaxu,&
+                       &deltayu,&
+                       &deltazu,&
+                       &deltaxp,&
+                       &deltayv,&
+                       &deltazw,&
+                       &fexp,&
+                       &feyp,&
+                       &fezp,&
+                       &fexu,&
+                       &gamma_momen,&
+                       &u,&
+                       &u_ant,&
+                       &v,&
+                       &w,&
+                       &temp,&
+                       &pres,&
+                       &fuente_con_u,&
+                       &fuente_lin_u,&
+                       &Ri,&
+                       &dt,&
+                       &rel_vel,&
+                       &a1,b1,c1,r1,&
+                       &ii,jj,kk&
+                       &)
+               end do bucle_direccion_x
+               !
+            end do bucle_direccion_y
+            !
+         end do bucle_direccion_z
+         !$OMP END PARALLEL DO
+         !$acc end parallel
+         !
+         !-------------------------
+         !
+         ! residuo del algoritmo
+         !
+         residuo = 0.0_DBL
+         !$acc parallel loop reduction(+:residuo) !async(stream1)
+         calculo_maximo_residuou: do kk = 2, lk
+            do jj = 2, nj
+               do ii = 2, mi-1
+                  residuo = residuo + r1(indexu(ii,jj,kk))*r1(indexu(ii,jj,kk))
+               end do
+            end do
+         end do calculo_maximo_residuou
+         !
+         residuo = sqrt(residuo)
+         !
+         WRITE(*,*) 'tiempo ',itera,MAXVAL(DABS(b_o)), residuo
+         IF( MAXVAL(DABS(b_o))<conv_paso .and. residuo < conv_resi)EXIT
          !*************************************************
       END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
       itera = itera + 1

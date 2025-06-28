@@ -63,7 +63,7 @@ INCLUDE 'omp_lib.h'
 !
 real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)) :: a1, b1, c1, r1
 !
-real(kind=DBL) :: residuo
+real(kind=DBL) :: residuo, maxbo
 !
 ! --------------------------------------------------------------------------------
 !
@@ -270,8 +270,8 @@ au    = 1._DBL
 av    = 1._DBL
 aw    = 1._DBL
 ! pres  = cero
-b_o   = cero
-itera = 0
+b_o   = 0._DBL
+itera = 1
 entropia = cero
 !************************************************
 !escribe las caracter´isticas de las variable DBL
@@ -1880,24 +1880,38 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !
          ! residuo del algoritmo
          !
+         maxbo   = 0.0_DBL
+         calculo_maxbo: do kk = 2, lk
+            do jj = 2, nj
+               do ii = 2, mi-1
+                  maxbo = maxbo + b_o(ii,jj,kk)*b_o(ii,jj,kk)
+               end do
+            end do
+         end do calculo_maxbo
+         !
+         maxbo = sqrt(maxbo)
+         !
          residuo = 0.0_DBL
          !$acc parallel loop reduction(+:residuo) !async(stream1)
-         calculo_maximo_residuou: do kk = 2, lk
+         calculo_residuou: do kk = 2, lk
             do jj = 2, nj
                do ii = 2, mi-1
                   residuo = residuo + r1(indexu(ii,jj,kk))*r1(indexu(ii,jj,kk))
                end do
             end do
-         end do calculo_maximo_residuou
+         end do calculo_residuou
          !
          residuo = sqrt(residuo)
          !
-         WRITE(*,*) 'tiempo ',itera,MAXVAL(DABS(b_o)), residuo
-         IF( MAXVAL(DABS(b_o))<conv_paso .and. residuo < conv_resi)EXIT
+         IF( maxbo<conv_paso .and. residuo < conv_resi)EXIT
          !*************************************************
       END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
+      !
+      ! Mensaje de convergencia
+      !
+      WRITE(*,*) 'tiempo ',itera,maxbo,residuo
       itera = itera + 1
-      IF( mod(itera,100)==0 )WRITE(*,*) 'tiempa ',itera,res_fluido_u,MAXVAL(DABS(Resu)),MAXVAL(DABS(b_o))
+      !
       !   IF(mod(itera,10)==0)THEN
       !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,entropia_int,temp_int,a_ent,lambda_ent)
       !     CALL nusselt(x,y,d_xu,d_yv,temp,nusselt0,nusselt1,i_o,i_1)

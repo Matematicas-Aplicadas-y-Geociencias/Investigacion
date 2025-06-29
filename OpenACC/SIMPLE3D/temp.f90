@@ -212,11 +212,11 @@ DO k = 2, lk
     !Condiciones de frontera
     APj(1) =-1._DBL
     AN(1)  = 1._DBL
-    Ryj(1) = temp_o(i,1,k)*1.d0*delta_y !cero
+    Ryj(1) = 0._DBL !temp_o(i,1,k)*1.d0*delta_y !cero
     !*****************
     AS(nj)    =-1._DBL
     APj(nj+1) = 1._DBL
-    Ryj(nj+1) =-temp_o(i,nj+1,k)*1.d0*delta_y !cero
+    Ryj(nj+1) = 0._DBL !-temp_o(i,nj+1,k)*1.d0*delta_y !cero
     !***************************
     CALL tri(AS,APj,AN,Ryj,nj+1)
     DO j = 1, nj+1

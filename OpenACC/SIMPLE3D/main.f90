@@ -276,7 +276,7 @@ b_o   = 0._DBL
 itera = 1
 itera_total = itera_total+itera
 entropia = cero
-simpmax = 50
+simpmax = 200
 !************************************************
 !escribe las caracter´isticas de las variable DBL
 WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -375,12 +375,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyu(1,ii,kk))    = 0.0_DBL
-                  b1(indeyu(1,ii,kk))    = 1.0_DBL
-                  c1(indeyu(1,ii,kk))    = 0.0_DBL
+                  b1(indeyu(1,ii,kk))    =-1.0_DBL
+                  c1(indeyu(1,ii,kk))    = 1.0_DBL
                   r1(indeyu(1,ii,kk))    = 0.0_DBL
                   au(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyu(nj+1,ii,kk)) = 0.0_DBL
+                  a1(indeyu(nj+1,ii,kk)) =-1.0_DBL
                   b1(indeyu(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyu(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyu(nj+1,ii,kk)) = 0.0_DBL
@@ -482,7 +482,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   b1(indezp(1,jj,ii))    = 1.0_DBL
                   c1(indezp(1,jj,ii))    = 0.0_DBL
                   r1(indezp(1,jj,ii))    = 1.0_DBL*&
-                       &dtanh(tiempo/0.1)
+                       &dtanh((tiempo+dt)/0.1)
                   au(ii,jj,1)            = 1.0e40_DBL
                   !
                   a1(indezp(lk+1,jj,ii)) = 0.0_DBL
@@ -721,13 +721,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   b1(indezv(1,jj,ii))    = 1.0_DBL
                   c1(indezv(1,jj,ii))    = 0.0_DBL
                   r1(indezv(1,jj,ii))    = 0.0_DBL
-                  av(1,jj,ii)            = 1.0e40_DBL
+                  av(ii,jj,1)            = 1.0e40_DBL
                   !
                   a1(indezv(lk+1,jj,ii)) = 0.0_DBL
                   b1(indezv(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezv(lk+1,jj,ii)) = 0.0_DBL
                   r1(indezv(lk+1,jj,ii)) = 0.0_DBL
-                  av(lk+1,jj,ii)         = 1.0e40_DBL
+                  av(ii,jj,lk+1)         = 1.0e40_DBL
                   !
                end do
             end do cond_fron_v_direc_z
@@ -831,7 +831,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   b1(indeyv(nj,ii,kk))   = 1.0_DBL
                   c1(indeyv(nj,ii,kk))   = 0.0_DBL
                   r1(indeyv(nj,ii,kk))   = 0.0_DBL
-                  av(ii,nj-1,kk)         = 1.0e40_DBL
+                  av(ii,nj,kk)           = 1.0e40_DBL
                   !
                end do
             end do cond_fron_v_direc_y
@@ -1063,11 +1063,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   b1(indezw(1,jj,ii))  = 1.0_DBL
                   c1(indezw(1,jj,ii))  = 0.0_DBL
                   r1(indezw(1,jj,ii))  = 0.0_DBL
+                  aw(ii,jj,1)          = 1.0e40_DBL
                   !
                   a1(indezw(lk,jj,ii)) = 0.0_DBL
                   b1(indezw(lk,jj,ii)) = 1.0_DBL
                   c1(indezw(lk,jj,ii)) = 0.0_DBL
                   r1(indezw(lk,jj,ii)) = 0.0_DBL
+                  aw(ii,jj,lk)         = 1.0e40_DBL
                   !
                end do
             end do cond_fron_w_direc_z
@@ -1162,14 +1164,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyp(1,ii,kk))    = 0.0_DBL
-                  b1(indeyp(1,ii,kk))    = 1.0_DBL
-                  c1(indeyp(1,ii,kk))    = 0.0_DBL
+                  b1(indeyp(1,ii,kk))    =-1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 1.0_DBL
                   r1(indeyp(1,ii,kk))    = 0.0_DBL
+                  aw(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  a1(indeyp(nj+1,ii,kk)) =-1.0_DBL
                   b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  aw(ii,nj+1,kk)         = 1.0e40_DBL
                   !
                end do
             end do cond_fron_w_direc_y

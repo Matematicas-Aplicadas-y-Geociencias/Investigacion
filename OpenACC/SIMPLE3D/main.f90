@@ -68,7 +68,8 @@ real(kind=DBL) :: residuo, maxbo
 ! --------------------------------------------------------------------------------
 !
 integer :: ii, jj, kk
-INTEGER :: i,j,k,tt,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
+integer :: simpmax, iter_simp, tt
+INTEGER :: i,j,k,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
 !*******************************************
 ! Variables del flujo,entropia,nusselt e inc'ognitas,residuos,relajaci'on y convergencia
@@ -261,6 +262,7 @@ write(*,*) "--------------------------"
 !   pres(:,:,k) = 12._DBL/Ra*z(k)
 ! END DO
 tiempo_inicial = itera_inicial*dt
+tiempo = tiempo_inicial
 ! u_ant = cero
 ! v_ant = cero
 ! w_ant =-1.0_DBL
@@ -272,7 +274,9 @@ aw    = 1._DBL
 ! pres  = cero
 b_o   = 0._DBL
 itera = 1
+itera_total = itera_total+itera
 entropia = cero
+simpmax = 50
 !************************************************
 !escribe las caracter´isticas de las variable DBL
 WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -289,7 +293,7 @@ WRITE(*,*)' '
 !*********************************************************
 DO l=1,itermax/paq_itera   !inicio del repetidor principal
    DO kl=1,paq_itera          !inicio del paquete iteraciones
-      ALGORITMO_SIMPLE: DO       !inicio del algoritmo SIMPLE
+      ALGORITMO_SIMPLE: DO  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
          DO tt= 1, 100
             !
             !----------------------------------------------------------
@@ -477,7 +481,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   a1(indezp(1,jj,ii))    = 0.0_DBL
                   b1(indezp(1,jj,ii))    = 1.0_DBL
                   c1(indezp(1,jj,ii))    = 0.0_DBL
-                  r1(indezp(1,jj,ii))    = 1.0_DBL
+                  r1(indezp(1,jj,ii))    = 1.0_DBL*&
+                       &dtanh(tiempo/0.1)
                   au(ii,jj,1)            = 1.0e40_DBL
                   !
                   a1(indezp(lk+1,jj,ii)) = 0.0_DBL
@@ -1909,7 +1914,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
       !
       ! Mensaje de convergencia
       !
-      WRITE(*,*) 'tiempo ',itera,maxbo,residuo
+      WRITE(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
       itera = itera + 1
       !
       !   IF(mod(itera,10)==0)THEN

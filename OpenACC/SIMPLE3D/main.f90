@@ -315,7 +315,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !
             !$acc parallel loop gang collapse(2) !async(stream1)
-            !$OMP PARALLEL DO
+            !$OMP PARALLEL DO COLLAPSE(3)
             inicializacion_fu: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi
@@ -331,7 +331,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de y para u
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_y: do kk = 2, lk
                do ii = 2, mi-1
                   do jj = 2, nj
@@ -398,7 +398,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_y: do kk = 2, lk
                do ii = 2, mi-1
                   !
@@ -419,7 +419,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi-1
                   do jj = 1, nj+1
@@ -435,7 +435,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de z para u
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_z: do ii = 2, mi-1
                do jj = 2, nj
                   do kk = 2, lk
@@ -503,7 +503,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on z
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_z: do ii = 2, mi-1
                do jj = 2, nj
                   !
@@ -524,7 +524,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on z
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi-1
                do jj = 2, nj
                   do kk = 1, lk+1
@@ -540,7 +540,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para u
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_x: do kk = 2, lk
                do jj = 2, nj
                   do ii = 2, mi-1
@@ -608,7 +608,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_x: do kk = 2, lk
                do jj = 2, nj
                   !
@@ -629,7 +629,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj
                   do ii = 1, mi
@@ -639,7 +639,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             calcula_fu: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi
@@ -658,7 +658,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !
             !$acc parallel loop gang collapse(2) !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             inicializacion_fv: do kk = 1, lk+1
                do jj = 1, nj
                   do ii = 1, mi+1
@@ -674,7 +674,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para v
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_z: do ii = 2, mi
                do jj = 2, nj-1
                   do kk = 2, lk
@@ -741,7 +741,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_z: do ii = 2, mi
                do jj = 2, nj-1
                   !
@@ -762,7 +762,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj-1
                   do kk = 1, lk+1
@@ -778,7 +778,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para v
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_y: do kk = 2, lk
                do ii = 2, mi
                   do jj = 2, nj-1
@@ -845,7 +845,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_y: do kk = 2, lk
                do ii = 2, mi
                   !
@@ -866,7 +866,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi
                   do jj = 1, nj
@@ -882,7 +882,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para v
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_x: do kk = 2, lk
                do jj = 2, nj-1
                   do ii = 2, mi
@@ -950,7 +950,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_x: do kk = 2, lk
                do jj = 2, nj-1
                   !
@@ -971,7 +971,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj-1
                   do ii = 1, mi+1
@@ -981,7 +981,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             calcula_fv: do kk = 1, lk+1
                do jj = 1, nj
                   do ii = 1, mi+1
@@ -1000,7 +1000,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !
             !$acc parallel loop gang collapse(2) !async(stream1)
-            !$OMP PARALLEL DO
+            !$OMP PARALLEL DO COLLAPSE(3)
             inicializacion_fw: do kk = 1, lk
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -1016,7 +1016,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de y para w
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_z: do ii = 2, mi
                do jj = 2, nj
                   do kk = 2, lk-1
@@ -1083,7 +1083,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !
@@ -1104,7 +1104,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj
                   do kk = 1, lk
@@ -1120,7 +1120,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de y para w
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_y: do kk = 2, lk-1
                do ii = 2, mi
                   do jj = 2, nj
@@ -1187,7 +1187,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_y: do kk = 2, lk-1
                do ii = 2, mi
                   !
@@ -1208,7 +1208,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk-1
                do ii = 2, mi
                   do jj = 1, nj+1
@@ -1225,7 +1225,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para w
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_x: do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 2, mi
@@ -1293,7 +1293,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_x: do kk = 2, lk-1
                do jj = 2, nj
                   !
@@ -1314,7 +1314,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 1, mi+1
@@ -1324,7 +1324,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             calcula_fw: do kk = 1, lk
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -1340,16 +1340,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(fu))
          END DO
          !
-         !----------------------------------------------------------------------------------
-         !----------------------------------------------------------------------------------
+         !-------------------------------------------------------------------------------
+         !-------------------------------------------------------------------------------
          !
          !                   Se calcula la correcci'on de la presi'on
          !
-         !----------------------------------------------------------------------------------
-         !----------------------------------------------------------------------------------
+         !-------------------------------------------------------------------------------
+         !-------------------------------------------------------------------------------
          !
          !$acc parallel loop gang collapse(2) !async(stream2)
-         !$OMP PARALLEL DO DEFAULT(SHARED)     
+         !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)    
          inicializa_corrector_presion: do kk=1, lk+1
             do jj = 1, nj+1
                do ii = 1, mi+1
@@ -1363,7 +1363,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          correccion_presion: do tt = 1, 100
             !
             !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             inicializa_fcorr_press: do kk=2, lk
                do jj=2, nj
                   do ii = 2, mi
@@ -1379,7 +1379,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! de la presi\'on en direcci\'on x
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_x: do kk = 2, lk
                do jj = 2, nj
                   !$acc loop vector
@@ -1431,7 +1431,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la correcci\'on de la presi\'on
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_corr_dir_x: do kk = 2, lk
                do jj = 2,nj
                   !
@@ -1451,7 +1451,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on x
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj
                   do ii =1, mi+1
@@ -1467,7 +1467,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! de la presi\'on en direcci\'on y
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) 
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_y: do kk = 2, lk
                do ii = 2, mi
                   !$acc loop vector
@@ -1519,7 +1519,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_corr_dir_y: do kk = 2, lk
                do ii = 2, mi
                   !
@@ -1539,7 +1539,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on y
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi
                   do jj =2, nj
@@ -1555,7 +1555,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! de la presi\'on en direcci\'on z
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !$acc loop vector
@@ -1608,7 +1608,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !
@@ -1626,7 +1626,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on y
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj
                   do kk =1, lk+1
@@ -1636,7 +1636,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             calcula_fcorr_press: do kk=2, lk
                do jj=2, nj
                   do ii = 2, mi
@@ -1656,7 +1656,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          END DO correccion_presion
          !*********************
          !se corrige la presion
-         !$OMP PARALLEL DO
+         !$OMP PARALLEL DO COLLAPSE(3)
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi
@@ -1667,7 +1667,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !$OMP END PARALLEL DO
          !*****************************
          !se actualizan las velocidades
-         !$OMP PARALLEL DO
+         !$OMP PARALLEL DO COLLAPSE(3)
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi-1
@@ -1677,7 +1677,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             END DO
          END DO
          !$OMP END PARALLEL DO
-         !$OMP PARALLEL DO
+         !$OMP PARALLEL DO COLLAPSE(3)
          DO k = 2, lk
             DO j = 2, nj-1
                DO i = 2, mi
@@ -1687,7 +1687,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             END DO
          END DO
          !$OMP END PARALLEL DO
-         !$OMP PARALLEL DO
+         !$OMP PARALLEL DO COLLAPSE(3)
          DO k = 2, lk-1
             DO j = 2, nj
                DO i = 2, mi
@@ -1709,7 +1709,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !
          DO tt = 1, 100
             !$acc parallel loop gang collapse(2) !async(stream1)
-            !$OMP PARALLEL DO
+            !$OMP PARALLEL DO COLLAPSE(3)
             inicializacion_ftemp: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -1728,7 +1728,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de x para la energía
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_x: do kk = 2, lk
                do jj = 2, nj
                   do ii = 2, mi
@@ -1790,7 +1790,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_ener_dir_x: do kk = 2, lk
                do jj = 2, nj
                   !
@@ -1811,7 +1811,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj
                   do ii = 1, mi+1
@@ -1827,7 +1827,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de y para la energía
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_y: do kk = 2, lk
                do ii = 2, mi
                   do jj = 2, nj
@@ -1889,7 +1889,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_ener_dir_y: do kk = 2, lk
                do ii = 2, mi
                   !
@@ -1910,7 +1910,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on z
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi
                   do jj = 1, nj+1
@@ -1926,7 +1926,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de z para la energía
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_z: do ii = 2, mi
                do jj = 2, nj
                   do kk = 2, lk
@@ -1988,7 +1988,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on z
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_ener_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !
@@ -2009,7 +2009,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on z
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj
                   do kk = 1, lk+1
@@ -2019,7 +2019,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             calcula_ftemp: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -2045,7 +2045,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !---------------------------------------------
          !
          !$acc parallel !async(stream1)
-         !$OMP PARALLEL DO DEFAULT(SHARED)
+         !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
          bucle_direccion_z: do kk = 2, lk
             !
             bucle_direccion_y: do jj = 2, nj
@@ -2091,6 +2091,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          ! residuo del algoritmo
          !
          maxbo   = 0.0_DBL
+         !$OMP PARALLEL DO REDUCTION(+:maxbo)
          calculo_maxbo: do kk = 2, lk
             do jj = 2, nj
                do ii = 2, mi-1
@@ -2098,11 +2099,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do
          end do calculo_maxbo
+         !$OMP END PARALLEL DO
          !
          maxbo = sqrt(maxbo)
          !
          residuo = 0.0_DBL
          !$acc parallel loop reduction(+:residuo) !async(stream1)
+         !$OMP PARALLEL DO REDUCTION(+:residuo)
          calculo_residuou: do kk = 2, lk
             do jj = 2, nj
                do ii = 2, mi-1
@@ -2110,6 +2113,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do
          end do calculo_residuou
+         !$OMP END PARALLEL DO
          !
          residuo = sqrt(residuo)
          !

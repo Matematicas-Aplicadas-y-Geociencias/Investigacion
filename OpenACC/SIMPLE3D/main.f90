@@ -50,6 +50,8 @@ use ec_energia, only : fuente_con_temp, fuente_lin_temp
 use ec_energia, only : gamma_ener
 use ec_energia, only : rel_ener
 use ec_energia, only : ensambla_energia_x
+use ec_energia, only : ensambla_energia_y
+use ec_energia, only : ensambla_energia_z
 !
 use solucionador, only : tridiagonal
 !
@@ -1462,7 +1464,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !------------------------------------------
             !
             ! Se ensambla la ecuaci\'on de correcci\'on
-            ! de la presi\'on en direcci\'on x
+            ! de la presi\'on en direcci\'on y
             !
             !$acc parallel loop gang !async(stream2)
             !$OMP PARALLEL DO DEFAULT(SHARED) 
@@ -1717,13 +1719,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do inicializacion_ftemp
             !$OMP END PARALLEL DO
             !
-            CALL temperatura(xp,yp,zp,fexu,feyv,fezw,d_xu,d_yv,d_zw,&
-                 &u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
+!             CALL temperatura(xp,yp,zp,fexu,feyv,fezw,d_xu,d_yv,d_zw,&
+!                  &u,v,w,temp,temp_ant,gamma_t,dt,dtemp,i_o,i_1,rel_tem,j_o,j_1)
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
-            ! en la direcci'on de y para u
+            ! en la direcci'on de x para la energía
             !
             !$acc parallel loop gang !async(stream2)
             !$OMP PARALLEL DO DEFAULT(SHARED)
@@ -1805,8 +1807,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             !----------------------------------
             !
-            ! Actualizaci\'on de la velocidad u
-            ! en direcci\'on y
+            ! Actualizaci\'on de la temperatura
+            ! en direcci\'on x
             !
             !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
             !$OMP PARALLEL DO DEFAULT(SHARED)
@@ -1819,6 +1821,203 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de y para la energía
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_ener_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  do jj = 2, nj
+                     call ensambla_energia_y(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &gamma_ener,&
+                          &u,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &temp_ant,&
+                          &fuente_con_temp,&
+                          &fuente_lin_temp,&
+                          &dt,&
+                          &rel_ener,&
+                          &a1,b1,c1,r1,&
+                          &jj,ii,kk&
+                          &)
+                  end do
+               end do
+            end do ensa_ener_dir_y
+            !$OMP END PARALLEL DO
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on y
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_ener_direc_y: do kk = 2, lk
+               do ii = 2, mi
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indeyp(1,ii,kk))    = 0.0_DBL
+                  b1(indeyp(1,ii,kk))    =-1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 1.0_DBL
+                  r1(indeyp(1,ii,kk))    = 0.0_DBL
+                  !
+                  a1(indeyp(nj+1,ii,kk)) =-1.0_DBL
+                  b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
+                  c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  r1(indeyp(nj+1,ii,kk)) = 0.0_DBL
+                  !
+               end do
+            end do cond_fron_ener_direc_y
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de la energ\'ia
+            ! en direcci\'on y
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_ener_dir_y: do kk = 2, lk
+               do ii = 2, mi
+                  !
+                  call tridiagonal(&
+                       &a1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &b1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &c1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &r1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
+                       &nj+1)
+                  !
+               end do
+            end do sol_ener_dir_y
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la temperatura
+            ! en direcci\'on z
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do kk = 2, lk
+               do ii = 2, mi
+                  do jj = 1, nj+1
+                     temp(ii,jj,kk) = r1(indeyp(jj,ii,kk))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------
+            !
+            ! Se ensamblan las matrices tridiagonales
+            ! en la direcci'on de z para la energía
+            !
+            !$acc parallel loop gang !async(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            ensa_ener_dir_z: do ii = 2, mi
+               do jj = 2, nj
+                  do kk = 2, lk
+                     call ensambla_energia_z(&
+                          &deltaxp,&
+                          &deltayp,&
+                          &deltazp,&
+                          &deltaxu,&
+                          &deltayv,&
+                          &deltazw,&
+                          &fexp,&
+                          &feyp,&
+                          &fezp,&
+                          &gamma_ener,&
+                          &u,&
+                          &v,&
+                          &w,&
+                          &temp,&
+                          &temp_ant,&
+                          &fuente_con_temp,&
+                          &fuente_lin_temp,&
+                          &dt,&
+                          &rel_ener,&
+                          &a1,b1,c1,r1,&
+                          &kk,jj,ii&
+                          &)
+                  end do
+               end do
+            end do ensa_ener_dir_z
+            !$OMP END PARALLEL DO
+            !
+            !-------------------------
+            !
+            ! Condiciones de frontera direcci\'on z
+            !
+            !$acc parallel loop vector !async(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            cond_fron_ener_direc_z: do ii = 2, mi
+               do jj = 2, nj
+                  !***********************
+                  !Condiciones de frontera
+                  a1(indezp(1,jj,ii))    = 0.0_DBL
+                  b1(indezp(1,jj,ii))    = -1.0_DBL
+                  c1(indezp(1,jj,ii))    = 1.0_DBL
+                  r1(indezp(1,jj,ii))    = 0.0_DBL
+                  !
+                  a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  b1(indezp(lk+1,jj,ii)) = 1.0_DBL
+                  c1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  r1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  !
+               end do
+            end do cond_fron_ener_direc_z
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------------------
+            !
+            ! Soluci\'on de la ec. de la energ\'ia
+            ! en direcci\'on z
+            !
+            !$acc parallel loop gang async(stream1) wait(stream2)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            sol_ener_dir_z: do ii = 2, mi
+               do jj = 2, nj
+                  !
+                  call tridiagonal(&
+                       &a1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &b1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &c1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &r1(indezp(1,jj,ii):indezp(lk+1,jj,ii)),&
+                       &lk+1)
+                  !
+               end do
+            end do sol_ener_dir_z
+            !$OMP END PARALLEL DO
+            !
+            !----------------------------------
+            !
+            ! Actualizaci\'on de la temperatura
+            ! en direcci\'on z
+            !
+            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$OMP PARALLEL DO DEFAULT(SHARED)
+            do ii = 2, mi
+               do jj = 2, nj
+                  do kk = 1, lk+1
+                     temp(ii,jj,kk) = r1(indezp(kk,jj,ii))
+                  end do
+               end do
+            end do
+            !$OMP END PARALLEL DO
             !
             !$OMP PARALLEL DO DEFAULT(SHARED)
             calcula_ftemp: do kk = 1, lk+1
@@ -1833,7 +2032,9 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !Criterio de convergencia temperatura
             IF(MAXVAL(DABS(ftemp))<conv_t)EXIT
             ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
+            !
          END DO
+         !
          !
          !---------------------------------------------
          !---------------------------------------------

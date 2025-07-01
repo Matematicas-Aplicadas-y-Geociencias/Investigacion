@@ -1,4 +1,4 @@
-4.d2   !Re
+1.d2   !Re
 1d2    !Rec
 7.01d0 !Pr
 1.d-2  !dt
@@ -12,15 +12,10 @@
 1.d-3  !convergencia presi'on
 1.d-5  !convergencia del residuo
 1.d-5  !convergencia paso
-'./mallas/out_n075m075k075_Rxxxu.dat'   !archivo de entrada de u
-'./mallas/out_n075m075k075_Rxxxv.dat'   !archivo de entrada de u
-'./mallas/out_n075m075k075_Rxxxw.dat'   !archivo de entrada de v
-'./mallas/out_n075m075k075_Rxxxp.dat'   !archivo de entrada de w
-
-! '../malla/out_n050m050k050_Rxxxu.dat'   !archivo de entrada de p
-! '../malla/out_n050m050k050_Rxxxv.dat'   !archivo de entrada de v
-! '../malla/out_n050m050k050_Rxxxw.dat'   !archivo de entrada de w
-! '../malla/out_n050m050k050_Rxxxp.dat'   !archivo de entrada de p
+'./mallas/out_n050m050k050_Rxxxu.dat'   !archivo de entrada de p
+'./mallas/out_n050m050k050_Rxxxv.dat'   !archivo de entrada de v
+'./mallas/out_n050m050k050_Rxxxw.dat'   !archivo de entrada de w
+'./mallas/out_n050m050k050_Rxxxp.dat'   !archivo de entrada de p
 
 ! 'out_n100m100k100_R1d2u.txt'   !archivo de entrada de u
 ! 'out_n100m100k100_R1d2v.txt'   !archivo de entrada de v

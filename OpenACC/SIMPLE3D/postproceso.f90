@@ -1,5 +1,9 @@
 Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
-  use constantes
+  !
+  use malla, only : mi, nj, lk, DBL
+  !
+  ! use constantes
+  !
   implicit none
   INTEGER :: i,j,k
   REAL(kind=DBL), DIMENSION(mi+1), INTENT(in):: xo

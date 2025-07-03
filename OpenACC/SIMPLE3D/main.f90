@@ -126,6 +126,7 @@ OPEN(unit=10,file='parametros.dat')
   READ (10,*) Rac         ! caracter de Ra
   READ (10,*) Pr          ! n'umero de Prandtl
   READ (10,*) dt          ! incremento de tiempo
+  read (10,*) itermax     ! iteraciones m'aximas
   READ (10,*) paq_itera   ! paquete de iteraciones
   READ (10,*) Rin         ! n'umero de Richardson
   READ (10,*) rel_pres    ! relajaci'on de la presi'on
@@ -215,7 +216,7 @@ itera = 1
 itera_total = itera_total+itera
 entropia = 0.0_DBL
 simpmax = 200
-itermax = 6000
+! itermax = 6000
 !************************************************
 !escribe las caracter´isticas de las variable DBL
 WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -314,12 +315,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyu(1,ii,kk))    = 0.0_DBL
-                  b1(indeyu(1,ii,kk))    = 1.0_DBL ! -1.0_DBL
-                  c1(indeyu(1,ii,kk))    = 0.0_DBL !  1.0_DBL
+                  b1(indeyu(1,ii,kk))    =-1.0_DBL ! 1.0_DBL !
+                  c1(indeyu(1,ii,kk))    = 1.0_DBL ! 0.0_DBL
                   r1(indeyu(1,ii,kk))    = 0.0_DBL
                   au(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyu(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
+                  a1(indeyu(nj+1,ii,kk)) =-1.0_DBL ! 0.0_DBL
                   b1(indeyu(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyu(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyu(nj+1,ii,kk)) = 0.0_DBL
@@ -420,14 +421,15 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   a1(indezp(1,jj,ii))    = 0.0_DBL
                   b1(indezp(1,jj,ii))    = 1.0_DBL
                   c1(indezp(1,jj,ii))    = 0.0_DBL
-                  r1(indezp(1,jj,ii))    = 1.0_DBL*&
+                  r1(indezp(1,jj,ii))    = 0.0_DBL*&
                        &dtanh((tiempo+dt)/0.1)
                   au(ii,jj,1)            = 1.0e40_DBL
                   !
                   a1(indezp(lk+1,jj,ii)) = 0.0_DBL
                   b1(indezp(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezp(lk+1,jj,ii)) = 0.0_DBL
-                  r1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  r1(indezp(lk+1,jj,ii)) = 1.0_DBL*&
+                       &dtanh((tiempo+dt)/0.1)
                   au(ii,jj,lk+1)         = 1.0e40_DBL
                   !
                end do
@@ -1103,12 +1105,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyp(1,ii,kk))    = 0.0_DBL
-                  b1(indeyp(1,ii,kk))    = 1.0_DBL !-1.0_DBL
-                  c1(indeyp(1,ii,kk))    = 0.0_DBL ! 1.0_DBL
+                  b1(indeyp(1,ii,kk))    =-1.0_DBL ! 1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 1.0_DBL ! 0.0_DBL
                   r1(indeyp(1,ii,kk))    = 0.0_DBL
                   aw(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyp(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
+                  a1(indeyp(nj+1,ii,kk)) =-1.0_DBL ! 0.0_DBL
                   b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyp(nj+1,ii,kk)) = 0.0_DBL
@@ -1902,11 +1904,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indezp(1,jj,ii))    = 0.0_DBL
-                  b1(indezp(1,jj,ii))    = -1.0_DBL
-                  c1(indezp(1,jj,ii))    = 1.0_DBL
+                  b1(indezp(1,jj,ii))    = 1.0_DBL !-1.0_DBL
+                  c1(indezp(1,jj,ii))    = 0.0_DBL !1.0_DBL
                   r1(indezp(1,jj,ii))    = 0.0_DBL
                   !
-                  a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  a1(indezp(lk+1,jj,ii)) =-1.0_DBL !0.0_DBL
                   b1(indezp(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezp(lk+1,jj,ii)) = 0.0_DBL
                   r1(indezp(lk+1,jj,ii)) = 0.0_DBL
@@ -2025,10 +2027,10 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !
          maxbo   = 0.0_DBL
          !$OMP PARALLEL DO REDUCTION(+:maxbo)
-         calculo_maxbo: do kk = 2, lk
+         calculo_maxbo: do ii = 2, mi
             do jj = 2, nj
-               do ii = 2, mi-1
-                  maxbo = maxbo + b_o(ii,jj,kk)*b_o(ii,jj,kk)
+               do kk = 2, lk
+                  maxbo = maxbo + b_o(kk,jj,ii)*b_o(kk,jj,ii)
                end do
             end do
          end do calculo_maxbo
@@ -2222,7 +2224,7 @@ CLOSE(unit=4)
 !********************************
 !*** Formato de escritura VTK ***
 archivo = 'n'//njc//'m'//mic//'k'//lkc//'R'//Rac//'/t_'//m//ce//de//un//dec//'.vtk'
-CALL postprocess_vtk(xp,yp,zp,uf,vf,wf,pres,temp,b_o,trim(archivo))
+CALL postprocess_vtk(xp,yp,zp,uf,vf,wf,pres,temp,b_o,archivo)
 ! !************************************
 ! !*** Formato de escritura Tecplot ***
 ! OPEN(unit=1,file='n'//njc//'m'//mic//'R'//Rac//'/t'//m//ce//de//un//dec//'.plt')

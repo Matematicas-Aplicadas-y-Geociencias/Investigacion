@@ -372,7 +372,7 @@ contains
     real(kind=DBL), dimension(mi+1,nj,lk+1),   intent(in)  :: v_o
     real(kind=DBL), dimension(mi+1,nj+1,lk),   intent(in)  :: w_o
     real(kind=DBL), dimension(mi+1,nj+1,lk+1), intent(in)  :: corr_pres_o
-    real(kind=DBL), dimension(lk+1,mi+1,nj+1), intent(out) :: b_oo
+    real(kind=DBL), dimension(lk+1,nj+1,mi+1), intent(out) :: b_oo
     !
     ! coeficiente de relajaci\'on
     !

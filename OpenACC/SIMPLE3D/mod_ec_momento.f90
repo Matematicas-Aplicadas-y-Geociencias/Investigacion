@@ -1188,7 +1188,7 @@ contains
          &deltax*deltay*deltaz*fuente_lin_vo(ii,jj,kk)+&
          &deltax*deltay*deltaz/dt_o ) / rel_vo
     !
-    Rx_o(indezv(jj,ii,kk)) =-alpha*v_o(ii-1,jj,kk) -&
+    Rx_o(indezv(kk,jj,ii)) =-alpha*v_o(ii-1,jj,kk) -&
          &beta  * v_o(ii+1,jj,kk) - &
          &gamma * v_o(ii,jj-1,kk) - &
          &delta * v_o(ii,jj+1,kk) - &

@@ -49,7 +49,7 @@ do i=nsolid,mi-nsolid+1
   xu(i)=dfloat(i-(nsolid))/dfloat(mi-2*nsolid+1)
 end do
 kx=5._DBL
-mx=0.95_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+mx=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
 do i=nsolid,mi-nsolid+1
   xu_eta(i) = as + aox * (0.5_DBL+mx*(xu(i)-0.5_DBL)+0.5_DBL*(1-mx)*derf(kx*(xu(i)-0.5_DBL))/derf(0.5_DBL*kx))
 end do
@@ -78,7 +78,7 @@ do j=nsolid,nj-nsolid+1
   yv(j)=dfloat(j-(nsolid))/dfloat(nj-2*nsolid+1)
 end do
 ky=5._DBL
-my=0.95_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+my=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
 do j=nsolid,nj-nsolid+1
   yv_eta(j) = as + aoy * (0.5_DBL+my*(yv(j)-0.5_DBL)+0.5_DBL*(1-my)*derf(ky*(yv(j)-0.5_DBL))/derf(0.5_DBL*ky))
 end do
@@ -107,7 +107,7 @@ do k=nsolid,lk-nsolid+1
   zw(k)=dfloat(k-(nsolid))/dfloat(lk-2*nsolid+1)
 end do
 kz=5._DBL
-mz=0.15_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+mz=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
 do k=nsolid,lk-nsolid+1
   zw_eta(k) = as + aoz * (0.5_DBL+mz*(zw(k)-0.5_DBL)+0.5_DBL*(1-mz)*derf(kz*(zw(k)-0.5_DBL))/derf(0.5_DBL*kz))
 end do

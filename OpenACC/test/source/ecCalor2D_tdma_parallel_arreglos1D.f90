@@ -74,8 +74,7 @@ alpha    = 0.5d0 ! par\'ametro de relajaci\'on
  !
  ! Bucle de pseudotiempo
  ! 
- !do kk = 1, 5000
- do kk = 1, 15000
+ do kk = 1, 5000
     !
     ! Inicia el ciclo que recorre la coordenada y resolviendo
     ! problemas 1D en la dirección de x

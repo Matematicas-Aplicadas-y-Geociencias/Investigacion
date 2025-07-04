@@ -1,7 +1,7 @@
 module constantes
-  integer, parameter :: mi = 1024, nj=512, nn = 1200000
-  integer, parameter :: NUM_GANGSA = 512, VEC_LENGHTA = 1
-  integer, parameter :: NUM_GANGSB = 1024, VEC_LENGHTB = 1
+  integer, parameter :: mi = 512, nj=256, nn = 1200000
+  integer, parameter :: NUM_GANGSA = 16, VEC_LENGHTA = 32
+  integer, parameter :: NUM_GANGSB = 32, VEC_LENGHTB = 32
   real, parameter    :: pi = 3.1415926535
   INTEGER, PARAMETER :: DBL=SELECTED_REAL_KIND(P=15,R=300)
 contains

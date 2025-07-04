@@ -1,3 +1,4 @@
+#!/usr/bin/env -S uv run --script
 import subprocess
 import time
 import re
@@ -40,7 +41,8 @@ def compilar_programa() -> None:
 def medir_tiempo_ejecucion() -> float:
     start = time.perf_counter()
     resultado = subprocess.run(
-        ["./../build/CALOR2DACC_ARR1D-gpu"], shell=True, capture_output=True, text=True
+        # ["./../build/CALOR2DACC_ARR1D-gpu"], shell=True, capture_output=True, text=True
+        ["./../build/CALOR2DACC_ARR1D-multicore"], shell=True, capture_output=True, text=True
     )
     end = time.perf_counter()
 

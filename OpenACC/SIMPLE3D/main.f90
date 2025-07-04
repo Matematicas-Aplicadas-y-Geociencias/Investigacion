@@ -70,7 +70,7 @@ real(kind=DBL) :: residuo, maxbo
 ! --------------------------------------------------------------------------------
 !
 integer :: ii, jj, kk
-integer :: itermax
+integer :: itermax, ecuamax
 integer :: simpmax, iter_simp, tt
 INTEGER :: i,j,k,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
@@ -137,6 +137,8 @@ OPEN(unit=10,file='parametros.dat')
   READ (10,*) conv_p      ! convergencia de la presi'on
   READ (10,*) conv_resi   ! convergencia del residuo
   READ (10,*) conv_paso   ! convergencia del paso de tiempo
+  read (10,*) simpmax     ! iteraciones m'aximas de SIMPLE
+  read (10,*) ecuamax     ! iteraciones m'aximas de las ecuaciones
   READ (10,*) entrada_u   ! archivo de entrada para u
   READ (10,*) entrada_v   ! archivo de entrada para v
   READ (10,*) entrada_w   ! archivo de entrada para w
@@ -234,7 +236,7 @@ WRITE(*,*)' '
 DO l=1,itermax/paq_itera   !inicio del repetidor principal
    DO kl=1,paq_itera          !inicio del paquete iteraciones
       ALGORITMO_SIMPLE: DO  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
-         DO tt= 1, 100
+         DO tt= 1, ecuamax
             !
             !----------------------------------------------------------
             !----------------------------------------------------------
@@ -315,12 +317,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyu(1,ii,kk))    = 0.0_DBL
-                  b1(indeyu(1,ii,kk))    =-1.0_DBL ! 1.0_DBL !
-                  c1(indeyu(1,ii,kk))    = 1.0_DBL ! 0.0_DBL
+                  b1(indeyu(1,ii,kk))    = 1.0_DBL !-1.0_DBL !
+                  c1(indeyu(1,ii,kk))    = 0.0_DBL ! 1.0_DBL
                   r1(indeyu(1,ii,kk))    = 0.0_DBL
                   au(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyu(nj+1,ii,kk)) =-1.0_DBL ! 0.0_DBL
+                  a1(indeyu(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
                   b1(indeyu(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyu(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyu(nj+1,ii,kk)) = 0.0_DBL
@@ -429,7 +431,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   b1(indezp(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezp(lk+1,jj,ii)) = 0.0_DBL
                   r1(indezp(lk+1,jj,ii)) = 1.0_DBL*&
-                       &dtanh((tiempo+dt)/0.1)
+                       &dtanh((tiempo+dt)/0.3)
                   au(ii,jj,lk+1)         = 1.0e40_DBL
                   !
                end do
@@ -1105,12 +1107,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyp(1,ii,kk))    = 0.0_DBL
-                  b1(indeyp(1,ii,kk))    =-1.0_DBL ! 1.0_DBL
-                  c1(indeyp(1,ii,kk))    = 1.0_DBL ! 0.0_DBL
+                  b1(indeyp(1,ii,kk))    = 1.0_DBL !-1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 0.0_DBL ! 1.0_DBL
                   r1(indeyp(1,ii,kk))    = 0.0_DBL
                   aw(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyp(nj+1,ii,kk)) =-1.0_DBL ! 0.0_DBL
+                  a1(indeyp(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
                   b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyp(nj+1,ii,kk)) = 0.0_DBL
@@ -1299,7 +1301,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          end do inicializa_corrector_presion
          !$OMP END PARALLEL DO
          !
-         correccion_presion: do tt = 1, 100
+         correccion_presion: do tt = 1, ecuamax
             !
             !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
             !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
@@ -1642,7 +1644,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !------------------------------------------------------------------------------
          !------------------------------------------------------------------------------
          !
-         DO tt = 1, 100
+         DO tt = 1, ecuamax
             !$acc parallel loop gang collapse(2) !async(stream1)
             !$OMP PARALLEL DO COLLAPSE(3)
             inicializacion_ftemp: do kk = 1, lk+1

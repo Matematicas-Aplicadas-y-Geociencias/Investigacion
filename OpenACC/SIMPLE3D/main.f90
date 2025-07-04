@@ -1,5 +1,5 @@
 PROGRAM SIMPLE
-USE constantes, only : itermax, cero
+!
 ! USE mkl95_LAPACK
 !
 ! Variables de la malla, volumen de control y factores de interpolaci\'on
@@ -70,6 +70,7 @@ real(kind=DBL) :: residuo, maxbo
 ! --------------------------------------------------------------------------------
 !
 integer :: ii, jj, kk
+integer :: itermax, ecuamax
 integer :: simpmax, iter_simp, tt
 INTEGER :: i,j,k,kl,l,itera_total,itera,itera_inicial,i_o,i_1,j_o,j_1,paq_itera
 INTEGER :: millar,centena,decena,unidad,decima,id,nthreads
@@ -101,12 +102,12 @@ REAL(kind=DBL)   :: a_ent,lambda_ent
 CHARACTER(len=1) :: dec,un,de,ce,m
 ! CHARACTER(len=3) :: mic,njc,lkc,
 character(len=3) :: Rac
-CHARACTER(len=32):: entrada_u,entrada_v,entrada_w,entrada_tp,entrada_xyz
-character(len=40):: archivo=repeat(' ',40)
+CHARACTER(len=64):: entrada_u,entrada_v,entrada_w,entrada_tp,entrada_xyz
+character(len=64):: archivo=repeat(' ',64)
 LOGICAL          :: res_fluido_u
 !****************************************
 !declaraci´on de variable DBL
-REAL(kind=DBL) :: var2=cero
+REAL(kind=DBL) :: var2=0.0_DBL
 !*******************************************
 !Se muestra cu'antos procesadores hay en uso
 !$OMP PARALLEL private(id)
@@ -125,6 +126,7 @@ OPEN(unit=10,file='parametros.dat')
   READ (10,*) Rac         ! caracter de Ra
   READ (10,*) Pr          ! n'umero de Prandtl
   READ (10,*) dt          ! incremento de tiempo
+  read (10,*) itermax     ! iteraciones m'aximas
   READ (10,*) paq_itera   ! paquete de iteraciones
   READ (10,*) Rin         ! n'umero de Richardson
   READ (10,*) rel_pres    ! relajaci'on de la presi'on
@@ -135,6 +137,8 @@ OPEN(unit=10,file='parametros.dat')
   READ (10,*) conv_p      ! convergencia de la presi'on
   READ (10,*) conv_resi   ! convergencia del residuo
   READ (10,*) conv_paso   ! convergencia del paso de tiempo
+  read (10,*) simpmax     ! iteraciones m'aximas de SIMPLE
+  read (10,*) ecuamax     ! iteraciones m'aximas de las ecuaciones
   READ (10,*) entrada_u   ! archivo de entrada para u
   READ (10,*) entrada_v   ! archivo de entrada para v
   READ (10,*) entrada_w   ! archivo de entrada para w
@@ -175,71 +179,6 @@ rel_ener = rel_tem
 gamma_v = 1._DBL/Ra      !sqrt(Pr/Ra)
 gamma_w = 1._DBL/Ra      !sqrt(Pr/Ra)
 Ri      = Rin
-!***************************
-OPEN(unit=11,file=entrada_u)
-READ(11,*)i_o,i_1,itera_inicial,ao
-DO k = 1, lk+1
-  DO j = 1, nj+1
-    DO i = 1, mi
-      READ(11,24) xu(i),yp(j),zp(k),u_ant(i,j,k)
-    END DO
-  END DO
-END DO
-CLOSE(unit=11)
-!***************************
-OPEN(unit=12,file=entrada_v)
-READ(12,*)j_o,j_1,itera_inicial,ao
-DO k =1, lk+1
-  DO j = 1, nj
-    DO i = 1, mi+1
-      READ(12,24) xp(i),yv(j),zp(k),v_ant(i,j,k)
-    END DO
-  END DO
-END DO
-CLOSE(unit=12)
-!***************************
-OPEN(unit=13,file=entrada_w)
-READ(13,*)i_o,i_1,itera_inicial,ao
-DO k =1, lk
-  DO j = 1, nj+1
-    DO i = 1, mi+1
-      READ(13,24) xp(i),yp(j),zw(k),w_ant(i,j,k)
-    END DO
-  END DO
-END DO
-CLOSE(unit=13)
-!****************************
-OPEN(unit=14,file=entrada_tp)
-READ(14,*)i_o,i_1,itera_inicial,ao
-DO k = 1, lk+1
-  DO j = 1, nj+1
-    DO i = 1, mi+1
-      READ(14,25) xp(i),yp(j),zp(k),temp_ant(i,j,k),pres(i,j,k)
-    END DO
-  END DO
-END DO
-CLOSE(unit=14)
-! temp_ant(1,1)    = 1._DBL
-! temp_ant(mi+1,1) = 1._DBL
-!******************************
-!
-!        incrementos
-!
-d_xu(1) = xu(2)-xu(1)
-DO i = 2, mi-1
-  d_xu(i)  = xu(i+1)-xu(i)
-  d2_xu(i) = xu(i+1)-xu(i-1)
-END DO
-d_yv(1) = yv(2)-yv(1)
-DO j = 2, nj-1
-  d_yv(j)  = yv(j+1)-yv(j)
-  d2_yv(j) = yv(j+1)-yv(j-1)
-END DO
-d_zw(1) = zw(2)-zw(1)
-DO k = 2, lk-1
-  d_zw(k)  = zw(k+1)-zw(k)
-  d2_zw(k) = zw(k+1)-zw(k-1)
-END DO
 !
 !------------------------------------------------
 !
@@ -265,20 +204,21 @@ write(*,*) "--------------------------"
 ! END DO
 tiempo_inicial = itera_inicial*dt
 tiempo = tiempo_inicial
-! u_ant = cero
-! v_ant = cero
+! u_ant = 0.0_DBL
+! v_ant = 0.0_DBL
 ! w_ant =-1.0_DBL
-! temp_ant = cero !temp_ant
-corr_pres = cero
+! temp_ant = 0.0_DBL !temp_ant
+corr_pres = 0.0_DBL
 au    = 1._DBL
 av    = 1._DBL
 aw    = 1._DBL
-! pres  = cero
+! pres  = 0.0_DBL
 b_o   = 0._DBL
 itera = 1
 itera_total = itera_total+itera
-entropia = cero
+entropia = 0.0_DBL
 simpmax = 200
+! itermax = 6000
 !************************************************
 !escribe las caracter´isticas de las variable DBL
 WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -286,17 +226,17 @@ WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
 WRITE(*,*)' '
 !escribe informaci'on de los parametros usados
 WRITE(*,101) Ra,Pr,rel_pres,rel_vel
-WRITE(*,102) itera_inicial,mi,nj
-WRITE(*,106) lambda_ent,a_ent
+WRITE(*,102) itera_inicial,mi,nj,lk
+WRITE(*,106) dt,itermax
 WRITE(*,*)' '
 101 FORMAT(1X,'Ra=',F12.3,', Pr=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
-102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I3,', nj=',I3)
-106 FORMAT(1X,'No. de Eckert=',F13.10,', a_ent=',F15.3)
+102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I4,', nj=',I4,', lk=',I4)
+106 FORMAT(1X,'Paso de tiempo dt=',F8.6,', iter final itermax=',I8)
 !*********************************************************
 DO l=1,itermax/paq_itera   !inicio del repetidor principal
    DO kl=1,paq_itera          !inicio del paquete iteraciones
       ALGORITMO_SIMPLE: DO  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
-         DO tt= 1, 100
+         DO tt= 1, ecuamax
             !
             !----------------------------------------------------------
             !----------------------------------------------------------
@@ -377,12 +317,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyu(1,ii,kk))    = 0.0_DBL
-                  b1(indeyu(1,ii,kk))    =-1.0_DBL
-                  c1(indeyu(1,ii,kk))    = 1.0_DBL
+                  b1(indeyu(1,ii,kk))    = 1.0_DBL !-1.0_DBL !
+                  c1(indeyu(1,ii,kk))    = 0.0_DBL ! 1.0_DBL
                   r1(indeyu(1,ii,kk))    = 0.0_DBL
                   au(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyu(nj+1,ii,kk)) =-1.0_DBL
+                  a1(indeyu(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
                   b1(indeyu(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyu(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyu(nj+1,ii,kk)) = 0.0_DBL
@@ -483,14 +423,15 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   a1(indezp(1,jj,ii))    = 0.0_DBL
                   b1(indezp(1,jj,ii))    = 1.0_DBL
                   c1(indezp(1,jj,ii))    = 0.0_DBL
-                  r1(indezp(1,jj,ii))    = 1.0_DBL*&
+                  r1(indezp(1,jj,ii))    = 0.0_DBL*&
                        &dtanh((tiempo+dt)/0.1)
                   au(ii,jj,1)            = 1.0e40_DBL
                   !
                   a1(indezp(lk+1,jj,ii)) = 0.0_DBL
                   b1(indezp(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezp(lk+1,jj,ii)) = 0.0_DBL
-                  r1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  r1(indezp(lk+1,jj,ii)) = 1.0_DBL*&
+                       &dtanh((tiempo+dt)/0.3)
                   au(ii,jj,lk+1)         = 1.0e40_DBL
                   !
                end do
@@ -1166,12 +1107,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indeyp(1,ii,kk))    = 0.0_DBL
-                  b1(indeyp(1,ii,kk))    =-1.0_DBL
-                  c1(indeyp(1,ii,kk))    = 1.0_DBL
+                  b1(indeyp(1,ii,kk))    = 1.0_DBL !-1.0_DBL
+                  c1(indeyp(1,ii,kk))    = 0.0_DBL ! 1.0_DBL
                   r1(indeyp(1,ii,kk))    = 0.0_DBL
                   aw(ii,1,kk)            = 1.0e40_DBL
                   !
-                  a1(indeyp(nj+1,ii,kk)) =-1.0_DBL
+                  a1(indeyp(nj+1,ii,kk)) = 0.0_DBL !-1.0_DBL
                   b1(indeyp(nj+1,ii,kk)) = 1.0_DBL
                   c1(indeyp(nj+1,ii,kk)) = 0.0_DBL
                   r1(indeyp(nj+1,ii,kk)) = 0.0_DBL
@@ -1360,7 +1301,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          end do inicializa_corrector_presion
          !$OMP END PARALLEL DO
          !
-         correccion_presion: do tt = 1, 100
+         correccion_presion: do tt = 1, ecuamax
             !
             !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
             !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
@@ -1441,8 +1382,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                        &c1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
                        &r1(indexp(1,jj,kk):indexp(mi+1,jj,kk)),&
                        &mi+1)
-                  ! corr_pres(1,jj,kk)    = r1(indexp(1,jj,kk))
-                  ! corr_pres(mi+1,jj,kk) = r1(indexp(mi+1,jj,kk))
                   !
                end do
             end do sol_corr_dir_x
@@ -1529,8 +1468,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                        &c1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
                        &r1(indeyp(1,ii,kk):indeyp(nj+1,ii,kk)),&
                        &nj+1)
-                  ! corr_pres(ii,1,kk)    = r1(indeyp(1,ii,kk))
-                  ! corr_pres(ii,nj+1,kk) = r1(indeyp(nj+1,ii,kk))
                   !
                end do
             end do sol_corr_dir_y
@@ -1668,31 +1605,31 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !*****************************
          !se actualizan las velocidades
          !$OMP PARALLEL DO COLLAPSE(3)
-         DO k = 2, lk
-            DO j = 2, nj
-               DO i = 2, mi-1
-                  u(i,j,k) = u(i,j,k)+d_yv(j-1)*d_zw(k-1)*&
-                       &(corr_pres(i,j,k)-corr_pres(i+1,j,k))/au(i,j,k)
+         DO kk = 2, lk
+            DO jj = 2, nj
+               DO ii = 2, mi-1
+                  u(ii,jj,kk) = u(ii,jj,kk)+deltayu(jj)*deltazu(kk)*&
+                       &(corr_pres(ii,jj,kk)-corr_pres(ii+1,jj,kk))/au(ii,jj,kk)
                END DO
             END DO
          END DO
          !$OMP END PARALLEL DO
          !$OMP PARALLEL DO COLLAPSE(3)
-         DO k = 2, lk
-            DO j = 2, nj-1
-               DO i = 2, mi
-                  v(i,j,k) = v(i,j,k)+d_xu(i-1)*d_zw(k-1)*&
-                       &(corr_pres(i,j,k)-corr_pres(i,j+1,k))/av(i,j,k)
+         DO kk = 2, lk
+            DO jj = 2, nj-1
+               DO ii = 2, mi
+                  v(ii,jj,kk) = v(ii,jj,kk)+deltaxv(ii)*deltazv(kk)*&
+                       &(corr_pres(ii,jj,kk)-corr_pres(ii,jj+1,kk))/av(ii,jj,kk)
                END DO
             END DO
          END DO
          !$OMP END PARALLEL DO
          !$OMP PARALLEL DO COLLAPSE(3)
-         DO k = 2, lk-1
-            DO j = 2, nj
-               DO i = 2, mi
-                  w(i,j,k) = w(i,j,k)+d_xu(i-1)*d_yv(j-1)*&
-                       &(corr_pres(i,j,k)-corr_pres(i,j,k+1))/aw(i,j,k)
+         DO kk = 2, lk-1
+            DO jj = 2, nj
+               DO ii = 2, mi
+                  w(ii,jj,kk) = w(ii,jj,kk)+deltaxw(ii)*deltayw(jj)*&
+                       &(corr_pres(ii,jj,kk)-corr_pres(ii,jj,kk+1))/aw(ii,jj,kk)
                END DO
             END DO
          END DO
@@ -1707,7 +1644,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !------------------------------------------------------------------------------
          !------------------------------------------------------------------------------
          !
-         DO tt = 1, 100
+         DO tt = 1, ecuamax
             !$acc parallel loop gang collapse(2) !async(stream1)
             !$OMP PARALLEL DO COLLAPSE(3)
             inicializacion_ftemp: do kk = 1, lk+1
@@ -1969,11 +1906,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !***********************
                   !Condiciones de frontera
                   a1(indezp(1,jj,ii))    = 0.0_DBL
-                  b1(indezp(1,jj,ii))    = -1.0_DBL
-                  c1(indezp(1,jj,ii))    = 1.0_DBL
+                  b1(indezp(1,jj,ii))    = 1.0_DBL !-1.0_DBL
+                  c1(indezp(1,jj,ii))    = 0.0_DBL !1.0_DBL
                   r1(indezp(1,jj,ii))    = 0.0_DBL
                   !
-                  a1(indezp(lk+1,jj,ii)) = 0.0_DBL
+                  a1(indezp(lk+1,jj,ii)) =-1.0_DBL !0.0_DBL
                   b1(indezp(lk+1,jj,ii)) = 1.0_DBL
                   c1(indezp(lk+1,jj,ii)) = 0.0_DBL
                   r1(indezp(lk+1,jj,ii)) = 0.0_DBL
@@ -2092,10 +2029,10 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !
          maxbo   = 0.0_DBL
          !$OMP PARALLEL DO REDUCTION(+:maxbo)
-         calculo_maxbo: do kk = 2, lk
+         calculo_maxbo: do ii = 2, mi
             do jj = 2, nj
-               do ii = 2, mi-1
-                  maxbo = maxbo + b_o(ii,jj,kk)*b_o(ii,jj,kk)
+               do kk = 2, lk
+                  maxbo = maxbo + b_o(kk,jj,ii)*b_o(kk,jj,ii)
                end do
             end do
          end do calculo_maxbo
@@ -2126,41 +2063,55 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
       WRITE(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
       itera = itera + 1
       !
-      !   IF(mod(itera,10)==0)THEN
-      !     CALL entropia_cvt(x,y,u,xu,v,yv,temp,entropia_calor,entropia_viscosa,entropia,entropia_int,temp_int,a_ent,lambda_ent)
-      !     CALL nusselt(x,y,d_xu,d_yv,temp,nusselt0,nusselt1,i_o,i_1)
-      !     temp_med = (temp((i_o+i_1)/2,nj/2+1)+temp((i_o+i_1)/2+1,nj/2+1))/2._DBL
-      !     OPEN(unit = 5,file = 'nuss_sim_n'//njc//'m'//mic//'_R'//Rac//'.dat',access = 'append')
-      !     WRITE(5,26) tiempo_inicial+itera*dt,nusselt0,nusselt1,temp_med,temp_int,entropia_int
-      !     CLOSE(unit = 5)
-      !   ENDIF
       !*********************************
       tiempo   = tiempo_inicial+itera*dt
-      temp_ant = temp
-      u_ant    = u
-      v_ant    = v
-      w_ant    = w
-      !   !************************************
-      !   !*** Formato de escritura Tecplot ***
-      !   OPEN(unit=1,file='tprueba.plt')
-      !   WRITE(1,*)'TITLE     = "Tempe" '
-      !   WRITE(1,*)'VARIABLES = "x"'
-      !   WRITE(1,*)'"y"'
-      !   WRITE(1,*)'"z"'
-      !   WRITE(1,*)'"Temperature"'        ! variable
-      !   WRITE(1,*)'"Temperature_a"'        ! variable
-      !   !WRITE(1,*)'"XD"'
-      !   !WRITE(1,*)'"DTEMP"'
-      !   WRITE(1,*)'ZONE T= "Matrix"'
-      !   WRITE(1,*)'I=',mi+1,' J=',nj+1,' K=',lk+1,' F=POINT'
-      !   DO kl = 1, lk+1
-      !     DO j = 1, nj+1
-      !       DO i = 1, mi+1
-      ! 	WRITE(1,25) x(i),y(j),z(kl),temp(i,j,kl),temp_ant(i,j,kl)
-      !       END DO
-      !     END DO
-      !   END DO
-      !   CLOSE(unit=1)
+      !
+      !-------------------------------------------------------
+      !
+      ! Se actualizan los arreglos del paso de tiempo anterior
+      !
+      !-------------------------------------------------------
+      !
+      !$OMP PARALLEL DO
+      actualiza_temp: do kk = 2, lk
+         do jj = 2, nj
+            do ii = 2, mi
+               temp_ant(ii,jj,kk) = temp(ii,jj,kk)
+            end do
+         end do
+      end do actualiza_temp
+      !$OMP END PARALLEL DO
+      !
+      !$OMP PARALLEL DO
+      actualiza_u: do kk = 2, lk
+         do jj = 2, nj
+            do ii = 2, mi-1
+               u_ant(ii,jj,kk) = u(ii,jj,kk)
+            end do
+         end do
+      end do actualiza_u
+      !$OMP END PARALLEL DO
+      !
+      !$OMP PARALLEL DO
+      actualiza_v: do kk = 2, lk
+         do jj = 2, nj-1
+            do ii = 2, mi
+               v_ant(ii,jj,kk) = v(ii,jj,kk)
+            end do
+         end do
+      end do actualiza_v
+      !$OMP END PARALLEL DO
+      !
+      !$OMP PARALLEL DO
+      actualiza_w: do kk = 2, lk-1
+         do jj = 2, nj
+            do ii = 2, mi
+               w_ant(ii,jj,kk) = w(ii,jj,kk)
+            end do
+         end do
+      end do actualiza_w
+      !$OMP END PARALLEL DO
+      !
    END DO !*************termina el paquete de iteraciones
 !*****************************************************
 !*****************************************************
@@ -2275,7 +2226,7 @@ CLOSE(unit=4)
 !********************************
 !*** Formato de escritura VTK ***
 archivo = 'n'//njc//'m'//mic//'k'//lkc//'R'//Rac//'/t_'//m//ce//de//un//dec//'.vtk'
-CALL postprocess_vtk(xp,yp,zp,uf,vf,wf,pres,temp,b_o,trim(archivo))
+CALL postprocess_vtk(xp,yp,zp,uf,vf,wf,pres,temp,b_o,archivo)
 ! !************************************
 ! !*** Formato de escritura Tecplot ***
 ! OPEN(unit=1,file='n'//njc//'m'//mic//'R'//Rac//'/t'//m//ce//de//un//dec//'.plt')

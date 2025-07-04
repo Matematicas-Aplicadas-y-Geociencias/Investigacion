@@ -9,7 +9,6 @@ REAL(kind=DBL) xu_eta(mi),yv_eta(nj),zw_eta(lk),x_eta(mi+1),y_eta(nj+1),z_eta(lk
 REAL(kind=DBL) my,ky,mx,kx,mz,kz,tau,b,zc
 REAL(kind=DBL) z_placa_min, z_placa_max
 character(len=3) :: njc,mic,lkc
-CHARACTER(len=30):: archivo=repeat(' ',30)
 !********************************
 if (nj<100) then
   write(njc,170) int(nj);170 format(I2)
@@ -33,9 +32,9 @@ endif
 !par'ametros de la malla
 aox=1.00_DBL
 aoy=1.00_DBL
-aoz=1.0e1_DBL
+aoz=1.00e0_DBL
 as=0.0_DBL
-zc=6.0_DBL
+zc=0.01_DBL
 z_placa_min=4.5_DBL
 z_placa_max=5.5_DBL
 !********************************
@@ -50,7 +49,7 @@ do i=nsolid,mi-nsolid+1
   xu(i)=dfloat(i-(nsolid))/dfloat(mi-2*nsolid+1)
 end do
 kx=5._DBL
-mx=0.60_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+mx=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
 do i=nsolid,mi-nsolid+1
   xu_eta(i) = as + aox * (0.5_DBL+mx*(xu(i)-0.5_DBL)+0.5_DBL*(1-mx)*derf(kx*(xu(i)-0.5_DBL))/derf(0.5_DBL*kx))
 end do
@@ -79,7 +78,7 @@ do j=nsolid,nj-nsolid+1
   yv(j)=dfloat(j-(nsolid))/dfloat(nj-2*nsolid+1)
 end do
 ky=5._DBL
-my=0.60_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+my=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
 do j=nsolid,nj-nsolid+1
   yv_eta(j) = as + aoy * (0.5_DBL+my*(yv(j)-0.5_DBL)+0.5_DBL*(1-my)*derf(ky*(yv(j)-0.5_DBL))/derf(0.5_DBL*ky))
 end do
@@ -99,27 +98,6 @@ y_eta(nj+1)=(3._DBL*yv_eta(nj)-yv_eta(nj-1))/2._DBL
 !*******************************
 !puntos en z
 !generaci'on de la malla regular
-! do k = 1, nsolid-1
-!    zw_eta(k) = as * dfloat(k-1)/dfloat(nsolid-1)
-! end do
-!*********************************
-!generaci'on de la malla irregular
-! do k=nsolid,lk-nsolid+1
-!   zw(k)=dfloat(k-(nsolid))/dfloat(lk-2*nsolid+1)
-! end do
-! kz=5._DBL
-! mz=0.15_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
-! do k=nsolid,lk-nsolid+1
-!   zw_eta(k) = as + aoz * (0.5_DBL+mz*(zw(k)-0.5_DBL)+0.5_DBL*(1-mz)*derf(kz*(zw(k)-0.5_DBL))/derf(0.5_DBL*kz))
-! end do
-! !********************************
-! !gerneraci'on de la malla regular
-! do k = lk-nsolid+2,lk
-!    zw_eta(k) = aoz + as + as * dfloat(k+1-(lk-nsolid+2))/dfloat(nsolid-1)
-! end do
-!******************************
-!malla empaquetada en el centro
-!puntos en z
 do k = 1, nsolid-1
    zw_eta(k) = as * dfloat(k-1)/dfloat(nsolid-1)
 end do
@@ -128,16 +106,37 @@ end do
 do k=nsolid,lk-nsolid+1
   zw(k)=dfloat(k-(nsolid))/dfloat(lk-2*nsolid+1)
 end do
-tau=8._DBL
-b=1._DBL/(2._DBL*tau)*dlog((1._DBL+(dexp(tau)-1._DBL)*(zc/aoz))/(1._DBL+(dexp(-tau)-1._DBL)*(zc/aoz)))
-do k =nsolid,lk-nsolid+1
-  zw_eta(k) = as + zc*(1._DBL+dsinh(tau*(zw(k)-b))/dsinh(tau*b))
+kz=5._DBL
+mz=0.55_DBL !empaquetamiento en las paredes,menor coeficiente,mayor empaquetamiento
+do k=nsolid,lk-nsolid+1
+  zw_eta(k) = as + aoz * (0.5_DBL+mz*(zw(k)-0.5_DBL)+0.5_DBL*(1-mz)*derf(kz*(zw(k)-0.5_DBL))/derf(0.5_DBL*kz))
 end do
 !********************************
 !gerneraci'on de la malla regular
 do k = lk-nsolid+2,lk
    zw_eta(k) = aoz + as + as * dfloat(k+1-(lk-nsolid+2))/dfloat(nsolid-1)
 end do
+! !******************************
+! !malla empaquetada en el centro
+! !puntos en z
+! do k = 1, nsolid-1
+!    zw_eta(k) = as * dfloat(k-1)/dfloat(nsolid-1)
+! end do
+! !*********************************
+! !generaci'on de la malla irregular
+! do k=nsolid,lk-nsolid+1
+!   zw(k)=dfloat(k-(nsolid))/dfloat(lk-2*nsolid+1)
+! end do
+! tau=5._DBL
+! b=1._DBL/(2._DBL*tau)*dlog((1._DBL+(dexp(tau)-1._DBL)*(zc/aoz))/(1._DBL+(dexp(-tau)-1._DBL)*(zc/aoz)))
+! do k =nsolid,lk-nsolid+1
+!   zw_eta(k) = as + zc*(1._DBL+dsinh(tau*(zw(k)-b))/dsinh(tau*b))
+! end do
+! !********************************
+! !gerneraci'on de la malla regular
+! do k = lk-nsolid+2,lk
+!    zw_eta(k) = aoz + as + as * dfloat(k+1-(lk-nsolid+2))/dfloat(nsolid-1)
+! end do
 !**********************
 !malla para la presi'on
 z_eta(1)=(3._DBL*zw_eta(1)-zw_eta(2))/2._DBL
@@ -197,7 +196,7 @@ write(3,*) i_o,i_1,0,aoz
 do k=1,lk
   do j=1,nj+1
     do i=1,mi+1
-      write(3,24) x_eta(i),y_eta(j),zw_eta(k),-1._DBL
+      write(3,24) x_eta(i),y_eta(j),zw_eta(k), 0._DBL
     end do
   end do
 end do
@@ -214,35 +213,22 @@ do k=1,lk+1
   end do
 end do
 close(unit=4)
-!********************************
-!*** Formato de escritura VTK ***
-archivo = 'n'//njc//'m'//mic//'k'//lkc//'_Rxxxp.vtk'
-
-!************************************
-! VTK
-  open(78, file =trim(archivo), form = 'formatted')
-
-  write(78,110) '# vtk DataFile Version 2.3'
-  write(78,110) '3D Mesh'
-  write(78,111) 'ASCII'
-  
-  write(78,110) 'DATASET STRUCTURED_GRID'
-  write(78,120) 'DIMENSIONS', mi+1, nj+1, lk+1
-  write(78,130) 'POINTS', (mi+1)*(nj+1)*(lk+1), ' float'
-
-  do k = 1, lk+1
-     do j = 1, nj+1
-        do i = 1, mi+1
-           write(78,100) x_eta(i), y_eta(j), z_eta(k)
-           !write(78,100) dx*float(i-1),dy*float(j-1)
-        enddo
-     enddo
+!**********************************
+!*** Formato de escritura Tecplot ***
+Open(unit=1,file='malla_irregularp.plt')
+write(1,*)'TITLE     = "malla" '
+write(1,*)'VARIABLES = "x"'
+write(1,*)'"y"'
+write(1,*)'"z"'
+write(1,*)'ZONE T= "Matrix"'
+write(1,*)'I=',mi+1,' J=',nj+1,' K=',lk+1,' F=POINT'
+23 format (3D23.15)
+do k=1,lk+1
+  do j=1,nj+1
+    do i=1,mi+1
+      write(1,23) x_eta(i),y_eta(j),z_eta(k)
+    end do
   end do
-
-100  FORMAT(3(f12.6));
-110  FORMAT(A);
-111  FORMAT(A,/);
-120  FORMAT(A,I4,I4,I4);
-130  FORMAT(A,I10,A);
-
+end do
+close(unit=1)
 End program malla_irr_3D

@@ -85,9 +85,9 @@ contains
     !
     ! Variables para los archivos de la entrada de datos
     !
-    character(len=28), intent(in) :: entrada_uo,entrada_vo
-    character(len=32), intent(in) :: entrada_wo,entrada_tpo
-    character(len=32), intent(in) :: entrada_xyzo
+    character(len=64), intent(in) :: entrada_uo,entrada_vo
+    character(len=64), intent(in) :: entrada_wo,entrada_tpo
+    character(len=64), intent(in) :: entrada_xyzo
     !
     ! Variables para las velocidades, temperatura y presion iniciales
     !

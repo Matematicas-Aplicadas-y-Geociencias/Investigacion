@@ -1,5 +1,9 @@
 Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
-  use constantes
+  !
+  use malla, only : mi, nj, lk, DBL
+  !
+  ! use constantes
+  !
   implicit none
   INTEGER :: i,j,k
   REAL(kind=DBL), DIMENSION(mi+1), INTENT(in):: xo
@@ -8,7 +12,7 @@ Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
   REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1),   INTENT(in)    :: uo, vo, wo
   REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1),   INTENT(in)    :: tempo,presso
   REAL(kind=DBL), DIMENSION(lk+1,mi+1,nj+1),   INTENT(in)    :: bo
-  CHARACTER(len=40) :: archivoo
+  CHARACTER(len=64) :: archivoo
   !
   character(64)   :: mico,njco,zkco
   character(128)  :: npuntosc

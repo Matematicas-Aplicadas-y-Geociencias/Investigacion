@@ -56,8 +56,8 @@ Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
   do k = 1, lk+1
      do j =1, nj+1
         do i =1, mi+1
-           ! write(78) real(tempo(i,j,k))
-           write(78) real(bo(k,j,i))
+           write(78) real(tempo(i,j,k))
+           ! write(78) real(bo(k,j,i))
         end do
      end do
   end do

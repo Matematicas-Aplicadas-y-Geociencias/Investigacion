@@ -585,7 +585,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             calcula_fu: do kk = 2, lk
                do jj = 2, nj
                   do ii = 2, mi-1
-                     error = (fu(ii,jj,kk)-u(ii,jj,kk))*&
+                     error = error + (fu(ii,jj,kk)-u(ii,jj,kk))*&
                           &(fu(ii,jj,kk)-u(ii,jj,kk))
                   end do
                end do
@@ -931,7 +931,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             calcula_fv: do kk = 2, lk
                do jj = 2, nj-1
                   do ii = 2, mi
-                     error = (fv(ii,jj,kk)-v(ii,jj,kk))*&
+                     error = error + (fv(ii,jj,kk)-v(ii,jj,kk))*&
                           &(fv(ii,jj,kk)-v(ii,jj,kk))
                   end do
                end do
@@ -1278,13 +1278,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             calcula_fw: do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 2, mi
-                     error = (fw(ii,jj,kk)-w(ii,jj,kk))*&
+                     error = error + (fw(ii,jj,kk)-w(ii,jj,kk))*&
                           &(fw(ii,jj,kk)-w(ii,jj,kk))
                   end do
                end do
             end do calcula_fw
             !$OMP END PARALLEL DO
-            error =dsqrt(error)
+            error = dsqrt(error)
             !****************************************
             ! Criterio de convergencia de la velocidad
             !WRITE(*,*) 'velocidad ',itera, error
@@ -1969,15 +1969,18 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
+            error = 0.0_DBL
+            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
             calcula_ftemp: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi+1
-                     ftemp(ii,jj,kk) = ftemp(ii,jj,kk)-temp(ii,jj,kk)
+                     error = error + (ftemp(ii,jj,kk)-temp(ii,jj,kk))*&
+                          &(ftemp(ii,jj,kk)-temp(ii,jj,kk))
                   end do
                end do
             end do calcula_ftemp
             !$OMP END PARALLEL DO
+            error = dsqrt(error)
             !************************************
             !Criterio de convergencia temperatura
             IF(MAXVAL(DABS(ftemp))<conv_t)EXIT

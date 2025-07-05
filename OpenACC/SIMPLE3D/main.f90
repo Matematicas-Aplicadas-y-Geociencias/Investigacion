@@ -65,7 +65,7 @@ INCLUDE 'omp_lib.h'
 !
 real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)) :: a1, b1, c1, r1
 !
-real(kind=DBL) :: residuo, maxbo
+real(kind=DBL) :: residuo, maxbo, error
 !
 ! --------------------------------------------------------------------------------
 !
@@ -217,7 +217,7 @@ b_o   = 0._DBL
 itera = 1
 itera_total = itera_total+itera
 entropia = 0.0_DBL
-simpmax = 200
+! simpmax = 200
 ! itermax = 6000
 !************************************************
 !escribe las caracter´isticas de las variable DBL
@@ -580,15 +580,18 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
-            calcula_fu: do kk = 1, lk+1
-               do jj = 1, nj+1
-                  do ii = 1, mi
-                     fu(ii,jj,kk) = fu(ii,jj,kk)-u(ii,jj,kk)
+            error = 0.0_DBL
+            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
+            calcula_fu: do kk = 2, lk
+               do jj = 2, nj
+                  do ii = 2, mi-1
+                     error = (fu(ii,jj,kk)-u(ii,jj,kk))*&
+                          &(fu(ii,jj,kk)-u(ii,jj,kk))
                   end do
                end do
             end do calcula_fu
             !$OMP END PARALLEL DO
+            error = dsqrt(error)
             !
             !--------------------------
             !--------------------------
@@ -922,15 +925,19 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
-            calcula_fv: do kk = 1, lk+1
-               do jj = 1, nj
-                  do ii = 1, mi+1
-                     fv(ii,jj,kk) = fv(ii,jj,kk)-v(ii,jj,kk)
+            ! Se suma el error al error de la ecuaci'on de u
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
+            calcula_fv: do kk = 2, lk
+               do jj = 2, nj-1
+                  do ii = 2, mi
+                     error = (fv(ii,jj,kk)-v(ii,jj,kk))*&
+                          &(fv(ii,jj,kk)-v(ii,jj,kk))
                   end do
                end do
             end do calcula_fv
             !$OMP END PARALLEL DO
+            error=dsqrt(error)
             !
             !--------------------------
             !--------------------------
@@ -1265,20 +1272,23 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
-            calcula_fw: do kk = 1, lk
-               do jj = 1, nj+1
-                  do ii = 1, mi+1
-                     fw(ii,jj,kk) = fw(ii,jj,kk)-w(ii,jj,kk)
+            ! Se suma el error al error de la ecuaci'on de u y de v
+            !
+            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION (+:error)
+            calcula_fw: do kk = 2, lk-1
+               do jj = 2, nj
+                  do ii = 2, mi
+                     error = (fw(ii,jj,kk)-w(ii,jj,kk))*&
+                          &(fw(ii,jj,kk)-w(ii,jj,kk))
                   end do
                end do
             end do calcula_fw
             !$OMP END PARALLEL DO
+            error =dsqrt(error)
             !****************************************
-            !Criterio de convergencia de la velocidad
-            IF(MAXVAL(DABS(fu))<conv_u .and. MAXVAL(DABS(fv))<conv_u .and. &
-                 & MAXVAL(DABS(fw))<conv_u)EXIT
-            ! WRITE(*,*) 'velocidad ',itera, MAXVAL(DABS(fu))
+            ! Criterio de convergencia de la velocidad
+            !WRITE(*,*) 'velocidad ',itera, error
+            IF( error<conv_u )EXIT
          END DO
          !
          !-------------------------------------------------------------------------------
@@ -1573,23 +1583,26 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             !$OMP END PARALLEL DO
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
+            error=0._DBL
+            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
             calcula_fcorr_press: do kk=2, lk
                do jj=2, nj
                   do ii = 2, mi
-                     fcorr_pres(ii,jj,kk) = fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk)
+                     error = (fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk))*&
+                          &(fcorr_pres(ii,jj,kk)-corr_pres(ii,jj,kk))
                   end do
                end do
             end do calcula_fcorr_press
             !$OMP END PARALLEL DO
+            error =dsqrt(error)
             !
             !-----------------------------------------------------------------------------
             !-----------------------------------------------------------------------------
             !
             !****************************************************
             !critero de convergencia del corrector de la presi'on
-            IF(MAXVAL(DABS(fcorr_pres))<conv_p)EXIT
-            ! WRITE(*,*) 'corrector presion ', MAXVAL(DABS(fcorr_pres))
+            ! WRITE(*,*) 'corrector presion ', error
+            IF(error<conv_p)EXIT
          END DO correccion_presion
          !*********************
          !se corrige la presion
@@ -1597,7 +1610,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi
-                  pres(i,j,k) = pres(i,j,k)+corr_pres(i,j,k)
+                  pres(i,j,k) = pres(i,j,k)+0.6_DBL*corr_pres(i,j,k)
                END DO
             END DO
          END DO
@@ -2038,7 +2051,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          end do calculo_maxbo
          !$OMP END PARALLEL DO
          !
-         maxbo = sqrt(maxbo)
+         maxbo =dsqrt(maxbo)
          !
          residuo = 0.0_DBL
          !$acc parallel loop reduction(+:residuo) !async(stream1)
@@ -2052,8 +2065,9 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          end do calculo_residuou
          !$OMP END PARALLEL DO
          !
-         residuo = sqrt(residuo)
+         residuo =dsqrt(residuo)
          !
+         write(102,*) 'SIMPLE', iter_simp, maxbo, residuo
          IF( maxbo<conv_paso .and. residuo < conv_resi)EXIT
          !*************************************************
       END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE

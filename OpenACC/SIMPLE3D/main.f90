@@ -1289,7 +1289,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             error = dsqrt(error) + erro1
             !****************************************
             ! Criterio de convergencia de la velocidad
-            WRITE(*,*) 'velocidad ',itera, error
+            ! WRITE(*,*) 'velocidad ',itera, error
             IF( error<conv_u )EXIT
          END DO
          !
@@ -1603,7 +1603,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             !****************************************************
             !critero de convergencia del corrector de la presi'on
-            WRITE(*,*) 'corrector presion ', error
+            ! WRITE(*,*) 'corrector presion ', error
             IF(error<conv_p)EXIT
          END DO correccion_presion
          !*********************
@@ -1986,7 +1986,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             !*************************************
             ! Criterio de convergencia temperatura
-            WRITE(*,*) 'temp', error
+            ! WRITE(*,*) 'temp', error
             IF(error<conv_t)EXIT
             !
          END DO

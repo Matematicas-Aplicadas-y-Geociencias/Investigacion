@@ -65,7 +65,7 @@ INCLUDE 'omp_lib.h'
 !
 real(kind=DBL), dimension((mi+1)*(nj+1)*(lk+1)) :: a1, b1, c1, r1
 !
-real(kind=DBL) :: residuo, maxbo, error
+real(kind=DBL) :: residuo, maxbo, error, erro1
 !
 ! --------------------------------------------------------------------------------
 !
@@ -927,17 +927,18 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Se suma el error al error de la ecuaci'on de u
             !
+            erro1 = 0.0_DBL
             !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
             calcula_fv: do kk = 2, lk
                do jj = 2, nj-1
                   do ii = 2, mi
-                     error = error + (fv(ii,jj,kk)-v(ii,jj,kk))*&
+                     erro1 = erro1 + (fv(ii,jj,kk)-v(ii,jj,kk))*&
                           &(fv(ii,jj,kk)-v(ii,jj,kk))
                   end do
                end do
             end do calcula_fv
             !$OMP END PARALLEL DO
-            error=dsqrt(error)
+            erro1=dsqrt(erro1)+error
             !
             !--------------------------
             !--------------------------
@@ -1274,6 +1275,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Se suma el error al error de la ecuaci'on de u y de v
             !
+            error = 0.0_DBL
             !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION (+:error)
             calcula_fw: do kk = 2, lk-1
                do jj = 2, nj
@@ -1284,10 +1286,10 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do calcula_fw
             !$OMP END PARALLEL DO
-            error = dsqrt(error)
+            error = dsqrt(error) + erro1
             !****************************************
             ! Criterio de convergencia de la velocidad
-            !WRITE(*,*) 'velocidad ',itera, error
+            WRITE(*,*) 'velocidad ',itera, error
             IF( error<conv_u )EXIT
          END DO
          !
@@ -1601,7 +1603,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             !****************************************************
             !critero de convergencia del corrector de la presi'on
-            ! WRITE(*,*) 'corrector presion ', error
+            WRITE(*,*) 'corrector presion ', error
             IF(error<conv_p)EXIT
          END DO correccion_presion
          !*********************
@@ -1981,10 +1983,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do calcula_ftemp
             !$OMP END PARALLEL DO
             error = dsqrt(error)
-            !************************************
-            !Criterio de convergencia temperatura
-            IF(MAXVAL(DABS(ftemp))<conv_t)EXIT
-            ! WRITE(*,*) 'temp', MAXVAL(DABS(dtemp))
+            !
+            !*************************************
+            ! Criterio de convergencia temperatura
+            WRITE(*,*) 'temp', error
+            IF(error<conv_t)EXIT
             !
          END DO
          !

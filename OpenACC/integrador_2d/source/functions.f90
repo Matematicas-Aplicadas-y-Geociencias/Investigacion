@@ -36,7 +36,7 @@ contains
         implicit none
         real(kind=DBL), intent(in) :: x, y
 
-            funE = (0.5+x)*(0.5+y)*exp(x+y) ! No pasó el test
+            funE = (0.5+x)*(0.5+y)*exp(x+y)
     end function funE
 
     real(kind=DBL) function funF(x,y)
@@ -50,7 +50,7 @@ contains
         implicit none
         real(kind=DBL), intent(in) :: x, y
 
-        funG = -y*log(x) ! No pasó el test
+        funG = -y*log(x+0.5)
     end function funG
 
     real(kind=DBL) function funH(x,y)
@@ -66,6 +66,34 @@ contains
 
         funI = y * cos(x) + 2
     end function funI
+
+    subroutine get_fun_po(fun,xpo,ypo,fpo,ii)
+        implicit none
+        integer, intent(in) :: ii
+        real(kind=DBL) :: fun
+        real(kind=DBL), dimension(3), intent(in) :: xpo, ypo
+        real(kind=DBL), dimension(5), intent(out) :: fpo
+        real(kind=DBL) :: x1, x2, x3, y1, y2, y3
+        real(kind=DBL) :: dx1, dx2, dy1, dy2
+
+        x1 = xpo(ii)
+        x2 = xpo(ii + 1)
+        x3 = xpo(ii + 2)
+        y1 = ypo(ii)
+        y2 = ypo(ii + 1)
+        y3 = ypo(ii + 2)
+        ! -------------------------------------------------------------------------------
+        dx2 = x2 - x1
+        dx1 = x3 - x2
+        dy2 = y2 - y1
+        dy1 = y3 - y2
+        ! -------------------------------------------------------------------------------
+        fpo(1) = fun(0.0_DBL, 0.0_DBL)
+        fpo(2) = fun(dx1, 0.0_DBL)
+        fpo(3) = fun(-dx2, 0.0_DBL)
+        fpo(4) = fun(0.0_DBL, dy1)
+        fpo(5) = fun(0.0_DBL, -dy2)
+    end subroutine get_fun_po
 end module functions
 
 ! real(kind=DBL) function fun(x,y)

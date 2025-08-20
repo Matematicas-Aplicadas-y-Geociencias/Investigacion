@@ -11,7 +11,7 @@ Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
   REAL(kind=DBL), DIMENSION(lk+1), INTENT(in):: zo
   REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1),   INTENT(in)    :: uo, vo, wo
   REAL(kind=DBL), DIMENSION(mi+1,nj+1,lk+1),   INTENT(in)    :: tempo,presso
-  REAL(kind=DBL), DIMENSION(lk+1,mi+1,nj+1),   INTENT(in)    :: bo
+  REAL(kind=DBL), DIMENSION(lk+1,nj+1,mi+1),   INTENT(in)    :: bo
   CHARACTER(len=64) :: archivoo
   !
   character(64)   :: mico,njco,zkco
@@ -57,6 +57,7 @@ Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
      do j =1, nj+1
         do i =1, mi+1
            write(78) real(tempo(i,j,k))
+           ! write(78) real(bo(k,j,i))
         end do
      end do
   end do

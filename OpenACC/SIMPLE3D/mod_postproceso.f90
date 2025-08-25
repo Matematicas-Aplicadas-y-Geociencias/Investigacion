@@ -4,7 +4,7 @@
 ! Este m\'odulo contiene las subrutinas que calculan cantidades
 ! de salida y archivos de postproceso
 !
-! Autor: J.C. Cajas
+! Autor: J.C. Cajas, K.A. Figueroa
 !
 module postproceso
   !
@@ -49,10 +49,15 @@ contains
        !
     use malla, only : mi, nj, DBL, mic, njc
     implicit none
-    INTEGER :: itermax, paq_itera, simpmax, ecuamax
+    INTEGER          :: itermax, paq_itera, simpmax, ecuamax
     REAL(kind=DBL)   :: Ra,Pr,dt,Rin,rel_pres,rel_vel,rel_tem
     REAL(kind=DBL)   :: conv_u,conv_p,conv_t,conv_resi,conv_paso
     CHARACTER(len=64):: entrada_u,entrada_v,entrada_w,entrada_tp,directorio
+    !
+    ! Se escribe la informaci\'on con la que se realiza la ejecuci\'on que
+    ! produce los archivos de salida en el directorio nxxxmxxxRxxx/
+    ! Esto ayuda a detectar errores de ejecuci\'on por la ausencia de este
+    ! directorio
     !
     OPEN(unit=10, file=directorio)
       write (10,*) 'numero de Rayleigh                    ', Ra

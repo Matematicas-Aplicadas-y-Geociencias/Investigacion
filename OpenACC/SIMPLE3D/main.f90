@@ -54,6 +54,7 @@ use ec_energia, only : ensambla_energia_y
 use ec_energia, only : ensambla_energia_z
 !
 use postproceso, only : postprocesa_parametros
+use postproceso, only : postprocess_vtk
 !
 use solucionador, only : tridiagonal
 !

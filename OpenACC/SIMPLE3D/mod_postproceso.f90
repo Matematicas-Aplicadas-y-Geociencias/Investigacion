@@ -8,7 +8,7 @@
 !
 module postproceso
   !
-  use malla, only :  mi, nj, DBL
+  use malla, only :  mi, nj, lk, DBL
   !
   implicit none
   !
@@ -95,7 +95,7 @@ contains
   !
   Subroutine postprocess_vtk(xo,yo,zo,uo,vo,wo,presso,tempo,bo,archivoo)
     !
-    use malla, only : mi, nj, lk, DBL
+    ! use malla, only : mi, nj, lk, DBL
     !
     ! use constantes
     !

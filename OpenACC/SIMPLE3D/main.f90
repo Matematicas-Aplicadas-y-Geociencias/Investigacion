@@ -53,6 +53,9 @@ use ec_energia, only : ensambla_energia_x
 use ec_energia, only : ensambla_energia_y
 use ec_energia, only : ensambla_energia_z
 !
+use postproceso, only : postprocesa_parametros
+use postproceso, only : postprocess_vtk
+!
 use solucionador, only : tridiagonal
 !
 IMPLICIT NONE
@@ -102,7 +105,7 @@ REAL(kind=DBL)   :: a_ent,lambda_ent
 CHARACTER(len=1) :: dec,un,de,ce,m
 ! CHARACTER(len=3) :: mic,njc,lkc,
 character(len=3) :: Rac
-CHARACTER(len=64):: entrada_u,entrada_v,entrada_w,entrada_tp,entrada_xyz
+CHARACTER(len=64):: entrada_u,entrada_v,entrada_w,entrada_tp,entrada_xyz,directorio
 character(len=64):: archivo=repeat(' ',64)
 LOGICAL          :: res_fluido_u
 !****************************************
@@ -180,6 +183,33 @@ gamma_v = 1._DBL/Ra      !sqrt(Pr/Ra)
 gamma_w = 1._DBL/Ra      !sqrt(Pr/Ra)
 Ri      = Rin
 !
+!------------------------------------------------
+!
+! Verificación de existencia de directorio
+!
+directorio = 'n'//njc//'m'//mic//'k'//lkc//'R'//Rac//'/info_entrada.out'
+call postprocesa_parametros(&
+        &Ra,&
+        &Pr,&
+        &dt,&
+        &itermax,&
+        &paq_itera,&
+        &Rin,&
+        &rel_pres,&
+        &rel_vel,&
+        &rel_tem,&
+        &conv_u,&
+        &conv_t,&
+        &conv_p,&
+        &conv_resi,&
+        &conv_paso,&
+        &simpmax,&
+        &ecuamax,&
+        &entrada_u,&
+        &entrada_v,&
+        &entrada_w,&
+        &entrada_tp,&
+        &directorio)
 !------------------------------------------------
 !
 ! Lectura de mallas escalonadas

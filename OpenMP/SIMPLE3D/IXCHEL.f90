@@ -301,7 +301,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en la direcci'on de y para u
             !
             !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do     &
+            !$omp map(to:deltaxu,deltayu,deltazu,deltaxp, &
+            !$omp deltayv,deltazw,fexp,feyp,fezp,fexu,    &
+            !$omp gamma_momen,u,u_ant,v,w,temp,pres,      &
+            !$omp fuente_con_u,fuente_lin_u,Ri,dt,rel_vel &
+            !$omp )                                       &
+            !$omp map(from:a1,b1,c1,r1)
             ensa_velu_dir_y: do kk = 2, lk
                do ii = 2, mi-1
                   do jj = 2, nj
@@ -334,7 +341,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velu_dir_y
-            !$OMP END PARALLEL DO
+            ! $OMP END PARALLEL DO
             !
             !-------------------------
             !
@@ -1587,6 +1594,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! en direcci\'on y
             !
             !$acc parallel loop gang async(stream1) wait(stream2)
+            ! $OMP TARGET
             !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             sol_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
@@ -1601,6 +1609,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do sol_corr_dir_z
             !$OMP END PARALLEL DO
+            ! $OMP END TARGET
             !
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on y

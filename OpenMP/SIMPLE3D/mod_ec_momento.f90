@@ -186,6 +186,9 @@ contains
        &kk,jj,ii&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -974,6 +977,9 @@ contains
        &kk,jj,ii&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -1238,6 +1244,9 @@ contains
        &jj,ii,kk&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -1503,6 +1512,9 @@ contains
        &ii,jj,kk&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -1772,6 +1784,9 @@ contains
        &ii,jj,kk&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -2038,6 +2053,9 @@ contains
        &jj,ii,kk&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -2306,6 +2324,9 @@ contains
        &kk,jj,ii&
        &)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control

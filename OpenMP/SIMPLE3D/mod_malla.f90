@@ -343,6 +343,8 @@ contains
   !
   function indexu(ii,jj,kk)
     !
+    !$omp declare target
+    !
     implicit none
     !
     integer             :: indexu
@@ -353,6 +355,8 @@ contains
   end function indexu
   !
   function indeyu(jj,ii,kk)
+    !
+    !$omp declare target
     !
     implicit none
     !
@@ -376,6 +380,8 @@ contains
   !
   function indexv(ii,jj,kk)
     !
+    !$omp declare target
+    !
     implicit none
     !
     integer             :: indexv
@@ -387,6 +393,8 @@ contains
   !
   function indeyv(jj,ii,kk)
     !
+    !$omp declare target
+    !
     implicit none
     !
     integer             :: indeyv
@@ -397,6 +405,8 @@ contains
   end function indeyv
   !
   function indezv(kk,jj,ii)
+    !
+    !$omp declare target
     !
     implicit none
     !
@@ -420,6 +430,8 @@ contains
    !
   function indezw(kk,jj,ii)
     !
+    !$omp declare target
+    !
     implicit none
     !
     integer             :: indezw
@@ -430,6 +442,8 @@ contains
   end function indezw
   !
   function indezp(kk,jj,ii)
+    !
+    !$omp declare target
     !
     implicit none
     !

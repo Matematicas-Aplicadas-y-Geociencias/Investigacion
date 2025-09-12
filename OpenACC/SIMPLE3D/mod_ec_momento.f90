@@ -2640,8 +2640,6 @@ contains
     real(kind=DBL) :: alpha, beta, gamma, delta
     real(kind=DBL) :: deltax, deltay, deltaz
     real(kind=DBL) :: temp_int
-    !$acc loop gang collapse(2)
-    
     !
     !
     ! Interpolaciones necesarias

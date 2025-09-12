@@ -1654,11 +1654,11 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             !
          end do correccion_presion
          !
-         !$omp end target data
+         !------------------------------
          !
-         !*********************
-         !se corrige la presion
-         !$OMP PARALLEL DO ! COLLAPSE(3)
+         ! Se corrige la presion
+         !
+         !$omp target teams distribute parallel do collapse(3)
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi
@@ -1666,10 +1666,12 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                END DO
             END DO
          END DO
-         !$OMP END PARALLEL DO
-         !*****************************
-         !se actualizan las velocidades
-         !$OMP PARALLEL DO ! COLLAPSE(3)
+         !$omp end target teams distribute parallel do
+         !
+         !*******************************
+         ! Se actualizan las velocidades
+         !
+         !$omp target teams distribute parallel do collapse(3)
          DO kk = 2, lk
             DO jj = 2, nj
                DO ii = 2, mi-1
@@ -1678,8 +1680,9 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                END DO
             END DO
          END DO
-         !$OMP END PARALLEL DO
-         !$OMP PARALLEL DO ! COLLAPSE(3)
+         !$omp end target teams distribute parallel do
+         !
+         !$omp target teams distribute parallel do collapse(3)
          DO kk = 2, lk
             DO jj = 2, nj-1
                DO ii = 2, mi
@@ -1688,8 +1691,9 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                END DO
             END DO
          END DO
-         !$OMP END PARALLEL DO
-         !$OMP PARALLEL DO ! COLLAPSE(3)
+         !$omp end target teams distribute parallel do
+         !
+         !$omp target teams distribute parallel do collapse(3)
          DO kk = 2, lk-1
             DO jj = 2, nj
                DO ii = 2, mi
@@ -1698,8 +1702,11 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                END DO
             END DO
          END DO
-         !$OMP END PARALLEL DO
+         !$omp end target teams distribute parallel do
+         !
          !*************************
+         !
+         !$omp end target data
          !
          !------------------------------------------------------------------------------
          !------------------------------------------------------------------------------

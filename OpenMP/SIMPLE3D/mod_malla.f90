@@ -369,6 +369,8 @@ contains
   !
   function indexp(ii,jj,kk)
     !
+    !$omp declare target
+    !
     implicit none
     !
     integer             :: indexp
@@ -418,6 +420,8 @@ contains
   end function indezv
   !
   function indeyp(jj,ii,kk)
+    !
+    !$omp declare target
     !
     implicit none
     !

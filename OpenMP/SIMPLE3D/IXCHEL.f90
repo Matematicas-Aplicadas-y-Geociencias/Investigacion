@@ -116,7 +116,7 @@ REAL(kind=DBL) :: var2=0.0_DBL
 !$OMP PARALLEL private(id)
 id = omp_get_thread_num()
 WRITE(*,*) 'Este es el thread no. ', id
-!$OMP BARRIER
+! $OMP BARRIER
 IF(id == 0)THEN
   nthreads = omp_get_num_threads()
   WRITE(*,*) 'Se usan ', nthreads, ' threads'
@@ -227,6 +227,7 @@ call lectura_mallas_escalonadas(entrada_u,entrada_v,entrada_w,&
      &ao,itera_inicial)
 write(*,*) "Finaliza lectura de mallas"
 write(*,*) "--------------------------"
+!
 !*****************
 !valores iniciales
 ! DO k= 1, lk+1
@@ -249,6 +250,7 @@ itera_total = itera_total+itera
 entropia = 0.0_DBL
 ! simpmax = 200
 ! itermax = 6000
+!
 !************************************************
 !escribe las caracter´isticas de las variable DBL
 WRITE(*,100) 'Doble',KIND(var2),PRECISION(var2),RANGE(var2)
@@ -262,13 +264,33 @@ WRITE(*,*)' '
 101 FORMAT(1X,'Ra=',F12.3,', Pr=',F8.3', rel_pres=',F8.3', rel_vel=',F8.3)
 102 FORMAT(1X,'Iteracion inicial=',I7,', mi=',I4,', nj=',I4,', lk=',I4)
 106 FORMAT(1X,'Paso de tiempo dt=',F8.6,', iter final itermax=',I8)
+!
 !*********************************************************
-DO l=1,itermax/paq_itera   !inicio del repetidor principal
+DO l=1,itermax/paq_itera      !inicio del repetidor principal
    DO kl=1,paq_itera          !inicio del paquete iteraciones
       ALGORITMO_SIMPLE: do  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
          !
          !   Se abre la regi\'on paralela de datos
          !
+         !$omp target data map(to:                        &
+         !$omp deltaxu,deltayu,deltazu,                   &
+         !$omp deltaxv,deltayv,deltazv,                   &
+         !$omp deltaxp,deltayp,deltazp,                   &
+         !$omp deltaxw,deltayw,deltazw,                   &
+         !$omp fu,fv,fw,                                  &
+         !$omp fcorr_pres,temp,                           &
+         !$omp fexp,feyp,fezp,fexu,feyv,fezw,             &
+         !$omp gamma_momen,temp,                          &
+         !$omp fuente_con_u,fuente_lin_u,                 &
+         !$omp fuente_con_v,fuente_lin_v,                 &
+         !$omp fuente_con_w,fuente_lin_w,                 &
+         !$omp Ri,dt,rel_vel,rel_pres                     &
+         !$omp )                                          &
+         !$omp map(alloc:a1,b1,c1,r1)                     &
+         !$omp map(from:b_o)                              &
+         !$omp map(tofrom: u,v,w,pres,corr_pres,          &
+         !$omp u_ant,v_ant,w_ant,                         &
+         !$omp au,av,aw)
          ecuacion_momento: do tt= 1, ecuamax
             !
             !----------------------------------------------------------
@@ -284,25 +306,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para u
             !
-            !   Se abre la regi\'on paralela de datos
-            !
-            !$omp target data map(to:                       &
-            !$omp & deltaxu,deltayu,deltazu,                &
-            !$omp & deltaxv,deltayv,deltazv,                &
-            !$omp & deltaxp,deltayp,deltazp,                &
-            !$omp & deltaxw,deltayw,deltazw,                &
-            !$omp & fu,fv,fw,                               &
-            !$omp & fexp,feyp,fezp,fexu,feyv,fezw,          &
-            !$omp & gamma_momen,u_ant,v,w,temp,pres,        &
-            !$omp & fuente_con_u,fuente_lin_u,              &
-            !$omp & fuente_con_v,fuente_lin_v,              &
-            !$omp & fuente_con_w,fuente_lin_w,              &
-            !$omp & Ri,dt,rel_vel                           &
-            !$omp & )                                       &
-            !$omp & map(from:a1,b1,c1,r1)                   &
-            !$omp & map(tofrom: u,v,w,                      &
-            !$omp & au,av,aw)
-            !
             !--------------------------
             !--------------------------
             !
@@ -310,9 +313,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             !--------------------------
             !--------------------------
-            !
-            ! $acc parallel loop gang collapse(2) !async(stream1)
-            ! $OMP PARALLEL DO ! COLLAPSE(3)
             !
             !$omp target teams distribute parallel do collapse(3)
             inicializacion_fu: do kk = 1, lk+1
@@ -322,6 +322,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do inicializacion_fu
+            !$omp end target teams distribute parallel do
+            !
             !
             !$omp target teams distribute parallel do collapse(3)
             ensa_velu_dir_y: do kk = 2, lk
@@ -356,13 +358,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velu_dir_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
+            !
             !-------------------------
             !
             ! Condiciones de frontera direcci\'on y
             !
-            ! $acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_u_direc_y: do kk = 2, lk
                do ii = 2, mi-1
@@ -382,15 +383,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_u_direc_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(2)
             sol_u_dir_y: do kk = 2, lk
                do ii = 2, mi-1
@@ -404,15 +403,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_u_dir_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             do kk = 2, lk
                do ii = 2, mi-1
@@ -421,15 +418,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de z para u
             !
-            !$acc parallel loop gang !async(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(3)
             ensa_velu_dir_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -463,14 +458,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velu_dir_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
-            !-------------------------
+            !--------------------------------------
             !
             ! Condiciones de frontera direcci\'on z
             !
-            ! $acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_u_direc_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -492,15 +485,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_u_direc_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on z
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(2)
             sol_u_dir_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -514,15 +505,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_u_dir_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on z
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             do ii = 2, mi-1
                do jj = 2, nj
@@ -531,15 +520,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para u
             !
-            ! $acc parallel loop gang !async(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             ensa_velu_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -574,14 +561,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velu_dir_x
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-------------------------
             !
             ! Condiciones de frontera direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_u_direc_x: do kk = 2, lk
                do jj = 2, nj
@@ -601,15 +586,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_u_direc_x
-            ! OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             sol_u_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -623,15 +606,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_u_dir_x
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on x
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(3)
             do kk = 2, lk
                do jj = 2, nj
@@ -640,10 +621,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
+            !
             error = 0.0_DBL
-            ! $OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
-            !$omp target teams distribute parallel do collapse(3) reduction(+:error)
+            !
+            !$omp target teams distribute parallel do reduction(+:error)
             calcula_fu: do kk = 2, lk
                do jj = 2, nj
                   do ii = 2, mi-1
@@ -652,7 +634,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do calcula_fu
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
+            !
             error = dsqrt(error)
             !
             !--------------------------
@@ -663,8 +646,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !--------------------------
             !
-            !$acc parallel loop gang collapse(2) !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             inicializacion_fv: do kk = 1, lk+1
                do jj = 1, nj
@@ -673,15 +654,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do inicializacion_fv
-            ! OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop gang !async(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(3)
             ensa_velv_dir_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -715,14 +694,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velv_dir_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-----------------------------------------
             !
             ! Condiciones de frontera v direcci\'on y
             !
-            !$acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_v_direc_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -742,15 +719,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_v_direc_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(2)
             sol_v_dir_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -764,15 +739,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_v_dir_z
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on y
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             do ii = 2, mi
                do jj = 2, nj-1
@@ -781,15 +754,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop gang !async(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(3)
             ensa_velv_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -823,14 +794,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velv_dir_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-----------------------------------------
             !
             ! Condiciones de frontera v direcci\'on y
             !
-            !$acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_v_direc_y: do kk = 2, lk
                do ii = 2, mi
@@ -850,15 +819,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_v_direc_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(2)
             sol_v_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -872,15 +839,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_v_dir_y
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on y
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             do kk = 2, lk
                do ii = 2, mi
@@ -889,15 +854,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop gang !async(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(3)
             ensa_velv_dir_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -932,14 +895,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velv_dir_x
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-----------------------------------------
             !
             ! Condiciones de frontera v direcci\'on x
             !
-            !$acc parallel loop vector !async(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED)
             !$omp target teams distribute parallel do collapse(2)
             cond_fron_v_direc_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -959,15 +920,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_v_direc_x
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on x
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
             !$omp target teams distribute parallel do collapse(2)
             sol_v_dir_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -981,15 +940,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_v_dir_x
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on x
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            ! $OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
             !$omp target teams distribute parallel do collapse(3)
             do kk = 2, lk
                do jj = 2, nj-1
@@ -998,13 +955,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            ! $OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             ! Se suma el error al error de la ecuaci'on de u
             !
             erro1 = 0.0_DBL
-            ! $OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
-            !$omp target teams distribute parallel do collapse(3) reduction(+:erro1)
+            !
+            !$omp target teams distribute parallel do  reduction(+:erro1)
             calcula_fv: do kk = 2, lk
                do jj = 2, nj-1
                   do ii = 2, mi
@@ -1013,10 +970,9 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do calcula_fv
-            ! $OMP END PARALLEL DO
-            erro1=dsqrt(erro1)+error
+            !$omp end target teams distribute parallel do
             !
-            !$omp end target data
+            erro1=dsqrt(erro1)+error
             !
             !--------------------------
             !
@@ -1028,9 +984,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !--------------------------
             !
-            !$acc parallel loop gang collapse(2) !async(stream1)
-            !$OMP PARALLEL DO ! COLLAPSE(3)
-            ! $omp target teams distribute parallel do collapse(3)
+            !$omp target teams distribute parallel do collapse(3)
             inicializacion_fw: do kk = 1, lk
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -1038,16 +992,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do inicializacion_fw
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
-            ! $omp target teams distribute parallel do collapse(3)
+            !$omp target teams distribute parallel do collapse(3)
             ensa_velw_dir_z: do ii = 2, mi
                do jj = 2, nj
                   do kk = 2, lk-1
@@ -1080,15 +1032,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velw_dir_z
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-------------------------
             !
             ! Condiciones de frontera direcci\'on x
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
-            ! $omp target teams distribute parallel do collapse(2)
+            !$omp target teams distribute parallel do collapse(2)
             cond_fron_w_direc_z: do ii = 2, mi
                do jj = 2, nj
                   !***********************
@@ -1107,16 +1057,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_w_direc_z
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
-            ! $omp target teams distribute parallel do collapse(2)
+            !$omp target teams distribute parallel do collapse(2)
             sol_w_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !
@@ -1129,15 +1077,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_w_dir_z
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on y
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(3)
             do ii = 2, mi
                do jj = 2, nj
                   do kk = 1, lk
@@ -1145,15 +1092,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(3)
             ensa_velw_dir_y: do kk = 2, lk-1
                do ii = 2, mi
                   do jj = 2, nj
@@ -1186,14 +1132,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velw_dir_y
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !-------------------------
             !
             ! Condiciones de frontera direcci\'on x
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$omp target teams distribute parallel do collapse(2)
             cond_fron_w_direc_y: do kk = 2, lk-1
                do ii = 2, mi
                   !***********************
@@ -1212,15 +1157,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_w_direc_y
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(2)
             sol_w_dir_y: do kk = 2, lk-1
                do ii = 2, mi
                   !
@@ -1233,15 +1177,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_w_dir_y
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on y
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(3)
             do kk = 2, lk-1
                do ii = 2, mi
                   do jj = 1, nj+1
@@ -1249,16 +1192,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
-            !
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para w
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(3)
             ensa_velw_dir_x: do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 2, mi
@@ -1292,14 +1233,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_velw_dir_x
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
-            !-------------------------
+            !--------------------------------------
             !
             ! Condiciones de frontera direcci\'on x
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$omp target teams distribute parallel do collapse(2)
             cond_fron_w_direc_x: do kk = 2, lk-1
                do jj = 2, nj
                   !***********************
@@ -1318,15 +1258,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_w_direc_x
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
-            !----------------------------------------------
+            !--------------------------------------------------------
             !
-            ! Soluci\'on de la ec. de momento para u
-            ! en direcci\'on y
+            ! Soluci\'on de la ec. de momento para u en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(2)
             sol_w_dir_x: do kk = 2, lk-1
                do jj = 2, nj
                   !
@@ -1339,15 +1277,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_w_dir_x
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------
             !
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on x
             !
-            !$acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(2)
             do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 1, mi+1
@@ -1355,12 +1292,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
             !
             ! Se suma el error al error de la ecuaci'on de u y de v
             !
             error = 0.0_DBL
-            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION (+:error)
+            !
+            !$omp target teams distribute parallel do reduction(+:error)
             calcula_fw: do kk = 2, lk-1
                do jj = 2, nj
                   do ii = 2, mi
@@ -1369,14 +1307,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do calcula_fw
-            !$OMP END PARALLEL DO
+            !$omp end target teams distribute parallel do
+            !
             error = dsqrt(error) + erro1
             !****************************************
             ! Criterio de convergencia de la velocidad
             ! WRITE(*,*) 'velocidad ',itera, error
-            IF( error<conv_u )EXIT
-         END DO ecuacion_momento
-         !
+            !
+            if( error<conv_u )exit
+            !
+         end do ecuacion_momento
          !-------------------------------------------------------------------------------
          !-------------------------------------------------------------------------------
          !
@@ -1385,8 +1325,8 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !-------------------------------------------------------------------------------
          !-------------------------------------------------------------------------------
          !
-         !$acc parallel loop gang collapse(2) !async(stream2)
-         !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)    
+         !$omp target teams distribute parallel do collapse(3)
+         ! $omp parallel do
          inicializa_corrector_presion: do kk=1, lk+1
             do jj = 1, nj+1
                do ii = 1, mi+1
@@ -1395,31 +1335,33 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                end do
             end do
          end do inicializa_corrector_presion
-         !$OMP END PARALLEL DO
+         ! $omp end parallel do
+         !$omp end target teams distribute parallel do
          !
          correccion_presion: do tt = 1, ecuamax
             !
-            !$acc parallel loop gang collapse(2) ! async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
-            inicializa_fcorr_press: do kk=2, lk
-               do jj=2, nj
-                  do ii = 2, mi
+            !$omp target teams distribute parallel do collapse(3) &
+            !$omp map(from: fcorr_pres) map(to:corr_pres)
+            ! $omp parallel do
+            inicializa_fcorr_press: do kk=1, lk+1
+               do jj=1, nj+1
+                  do ii = 1, mi+1
                      fcorr_pres(ii,jj,kk) = corr_pres(ii,jj,kk)
                   end do
                end do
             end do inicializa_fcorr_press
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !------------------------------------------
             !
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on x
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             ensa_corr_dir_x: do kk = 2, lk
                do jj = 2, nj
-                  !$acc loop vector
                   do ii = 2, mi
                      call ensambla_corr_pres_x(&
                           &deltaxp,&
@@ -1437,14 +1379,15 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_corr_dir_x
-            !OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !---------------------------------------
             !
             ! Condiciones de frontera direcci\'on x
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do
             cond_fron_direc_x: do kk = 2, lk
                do jj = 2, nj
                   !***********************
@@ -1461,14 +1404,15 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_direc_x
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la correcci\'on de la presi\'on
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do
             sol_corr_dir_x: do kk = 2, lk
                do jj = 2,nj
                   !
@@ -1481,12 +1425,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_corr_dir_x
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on x
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             do kk = 2, lk
                do jj = 2, nj
                   do ii =1, mi+1
@@ -1494,18 +1440,18 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !------------------------------------------
             !
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on y
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             ensa_corr_dir_y: do kk = 2, lk
                do ii = 2, mi
-                  !$acc loop vector
                   do jj = 2, nj
                      call ensambla_corr_pres_y(&
                           &deltaxp,&
@@ -1523,15 +1469,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_corr_dir_y
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !--------------------------------------------
             !--------------------------------------------
             !
             ! Condiciones de frontera direcci\'on y
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do
             cond_fron_direc_y: do kk = 2, lk
                do ii = 2, mi
                   !***********************
@@ -1546,15 +1493,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_direc_y
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la correcci\'on de la presi\'on
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do
             sol_corr_dir_y: do kk = 2, lk
                do ii = 2, mi
                   !
@@ -1567,12 +1515,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_corr_dir_y
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on y
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             do kk = 2, lk
                do ii = 2, mi
                   do jj =2, nj
@@ -1580,18 +1530,18 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !------------------------------------------
             !
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on z
             !
-            !$acc parallel loop gang !async(stream2)
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             ensa_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
-                  !$acc loop vector
                   do kk = 2, lk
                      call ensambla_corr_pres_z(&
                           &deltaxp,&
@@ -1610,15 +1560,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do ensa_corr_dir_z
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !------------------------------------------------------------------------
             !------------------------------------------------------------------------
             !
             ! Condiciones de frontera direcci\'on z
             !
-            !$acc parallel loop vector !async(stream1)
-            !$OMP PARALLEL DO DEFAULT(SHARED)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do 
             cond_fron_direc_z: do ii = 2, mi
                do jj = 2, nj
                   !***********************
@@ -1633,16 +1584,16 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do cond_fron_direc_z
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             !----------------------------------------------
             !
             ! Soluci\'on de la correcci\'on de la presi\'on
             ! en direcci\'on y
             !
-            !$acc parallel loop gang async(stream1) wait(stream2)
-            ! $OMP TARGET
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+            !$omp target teams distribute parallel do collapse(2)
+            ! $omp parallel do
             sol_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
                   !
@@ -1655,13 +1606,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   !
                end do
             end do sol_corr_dir_z
-            !$OMP END PARALLEL DO
-            ! $OMP END TARGET
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             ! Actualizaci\'on del corrector de la presi\'on
             ! en direcci\'on y
             !
-            !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(3)
+            !$omp target teams distribute parallel do collapse(3)
+            ! $omp parallel do
             do ii = 2, mi
                do jj = 2, nj
                   do kk =1, lk+1
@@ -1669,10 +1621,14 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
             !
             error=0._DBL
-            !$OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
+            !
+            !$omp target teams distribute parallel do reduction(+:error) 
+            ! $omp map(to:fcorr_pres,corr_pres)
+            ! $omp parallel do reduction(+:error)
             calcula_fcorr_press: do kk=2, lk
                do jj=2, nj
                   do ii = 2, mi
@@ -1681,17 +1637,25 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do calcula_fcorr_press
-            !$OMP END PARALLEL DO
+            ! $omp end parallel do
+            !$omp end target teams distribute parallel do
+            !
             error =dsqrt(error)
             !
-            !-----------------------------------------------------------------------------
-            !-----------------------------------------------------------------------------
+            !----------------------------------------------------------------------------
+            !----------------------------------------------------------------------------
             !
             !****************************************************
-            !critero de convergencia del corrector de la presi'on
+            !
+            ! critero de convergencia del corrector de la presi'on
             ! WRITE(*,*) 'corrector presion ', error
-            IF(error<conv_p)EXIT
-         END DO correccion_presion
+            !
+            if( error<conv_p )exit
+            !
+         end do correccion_presion
+         !
+         !$omp end target data
+         !
          !*********************
          !se corrige la presion
          !$OMP PARALLEL DO ! COLLAPSE(3)
@@ -2216,6 +2180,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
       !$OMP END PARALLEL DO
       !
    END DO !*************termina el paquete de iteraciones
+   !
 !*****************************************************
 !*****************************************************
 itera_total = itera_inicial+itera

@@ -59,6 +59,9 @@ contains
        &au_o,av_o,aw_o,&
        &ii,jj,kk)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -201,6 +204,9 @@ contains
        &au_o,av_o,aw_o,&
        &jj,ii,kk)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control
@@ -345,6 +351,9 @@ contains
        &au_o,av_o,aw_o,&
        &kk,jj,ii)
     implicit none
+    !
+    !$omp declare target
+    !
     !$acc routine
     !
     ! Tama\~no del volumen de control

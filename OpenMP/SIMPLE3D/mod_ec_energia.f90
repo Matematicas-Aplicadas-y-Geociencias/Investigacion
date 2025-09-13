@@ -76,7 +76,8 @@ contains
        &)
     !
     implicit none
-    !$acc routine
+    !
+    !$omp declare target
     !
     ! Tama\~no del volumen de control
     !
@@ -280,7 +281,8 @@ contains
        &)
     !
     implicit none
-    !$acc routine
+    !
+    !$omp declare target
     !
     ! Tama\~no del volumen de control
     !
@@ -484,7 +486,8 @@ contains
        &)
     !
     implicit none
-    !$acc routine
+    !
+    !$omp declare target
     !
     ! Tama\~no del volumen de control
     !

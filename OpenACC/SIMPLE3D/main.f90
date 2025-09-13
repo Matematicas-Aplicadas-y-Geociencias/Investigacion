@@ -113,15 +113,15 @@ LOGICAL          :: res_fluido_u
 REAL(kind=DBL) :: var2=0.0_DBL
 !*******************************************
 !Se muestra cu'antos procesadores hay en uso
-! $OMP PARALLEL private(id)
-id = omp_get_thread_num()
-WRITE(*,*) 'Este es el thread no. ', id
-! $OMP BARRIER
-IF(id == 0)THEN
-  nthreads = omp_get_num_threads()
-  WRITE(*,*) 'Se usan ', nthreads, ' threads'
-END IF
-! $OMP END PARALLEL
+! ! $OMP PARALLEL private(id)
+! id = omp_get_thread_num()
+! WRITE(*,*) 'Este es el thread no. ', id
+! ! $OMP BARRIER
+! IF(id == 0)THEN
+!   nthreads = omp_get_num_threads()
+!   WRITE(*,*) 'Se usan ', nthreads, ' threads'
+! END IF
+! ! $OMP END PARALLEL
 !*************************************
 ! Par'ametros para Convecci'on natural
 OPEN(unit=10,file='parametros.dat')
@@ -247,6 +247,7 @@ b_o   = 0._DBL
 itera = 1
 itera_total = itera_total+itera
 entropia = 0.0_DBL
+fu=0._DBL
 ! simpmax = 200
 ! itermax = 6000
 !************************************************
@@ -284,8 +285,10 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !--------------------------
             !
+            ! $acc data copy(&
+            ! $acc u(1:mi,1:nj+1,1:lk+1),v(1:mi+1,1:nj,1:lk+1),
+            !
             !$acc parallel loop gang collapse(3) !async(stream1)
-            ! $OMP PARALLEL DO COLLAPSE(3)
             inicializacion_fu: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi
@@ -293,14 +296,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
                   end do
                end do
             end do inicializacion_fu
-            ! $OMP END PARALLEL DO
             !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para u
             !
-            !$acc parallel loop gang collapse(3) copyout(a1,b1,c1,r1)
+            !$acc parallel loop vector collapse(3) !copyout(a1,b1,c1,r1)
             ensa_velu_dir_y: do kk = 2, lk
                do ii = 2, mi-1
                   do jj = 2, nj
@@ -366,7 +368,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_y: do kk = 2, lk
                do ii = 2, mi-1
@@ -1196,7 +1198,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             end do
             ! $OMP END PARALLEL DO
             !
-            !
             !----------------------------------------
             !
             ! Se ensamblan las matrices tridiagonales
@@ -1318,7 +1319,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             error = dsqrt(error) + erro1
             !****************************************
             ! Criterio de convergencia de la velocidad
-            ! WRITE(*,*) 'velocidad ',itera, error
+            WRITE(*,*) 'velocidad ',itera, error
             IF( error<conv_u )EXIT
          END DO
          !

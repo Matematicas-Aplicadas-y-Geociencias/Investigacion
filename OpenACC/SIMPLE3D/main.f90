@@ -341,7 +341,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on y
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_u_direc_y: do kk = 2, lk
                do ii = 2, mi-1
@@ -389,7 +389,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi-1
@@ -405,7 +405,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de z para u
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -445,7 +445,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on z
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_u_direc_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -474,7 +474,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on z
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -495,7 +495,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on z
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi-1
                do jj = 2, nj
@@ -511,7 +511,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para u
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -552,7 +552,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_u_direc_x: do kk = 2, lk
                do jj = 2, nj
@@ -579,7 +579,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_u_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -600,7 +600,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad u
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj
@@ -612,6 +612,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! $OMP END PARALLEL DO
             !
             error = 0.0_DBL
+            !$acc parallel loop collapse(3) reduction(+:error)
             ! $OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
             calcula_fu: do kk = 2, lk
                do jj = 2, nj
@@ -632,7 +633,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !--------------------------
             !
-            ! $acc parallel loop gang collapse(2) !async(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             inicializacion_fv: do kk = 1, lk+1
                do jj = 1, nj
@@ -648,7 +649,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -688,7 +689,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera v direcci\'on y
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_v_direc_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -715,7 +716,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -736,7 +737,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj-1
@@ -752,7 +753,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -792,7 +793,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera v direcci\'on y
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_v_direc_y: do kk = 2, lk
                do ii = 2, mi
@@ -819,7 +820,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -840,7 +841,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do ii = 2, mi
@@ -856,7 +857,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -897,7 +898,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera v direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_v_direc_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -924,7 +925,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para v
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_v_dir_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -945,7 +946,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad v
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk
                do jj = 2, nj-1
@@ -959,6 +960,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se suma el error al error de la ecuaci'on de u
             !
             erro1 = 0.0_DBL
+            !$acc parallel loop collapse(3) reduction(+:erro1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) REDUCTION(+:error)
             calcula_fv: do kk = 2, lk
                do jj = 2, nj-1
@@ -979,7 +981,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !--------------------------
             !--------------------------
             !
-            ! $acc parallel loop gang collapse(2) !async(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream1)
             ! $OMP PARALLEL DO COLLAPSE(3)
             inicializacion_fw: do kk = 1, lk
                do jj = 1, nj+1
@@ -995,7 +997,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_z: do ii = 2, mi
                do jj = 2, nj
@@ -1035,7 +1037,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_w_direc_z: do ii = 2, mi
                do jj = 2, nj
@@ -1062,7 +1064,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_z: do ii = 2, mi
                do jj = 2, nj
@@ -1083,7 +1085,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do ii = 2, mi
                do jj = 2, nj
@@ -1099,7 +1101,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_y: do kk = 2, lk-1
                do ii = 2, mi
@@ -1139,7 +1141,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_w_direc_y: do kk = 2, lk-1
                do ii = 2, mi
@@ -1166,7 +1168,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_y: do kk = 2, lk-1
                do ii = 2, mi
@@ -1187,7 +1189,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk-1
                do ii = 2, mi
@@ -1203,7 +1205,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para w
             !
-            ! $acc parallel loop gang !async(stream2)
+            !$acc parallel loop vector collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_x: do kk = 2, lk-1
                do jj = 2, nj
@@ -1244,7 +1246,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             ! Condiciones de frontera direcci\'on x
             !
-            ! $acc parallel loop vector !async(stream1)
+            !$acc parallel loop gang collapse(2) !async(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED)
             cond_fron_w_direc_x: do kk = 2, lk-1
                do jj = 2, nj
@@ -1271,7 +1273,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Soluci\'on de la ec. de momento para u
             ! en direcci\'on y
             !
-            ! $acc parallel loop gang async(stream1) wait(stream2)
+            !$acc parallel loop gang collapse(2) !async(stream1) wait(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             sol_w_dir_x: do kk = 2, lk-1
                do jj = 2, nj
@@ -1292,7 +1294,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Actualizaci\'on de la velocidad w
             ! en direcci\'on x
             !
-            ! $acc parallel loop gang collapse(2) !async(stream2) wait(stream1)
+            !$acc parallel loop gang collapse(3) !async(stream2) wait(stream1)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(3)
             do kk = 2, lk-1
                do jj = 2, nj
@@ -1306,6 +1308,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se suma el error al error de la ecuaci'on de u y de v
             !
             error = 0.0_DBL
+            !$acc parallel loop collapse(3) reduction(+:error)
             ! $OMP PARALLEL DO DEFAULT(SHARED) REDUCTION (+:error)
             calcula_fw: do kk = 2, lk-1
                do jj = 2, nj

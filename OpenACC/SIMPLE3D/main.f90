@@ -265,6 +265,44 @@ WRITE(*,*)' '
 106 FORMAT(1X,'Paso de tiempo dt=',F8.6,', iter final itermax=',I8)
 !*********************************************************
 DO l=1,itermax/paq_itera   !inicio del repetidor principal
+   !
+   ! Region de datos
+   !
+   !$acc data copy(&
+   !$acc &         u(1:mi,1:nj+1,1:lk),v(1:mi+1,1:nj,1:lk),w(1:mi,1:nj,1:lk+1),            &
+   !$acc &         pres(1:mi+1,1:nj+1,1:lk+1),temp(1:mi+1,1:nj+1,1:lk+1),                  &
+   !$acc &         corr_pres(1:mi+1,1:nj+1,1:lk+1),                                        &
+   !$acc &         u_ant(1:mi,1:nj+1,1:lk),v_ant(1:mi+1,1:nj,1:lk),w_ant(1:mi,1:nj,1:lk+1),&
+   !$acc &         temp_ant(1:mi+1,1:nj+1,1:lk+1),b_o(1:mi+1,1:nj+1,1:lk+1)                &
+   !$acc &         )&
+   !$acc & copyin(&
+   !$acc &        tiempo_inicial,                                                        &
+   !$acc &        Resu(1:mi,1:nj+1,1:lk),                                                &
+   !$acc &        au(1:mi,1:nj+1,1:lk),av(1:mi+1,1:nj,1:lk),aw(1:mi,1:nj,1:lk+1),        &
+   !$acc &        gamma_momen(1:mi+1,1:nj+1,1:lk+1),gamma_ener(1:mi+1,1:nj+1,1:lk+1),    &
+   !$acc &        deltaxp(1:mi),deltayp(1:nj),deltazp(1:lk),                             &
+   !$acc &        deltaxu(1:mi),deltayu(1:nj),deltazu(1:lk),                             &
+   !$acc &        deltaxv(1:mi),deltayv(1:nj),deltazv(1:lk),                             &
+   !$acc &        deltaxw(1:mi),deltayw(1:nj),deltazw(1:lk),                             &
+   !$acc &        fexp(1:mi),feyp(1:nj),fezp(1:lk),                                      &
+   !$acc &        fexu(1:mi),feyv(1:nj),fezw(1:lk),                                      &
+   !$acc &        Ri(1:mi,1:nj+1,1:lk),dt,                                               &
+   !$acc &        fuente_con_u(1:mi,1:nj+1,1:lk), fuente_lin_u(1:mi,1:nj+1,1:lk),        &
+   !$acc &        fuente_con_v(1:mi+1,1:nj,1:lk), fuente_lin_v(1:mi+1,1:nj,1:lk),        &
+   !$acc &        fuente_con_w(1:mi,1:nj,1:lk+1), fuente_lin_w(1:mi,1:nj,1:lk+1),        &
+   !$acc &        fuente_con_temp(1:mi+1,1:nj+1,1:lk+1), fuente_lin_temp(1:mi+1,1:nj+1,1:lk+1),&
+   !$acc &        rel_vel,conv_u,conv_p,                                                 &
+   !$acc &        rel_ener,conv_t,rel_pres                                               &
+   !$acc &        )&
+   !$acc & create(a1(1:(mi+1)*(nj+1)*(lk+1)),b1(1:(mi+1)*(nj+1)*(lk+1)),               &
+   !$acc &        c1(1:(mi+1)*(nj+1)*(lk+1)),r1(1:(mi+1)*(nj+1)*(lk+1)),               &
+   !$acc &        fu(1:mi,1:nj+1,1:lk),du(1:mi,1:nj+1,1:lk),                           &
+   !$acc &        fv(1:mi+1,1:nj,1:lk),dv(1:mi+1,1:nj,1:lk),                           &
+   !$acc &        fw(1:mi,1:nj,1:lk+1),dw(1:mi,1:nj,1:lk+1),                           &
+   !$acc &        fcorr_pres(1:mi+1,1:nj+1,1:lk+1),dcorr_pres(1:mi+1,1:nj+1,1:lk+1),   &
+   !$acc &        ftemp(1:mi+1,1:nj+1,1:lk+1),dtemp(1:mi+1,1:nj+1,1:lk+1)              &
+   !$acc &)
+   !
    DO kl=1,paq_itera          !inicio del paquete iteraciones
       ALGORITMO_SIMPLE: DO  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
          DO tt= 1, ecuamax
@@ -302,7 +340,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para u
             !
-            !$acc parallel loop vector collapse(3) !copyout(a1,b1,c1,r1)
+            !$acc parallel loop gang collapse(3) !copyout(a1,b1,c1,r1)
             ensa_velu_dir_y: do kk = 2, lk
                do ii = 2, mi-1
                   do jj = 2, nj
@@ -405,7 +443,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de z para u
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_z: do ii = 2, mi-1
                do jj = 2, nj
@@ -511,7 +549,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para u
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velu_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -649,7 +687,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_z: do ii = 2, mi
                do jj = 2, nj-1
@@ -753,7 +791,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -857,7 +895,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para v
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velv_dir_x: do kk = 2, lk
                do jj = 2, nj-1
@@ -997,7 +1035,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_z: do ii = 2, mi
                do jj = 2, nj
@@ -1101,7 +1139,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para w
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_y: do kk = 2, lk-1
                do ii = 2, mi
@@ -1205,7 +1243,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para w
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_velw_dir_x: do kk = 2, lk-1
                do jj = 2, nj
@@ -1364,11 +1402,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on x
             !
-            !$acc parallel loop vector collapse(2) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_x: do kk = 2, lk
                do jj = 2, nj
-                  !$acc loop vector
+                  ! $acc loop vector
                   do ii = 2, mi
                      call ensambla_corr_pres_x(&
                           &deltaxp,&
@@ -1451,11 +1489,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on y
             !
-            !$acc parallel loop vector collapse(2) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_y: do kk = 2, lk
                do ii = 2, mi
-                  !$acc loop vector
+                  ! $acc loop vector
                   do jj = 2, nj
                      call ensambla_corr_pres_y(&
                           &deltaxp,&
@@ -1538,11 +1576,11 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensambla la ecuaci\'on de correcci\'on
             ! de la presi\'on en direcci\'on z
             !
-            !$acc parallel loop vector collapse(2) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_corr_dir_z: do ii = 2, mi
                do jj = 2, nj
-                  !$acc loop vector
+                  ! $acc loop vector
                   do kk = 2, lk
                      call ensambla_corr_pres_z(&
                           &deltaxp,&
@@ -1720,7 +1758,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de x para la energía
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_x: do kk = 2, lk
                do jj = 2, nj
@@ -1819,7 +1857,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de y para la energía
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_y: do kk = 2, lk
                do ii = 2, mi
@@ -1918,7 +1956,7 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             ! Se ensamblan las matrices tridiagonales
             ! en la direcci'on de z para la energía
             !
-            !$acc parallel loop vector collapse(3) !async(stream2)
+            !$acc parallel loop gang collapse(3) !async(stream2)
             ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
             ensa_ener_dir_z: do ii = 2, mi
                do jj = 2, nj
@@ -2042,13 +2080,13 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
          !---------------------------------------------
          !---------------------------------------------
          !
-         !$acc parallel loop vector collapse(2) !async(stream1)
+         !$acc parallel loop gang collapse(3) !async(stream1)
          ! $OMP PARALLEL DO DEFAULT(SHARED) COLLAPSE(2)
          bucle_direccion_z: do kk = 2, lk
             !
             bucle_direccion_y: do jj = 2, nj
                !
-               !$acc loop vector
+               ! $acc loop vector
                bucle_direccion_x: do ii = 2, mi-1
                   call residuo_u(&
                        &deltaxu,&
@@ -2180,6 +2218,12 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
       ! $OMP END PARALLEL DO
       !
    END DO !*************termina el paquete de iteraciones
+   !
+   !--------------------------------------------
+   !
+   ! Se cierra la regi\'on paralela de datos
+   !
+   !$acc end data
 !*****************************************************
 !*****************************************************
 itera_total = itera_inicial+itera

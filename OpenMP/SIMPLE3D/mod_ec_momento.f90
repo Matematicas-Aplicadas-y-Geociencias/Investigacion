@@ -2593,8 +2593,9 @@ contains
        &ii,jj,kk&
        &)
     implicit none
-    !$acc routine gang
-        !
+    !
+    !$omp declare target
+    !
     ! Tama\~no del volumen de control
     !
     real(kind=DBL), dimension(mi), intent(in) :: deltaxuo

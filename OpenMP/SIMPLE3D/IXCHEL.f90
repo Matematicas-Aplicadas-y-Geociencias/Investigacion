@@ -267,30 +267,31 @@ WRITE(*,*)' '
 !
 !*********************************************************
 DO l=1,itermax/paq_itera      !inicio del repetidor principal
+   !
+   !   Se abre la regi\'on paralela de datos
+   !
+   !$omp    target data map(to:                &
+   !$omp    deltaxu,deltayu,deltazu,           &
+   !$omp    deltaxv,deltayv,deltazv,           &
+   !$omp    deltaxp,deltayp,deltazp,           &
+   !$omp    deltaxw,deltayw,deltazw,           &
+   !$omp    fu,fv,fw,                          &
+   !$omp    fcorr_pres,ftemp,                  &
+   !$omp    fexp,feyp,fezp,fexu,feyv,fezw,     &
+   !$omp    gamma_momen,gamma_ener,            &
+   !$omp    fuente_con_u,fuente_lin_u,         &
+   !$omp    fuente_con_v,fuente_lin_v,         &
+   !$omp    fuente_con_w,fuente_lin_w,         &
+   !$omp    Ri,dt,rel_vel,rel_pres,            &
+   !$omp    au,av,aw)                          &
+   !$omp    map(alloc:a1,b1,c1,r1)             &
+   !$omp    map(tofrom: u,v,w,pres,temp,       &
+   !$omp    corr_pres,u_ant,v_ant,w_ant,b_o    &
+   !$omp    )
    DO kl=1,paq_itera          !inicio del paquete iteraciones
+      !
       ALGORITMO_SIMPLE: do  iter_simp = 1, simpmax     !inicio del algoritmo SIMPLE
          !
-         !   Se abre la regi\'on paralela de datos
-         !
-         !$omp target data map(to:                        &
-         !$omp deltaxu,deltayu,deltazu,                   &
-         !$omp deltaxv,deltayv,deltazv,                   &
-         !$omp deltaxp,deltayp,deltazp,                   &
-         !$omp deltaxw,deltayw,deltazw,                   &
-         !$omp fu,fv,fw,                                  &
-         !$omp fcorr_pres,temp,                           &
-         !$omp fexp,feyp,fezp,fexu,feyv,fezw,             &
-         !$omp gamma_momen,temp,                          &
-         !$omp fuente_con_u,fuente_lin_u,                 &
-         !$omp fuente_con_v,fuente_lin_v,                 &
-         !$omp fuente_con_w,fuente_lin_w,                 &
-         !$omp Ri,dt,rel_vel,rel_pres                     &
-         !$omp )                                          &
-         !$omp map(alloc:a1,b1,c1,r1)                     &
-         !$omp map(from:b_o)                              &
-         !$omp map(tofrom: u,v,w,pres,corr_pres,          &
-         !$omp u_ant,v_ant,w_ant,                         &
-         !$omp au,av,aw)
          ecuacion_momento: do tt= 1, ecuamax
             !
             !----------------------------------------------------------
@@ -1612,10 +1613,7 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             !
             error =dsqrt(error)
             !
-            !----------------------------------------------------------------------------
-            !----------------------------------------------------------------------------
-            !
-            !****************************************************
+            !------------------------------------------------------------------------
             !
             ! critero de convergencia del corrector de la presi'on
             ! WRITE(*,*) 'corrector presion ', error
@@ -1980,7 +1978,7 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             !
             error = 0.0_DBL
             !
-            !$omp target teams distribute parallel do collapse(3)
+            !$omp target teams distribute parallel do reduction(+:error)
             calcula_ftemp: do kk = 1, lk+1
                do jj = 1, nj+1
                   do ii = 1, mi+1
@@ -2001,10 +1999,6 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             !*************************
          END DO
          !
-         !$omp end target data
-         !
-         !
-         !
          !---------------------------------------------
          !---------------------------------------------
          !
@@ -2013,13 +2007,11 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
          !---------------------------------------------
          !---------------------------------------------
          !
-         !$acc parallel !async(stream1)
-         !$OMP PARALLEL DO DEFAULT(SHARED) ! COLLAPSE(2)
+         !$omp target teams distribute parallel do collapse(3)
          bucle_direccion_z: do kk = 2, lk
             !
             bucle_direccion_y: do jj = 2, nj
                !
-               !$acc loop vector
                bucle_direccion_x: do ii = 2, mi-1
                   call residuo_u(&
                        &deltaxu,&
@@ -2052,15 +2044,15 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             end do bucle_direccion_y
             !
          end do bucle_direccion_z
-         !$OMP END PARALLEL DO
-         !$acc end parallel
+         !$omp end target teams distribute parallel do
          !
          !-------------------------
          !
          ! residuo del algoritmo
          !
          maxbo   = 0.0_DBL
-         !$OMP PARALLEL DO REDUCTION(+:maxbo)
+         !
+         !$omp target teams distribute parallel do reduction(+:maxbo)
          calculo_maxbo: do ii = 2, mi
             do jj = 2, nj
                do kk = 2, lk
@@ -2068,13 +2060,13 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                end do
             end do
          end do calculo_maxbo
-         !$OMP END PARALLEL DO
+         !$omp end target teams distribute parallel do
          !
          maxbo =dsqrt(maxbo)
          !
          residuo = 0.0_DBL
-         !$acc parallel loop reduction(+:residuo) !async(stream1)
-         !$OMP PARALLEL DO REDUCTION(+:residuo)
+         !
+         !$omp target teams distribute parallel do reduction(+:residuo)
          calculo_residuou: do kk = 2, lk
             do jj = 2, nj
                do ii = 2, mi-1
@@ -2082,18 +2074,21 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
                end do
             end do
          end do calculo_residuou
-         !$OMP END PARALLEL DO
+         !$omp end target teams distribute parallel do
          !
          residuo =dsqrt(residuo)
          !
          write(102,*) 'SIMPLE', iter_simp, maxbo, residuo
-         IF( maxbo<conv_paso .and. residuo < conv_resi)EXIT
+         !
+         if( maxbo<conv_paso .and. residuo < conv_resi)exit
          !*************************************************
       END DO ALGORITMO_SIMPLE  !final del algoritmo SIMPLE
       !
-      ! Mensaje de convergencia
+      !---------------------------------------------------
       !
-      WRITE(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
+      !   Mensaje de convergencia
+      !
+      write(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
       itera = itera + 1
       !
       !*********************************
@@ -2105,7 +2100,7 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
       !
       !-------------------------------------------------------
       !
-      !$OMP PARALLEL DO
+      !$omp target teams distribute parallel do collapse(3)
       actualiza_temp: do kk = 2, lk
          do jj = 2, nj
             do ii = 2, mi
@@ -2113,9 +2108,9 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             end do
          end do
       end do actualiza_temp
-      !$OMP END PARALLEL DO
+      !$omp end target teams distribute parallel do
       !
-      !$OMP PARALLEL DO
+      !$omp target teams distribute parallel do collapse(3)
       actualiza_u: do kk = 2, lk
          do jj = 2, nj
             do ii = 2, mi-1
@@ -2123,9 +2118,9 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             end do
          end do
       end do actualiza_u
-      !$OMP END PARALLEL DO
+      !$omp end target teams distribute parallel do
       !
-      !$OMP PARALLEL DO
+      !$omp target teams distribute parallel do collapse(3)
       actualiza_v: do kk = 2, lk
          do jj = 2, nj-1
             do ii = 2, mi
@@ -2133,9 +2128,9 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             end do
          end do
       end do actualiza_v
-      !$OMP END PARALLEL DO
+      !$omp end target teams distribute parallel do
       !
-      !$OMP PARALLEL DO
+      !$omp target teams distribute parallel do collapse(3)
       actualiza_w: do kk = 2, lk-1
          do jj = 2, nj
             do ii = 2, mi
@@ -2143,9 +2138,17 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             end do
          end do
       end do actualiza_w
-      !$OMP END PARALLEL DO
+      !$omp end target teams distribute parallel do
       !
    END DO !*************termina el paquete de iteraciones
+   !
+   !===============================================
+   !
+   !     Se cierra la regi'on paralela de datos
+   !
+   !$omp end target data
+   !
+   !===============================================
    !
 !*****************************************************
 !*****************************************************

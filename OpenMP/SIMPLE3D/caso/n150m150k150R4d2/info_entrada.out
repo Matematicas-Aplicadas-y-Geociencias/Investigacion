@@ -1,0 +1,20 @@
+ numero de Rayleigh                       400.00000000000000     
+ numero de Prandtl                        7.0099999999999998     
+ incremento de tiempo                     5.0000000000000001E-003
+ iteraciones maximas                           4000
+ paquete de iteraciones                         100
+ numero de Richardson                     0.0000000000000000     
+ relajacion de la presion                0.50000000000000000     
+ relajacion de la velocidad              0.59999999999999998     
+ relajacion de la temperatura            0.69999999999999996     
+ convergencia de la velocidad             1.0000000000000000E-003
+ convergencia de la temperatura           1.0000000000000000E-003
+ convergencia de la presion               1.0000000000000000E-002
+ convergencia del residuo                 1.0000000000000000E-004
+ convergencia del paso de tiempo          1.0000000000000000E-004
+ iteraciones maximas de SIMPLE                  100
+ iteraciones maximas de las ecuaciones          200
+ archivo de entrada para u             ./mallas/out_n150m150k150_Rxxxu.dat                             
+ archivo de entrada para v             ./mallas/out_n150m150k150_Rxxxv.dat                             
+ archivo de entrada para w             ./mallas/out_n150m150k150_Rxxxw.dat                             
+ archivo de entrada para t y p         ./mallas/out_n150m150k150_Rxxxp.dat                             

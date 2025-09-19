@@ -345,6 +345,8 @@ contains
     !
     implicit none
     !
+    !$acc routine
+    !
     integer             :: indexu
     integer, intent(in) :: ii,jj,kk
     !
@@ -355,6 +357,8 @@ contains
   function indeyu(jj,ii,kk)
     !
     implicit none
+    !
+    !$acc routine
     !
     integer             :: indeyu
     integer, intent(in) :: ii,jj,kk
@@ -367,6 +371,8 @@ contains
     !
     implicit none
     !
+    !$acc routine
+    !
     integer             :: indexp
     integer, intent(in) :: ii,jj,kk
     !
@@ -377,6 +383,8 @@ contains
   function indexv(ii,jj,kk)
     !
     implicit none
+    !
+    !$acc routine
     !
     integer             :: indexv
     integer, intent(in) :: ii,jj,kk
@@ -389,6 +397,8 @@ contains
     !
     implicit none
     !
+    !$acc routine
+    !
     integer             :: indeyv
     integer, intent(in) :: ii,jj,kk
     !
@@ -399,6 +409,8 @@ contains
   function indezv(kk,jj,ii)
     !
     implicit none
+    !
+    !$acc routine
     !
     integer             :: indezv
     integer, intent(in) :: ii,jj,kk
@@ -411,6 +423,8 @@ contains
     !
     implicit none
     !
+    !$acc routine
+    !
     integer             :: indeyp
     integer, intent(in) :: ii,jj,kk
     !
@@ -422,6 +436,8 @@ contains
     !
     implicit none
     !
+    !$acc routine
+    !
     integer             :: indezw
     integer, intent(in) :: ii,jj,kk
     !
@@ -432,6 +448,8 @@ contains
   function indezp(kk,jj,ii)
     !
     implicit none
+    !
+    !$acc routine
     !
     integer             :: indezp
     integer, intent(in) :: ii,jj,kk

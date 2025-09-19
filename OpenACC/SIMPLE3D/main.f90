@@ -2086,7 +2086,6 @@ DO l=1,itermax/paq_itera   !inicio del repetidor principal
             !
             bucle_direccion_y: do jj = 2, nj
                !
-               ! $acc loop vector
                bucle_direccion_x: do ii = 2, mi-1
                   call residuo_u(&
                        &deltaxu,&

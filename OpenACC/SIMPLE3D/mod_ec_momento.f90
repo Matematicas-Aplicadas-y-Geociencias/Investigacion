@@ -2566,8 +2566,8 @@ contains
        &ii,jj,kk&
        &)
     implicit none
-    !$acc routine gang
-        !
+    !$acc routine
+    !
     ! Tama\~no del volumen de control
     !
     real(kind=DBL), dimension(mi), intent(in) :: deltaxuo

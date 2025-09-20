@@ -2088,7 +2088,8 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
       !
       !   Mensaje de convergencia
       !
-      write(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
+      ! write(*,*) 'tiempo ',itera,iter_simp,maxbo,residuo
+      !
       itera = itera + 1
       !
       !*********************************

@@ -1616,7 +1616,8 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
             !------------------------------------------------------------------------
             !
             ! critero de convergencia del corrector de la presi'on
-            ! WRITE(*,*) 'corrector presion ', error
+            !
+            ! write(*,*) 'corrector presion ', tt, error
             !
             if( error<conv_p )exit
             !
@@ -1630,7 +1631,7 @@ DO l=1,itermax/paq_itera      !inicio del repetidor principal
          DO k = 2, lk
             DO j = 2, nj
                DO i = 2, mi
-                  pres(i,j,k) = pres(i,j,k)+0.6_DBL*corr_pres(i,j,k)
+                  pres(i,j,k) = pres(i,j,k)+0.5_DBL*corr_pres(i,j,k)
                END DO
             END DO
          END DO

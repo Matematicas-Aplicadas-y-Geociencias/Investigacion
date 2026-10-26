@@ -1,0 +1,29 @@
+[project]
+name = "presionrbrl"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "filterpy>=1.4.5",
+    "jupyterlab>=4.5.7",
+    "marimo>=0.23.9",
+    "matlabengine>=26.1.12",
+    "matplotlib>=3.10.9",
+    "numpy>=2.4.4",
+    "pandas>=3.0.2",
+    "pandas-stubs~=3.0.2",
+    "pathlib>=1.0.1",
+    "plotly>=6.8.0",
+    "pydantic-ai>=1.107.0",
+    "ruff>=0.15.17",
+    "scikit-learn>=1.9.0",
+    "scipy>=1.17.1",
+]
+
+[dependency-groups]
+dev = [
+    "python-lsp-ruff>=2.3.1",
+    "python-lsp-server>=1.14.0",
+    "websockets>=16.0",
+]

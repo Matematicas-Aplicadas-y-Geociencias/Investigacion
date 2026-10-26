@@ -1,0 +1,182 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.23.9",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "74c0cd01b218f81eef178d6d9b390a88",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "5f5d4cf2d29d7304a4c9f54e983a1292",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "a359e00c5e32912002bdbdd737d1eeb7",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "56108d994f50d34267d1581cc1685f32",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "f36c8835403b312c1ae5b42bbbce18ed",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "bc509ba46e6f6def2eef8ca67e03d2f2",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"elegir-un-sensor-de-referencia-gold-standard\">Elegir un sensor de referencia (Gold Standard)</h2>\n<span class=\"paragraph\">data_Conagua</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Xref",
+      "code_hash": "342f9be79601cbd746c0ec2aeef0e832",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"encontrar-las-zonas-de-solapamiento\">Encontrar las zonas de \"solapamiento\".</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "95ebbb8830d312f88f4369683f6cd65d",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "7de0038138cb7b2b8240c7a4a48abba0",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "4390fafd4bd1db38b09db114f84fcf09",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "12c083a337ebf2e5fd11a0bfbbbcb809",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"usar-ml-para-calibrar-alinear-los-sensores\">Usar ML para calibrar / alinear los sensores</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "d356c03d3d9def7dbb37348b3f61d4ba",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "673012351231b224a3250938acd18fe5",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "nWHF",
+      "code_hash": "9511b39d6b544e39c898367e99dadb1d",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "iLit",
+      "code_hash": "68db214162575aeeeec8452c301e1363",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ZHCJ",
+      "code_hash": "697b31316c466a6d4dc1cf53dad7694f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"unificar-y-rellenar-huecos-imputacion-con-ml\">Unificar y rellenar huecos (imputaci\u00f3n con ML)</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "ROlb",
+      "code_hash": "9cb16725f994cd63b608950c6b5e2f8c",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "qnkX",
+      "code_hash": "e5ed66b1048feeed6ea489fa0872ca2e",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "TqIu",
+      "code_hash": "12ec77d261c5d1b5f04f57757d94ed11",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Vxnm",
+      "code_hash": "f089319b09d929907a79807063b7305d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"suavizar-la-transicion\">Suavizar la transici\u00f3n</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "DnEU",
+      "code_hash": "4db5204e2e85e3353b4408bde3f8fc0a",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ulZA",
+      "code_hash": "07922aaa9e6fe1514086922536a4ee28",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "ecfG",
+      "code_hash": "79e6b0106a260f8b805586aac50ed404",
+      "outputs": [],
+      "console": []
+    }
+  ]
+}

@@ -12,6 +12,7 @@
 *.nvvp
 *.qdstrm
 *.nsight-cuprof-report
+*.mat
 fort.101
 clang.101
 test
